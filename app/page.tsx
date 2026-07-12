@@ -164,6 +164,10 @@ export default function Home() {
       </section>
 
       <BeaconFooter />
+      <div className="hidden">
+  Impact-Site-Verification:
+  86034138-821d-4c10-a07c-581db9b498d8
+</div>
     </main>
   );
 }
