@@ -1,65 +1,169 @@
-import Image from "next/image";
+import Navbar from "@/components/Navbar";
+import BeaconHero from "@/components/BeaconHero";
+import BeaconFooter from "@/components/BeaconFooter";
+
+const categories = [
+  {
+    id: "shopping",
+    eyebrow: "Beacon Shopping",
+    title: "Find the right product",
+    description:
+      "Tell Beacon what matters to you and receive five carefully selected products that match your budget, needs and preferences.",
+    examples: [
+      "Best 55-inch TV under £800",
+      "Quiet cordless vacuum for pet hair",
+      "Laptop for university and light gaming",
+    ],
+  },
+  {
+    id: "getaways",
+    eyebrow: "Beacon Getaways",
+    title: "Plan the right break",
+    description:
+      "From UK staycations to holidays abroad, Beacon helps narrow hundreds of options into five clear recommendations.",
+    examples: [
+      "Family beach holiday under £2,500",
+      "Dog-friendly cottage in Cornwall",
+      "Weekend break for two in Edinburgh",
+    ],
+  },
+  {
+    id: "entertainment",
+    eyebrow: "Beacon Entertainment",
+    title: "Discover something memorable",
+    description:
+      "Find events, attractions and experiences matched to your location, interests, dates and budget.",
+    examples: [
+      "Family day out near Manchester",
+      "West End show and hotel package",
+      "Birthday experience for two",
+    ],
+  },
+];
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="min-h-screen bg-slate-50">
+      <Navbar />
+
+      <BeaconHero />
+
+      <section className="px-6 py-20">
+        <div className="mx-auto max-w-7xl">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-blue-900">
+              How Beacon Helps
+            </p>
+
+            <h2 className="mt-4 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">
+              Five strong choices. Not five hundred results.
+            </h2>
+
+            <p className="mt-5 text-lg leading-8 text-slate-600">
+              Beacon learns what matters to you, compares suitable options and
+              explains why each recommendation deserves your attention.
+            </p>
+          </div>
+
+          <div className="mt-14 grid gap-8 lg:grid-cols-3">
+            {categories.map((category) => (
+              <article
+                key={category.id}
+                id={category.id}
+                className="scroll-mt-32 rounded-[2rem] border border-slate-200 bg-white p-8 shadow-xl"
+              >
+                <p className="text-sm font-extrabold uppercase tracking-[0.24em] text-blue-900">
+                  {category.eyebrow}
+                </p>
+
+                <h3 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
+                  {category.title}
+                </h3>
+
+                <p className="mt-4 leading-7 text-slate-600">
+                  {category.description}
+                </p>
+
+                <div className="mt-6 space-y-3">
+                  {category.examples.map((example) => (
+                    <div
+                      key={example}
+                      className="rounded-2xl bg-slate-50 px-4 py-3 font-semibold text-slate-700"
+                    >
+                      “{example}”
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-blue-950 px-6 py-20 text-white">
+        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
+          <div>
+            <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-blue-200">
+              The Beacon Difference
+            </p>
+
+            <h2 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl">
+              Recommendations built around you.
+            </h2>
+
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-blue-100">
+              Beacon is not designed to overwhelm you with sponsored listings.
+              It is designed to understand your request, compare trusted
+              options and explain the five strongest matches in plain English.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {[
+              "Personalised recommendations",
+              "Clear Beacon Score",
+              "Trusted partner links",
+              "Transparent sponsored labels",
+              "Saved preferences",
+              "Price and holiday alerts",
+            ].map((item) => (
+              <div
+                key={item}
+                className="rounded-2xl border border-white/15 bg-white/10 p-5 font-bold backdrop-blur"
+              >
+                ✓ {item}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="px-6 py-20">
+        <div className="mx-auto max-w-5xl rounded-[2rem] bg-white p-8 text-center shadow-2xl sm:p-12">
+          <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-blue-900">
+            Beacon+
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
+
+          <h2 className="mt-4 text-4xl font-black tracking-tight text-slate-950">
+            Your personal shopper gets better with you.
+          </h2>
+
+          <p className="mx-auto mt-5 max-w-3xl text-lg leading-8 text-slate-600">
+            Save preferences, track prices, create family profiles, remember
+            your vehicles and pets, and receive personalised alerts when better
+            options appear.
+          </p>
+
           <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/membership"
+            className="mt-8 inline-flex rounded-2xl bg-blue-900 px-8 py-4 text-lg font-extrabold text-white shadow-xl transition hover:-translate-y-0.5 hover:bg-blue-800"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
+            Explore Beacon+
           </a>
         </div>
-      </main>
-    </div>
+      </section>
+
+      <BeaconFooter />
+    </main>
   );
 }

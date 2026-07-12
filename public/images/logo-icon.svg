@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Beacon Prizes Lighthouse Logo Open Ring</title>
+  <desc id="desc">An open-ring blue and gold lighthouse logo with a golden light beam and waves on a transparent background.</desc>
+  <defs>
+    <linearGradient id="gold" x1="15%" y1="12%" x2="85%" y2="88%">
+      <stop offset="0%" stop-color="#fff1a3"/>
+      <stop offset="38%" stop-color="#ffc93f"/>
+      <stop offset="72%" stop-color="#d89516"/>
+      <stop offset="100%" stop-color="#8e5c08"/>
+    </linearGradient>
+    <linearGradient id="goldSoft" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#fff7bd" stop-opacity="1"/>
+      <stop offset="40%" stop-color="#ffd451" stop-opacity=".88"/>
+      <stop offset="100%" stop-color="#c18414" stop-opacity=".22"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="18%" y1="10%" x2="88%" y2="92%">
+      <stop offset="0%" stop-color="#25aaf2"/>
+      <stop offset="42%" stop-color="#0068b7"/>
+      <stop offset="100%" stop-color="#00295e"/>
+    </linearGradient>
+    <linearGradient id="darkBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#082b5f"/>
+      <stop offset="100%" stop-color="#001025"/>
+    </linearGradient>
+    <radialGradient id="lampGlow" cx="50%" cy="48%" r="55%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="35%" stop-color="#fff6a7"/>
+      <stop offset="100%" stop-color="#f5b61e"/>
+    </radialGradient>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 1  0 1 0 0 .75  0 0 1 0 .15  0 0 0 .65 0" result="glow"/>
+      <feMerge><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#000814" flood-opacity=".35"/>
+    </filter>
+  </defs>
+
+  <!-- transparent background -->
+  <g filter="url(#shadow)">
+    <!-- open golden ring -->
+    <path d="M334 789 A342 342 0 1 1 690 789" fill="none" stroke="url(#gold)" stroke-width="18" stroke-linecap="butt"/>
+    <path d="M337 789 A328 328 0 1 1 687 789" fill="none" stroke="#fff3a6" stroke-opacity=".45" stroke-width="4"/>
+
+    <!-- glowing beacon beam -->
+    <path d="M580 340 L975 224 L975 504 L580 404 Z" fill="url(#goldSoft)" filter="url(#softGlow)"/>
+    <path d="M580 343 L963 232 L963 496 L580 401 Z" fill="url(#goldSoft)" opacity=".9"/>
+
+    <!-- lighthouse tower -->
+    <path d="M423 438 L600 438 L650 815 Q512 848 374 815 Z" fill="url(#blue)" stroke="#001126" stroke-width="8" stroke-linejoin="round"/>
+    <path d="M421 548 L604 458 L612 520 L398 628 Z" fill="url(#gold)"/>
+    <path d="M397 692 L624 575 L634 638 L376 766 Z" fill="url(#gold)"/>
+    <path d="M446 452 L470 806" stroke="#36adf5" stroke-width="10" stroke-opacity=".55"/>
+    <path d="M596 452 L632 807" stroke="#0a4a89" stroke-width="13" stroke-opacity=".75"/>
+
+    <!-- gallery deck -->
+    <rect x="392" y="407" width="242" height="33" rx="6" fill="url(#blue)" stroke="#001126" stroke-width="7"/>
+    <path d="M407 363 H620 V408 H407 Z" fill="none" stroke="url(#gold)" stroke-width="8"/>
+    <path d="M441 363 V407 M480 363 V407 M521 363 V407 M561 363 V407" stroke="url(#gold)" stroke-width="7"/>
+
+    <!-- lantern and roof -->
+    <path d="M446 289 H578 L596 365 H428 Z" fill="url(#lampGlow)" stroke="#001126" stroke-width="7" stroke-linejoin="round"/>
+    <ellipse cx="512" cy="326" rx="52" ry="46" fill="url(#lampGlow)" opacity=".95"/>
+    <path d="M414 282 L512 185 L610 282 Q512 263 414 282 Z" fill="url(#blue)" stroke="#001126" stroke-width="8" stroke-linejoin="round"/>
+    <path d="M456 262 L512 205 L585 274 Q515 254 456 262 Z" fill="#1da2eb" opacity=".45"/>
+
+    <!-- waves -->
+    <path d="M245 802 C330 748 415 836 512 794 C611 751 686 830 783 778 C744 840 652 862 553 831 C454 801 346 858 245 802 Z" fill="#001126"/>
+    <path d="M246 779 C336 725 426 812 512 775 C608 733 685 806 779 760 C736 811 641 828 548 798 C447 765 348 829 246 779 Z" fill="url(#blue)" stroke="#001126" stroke-width="7"/>
+    <path d="M282 826 C383 790 450 848 536 819 C625 788 681 837 759 810 C683 863 600 869 514 843 C432 818 358 862 282 826 Z" fill="#0880d5" opacity=".9"/>
+  </g>
+</svg>
