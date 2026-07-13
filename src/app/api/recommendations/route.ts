@@ -83,6 +83,7 @@ function prepareIntent(
   let intent = parseSearchQuery(cleanQuery);
 
   intent = applyIntentClassification(intent);
+  console.log("Beacon intent:", intent);
 
   if (selectedCategory) {
     intent = {

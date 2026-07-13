@@ -1,0 +1,10 @@
+[33mcommit 83ece850a94f1b97db4e575e60b7008689537dd1[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: josh <murphyjosh94@gmail.com>
+Date:   Mon Jul 13 16:52:15 2026 +0100
+
+    Connect live SerpApi shopping results
+
+ src/app/api/recommendations/route.ts         | 117 [32m++++[m[31m-[m
+ src/lib/search/SearchParser.ts               | 230 [32m+++++++++[m[31m-[m
+ src/services/travel/SerpApiHotelsProvider.ts | 652 [32m+++++++++++++++++++++++++++[m
+ 3 files changed, 979 insertions(+), 20 deletions(-)
