@@ -1,6 +1,7 @@
 import Navbar from "@/components/Navbar";
 import BeaconHero from "@/components/BeaconHero";
 import BeaconFooter from "@/components/BeaconFooter";
+import AmazonSubscriptionBanner from "@/components/AmazonSubscriptionBanner";
 
 const categories = [
   {
@@ -45,6 +46,8 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-slate-50">
       <Navbar />
+
+<AmazonSubscriptionBanner />
 
       <BeaconHero />
 
