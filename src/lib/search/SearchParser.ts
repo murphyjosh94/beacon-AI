@@ -26,6 +26,13 @@ const PRODUCT_KEYWORDS = [
   "tool",
   "drill",
   "product",
+  "suit",
+  "shirt",
+  "trousers",
+  "jacket",
+  "dress",
+  "shoes",
+  "clothing",
 ];
 
 const HOLIDAY_KEYWORDS = [
@@ -41,6 +48,10 @@ const HOLIDAY_KEYWORDS = [
   "all inclusive",
   "destination",
   "travel",
+  "staycation",
+  "accommodation",
+  "apartment",
+  "villa",
 ];
 
 const EXPERIENCE_KEYWORDS = [
@@ -52,6 +63,7 @@ const EXPERIENCE_KEYWORDS = [
   "concert",
   "event",
   "theme park",
+  "tickets",
 ];
 
 const SERVICE_KEYWORDS = [
@@ -62,6 +74,33 @@ const SERVICE_KEYWORDS = [
   "subscription",
   "service",
 ];
+
+const MONTHS: Record<string, number> = {
+  january: 1,
+  jan: 1,
+  february: 2,
+  feb: 2,
+  march: 3,
+  mar: 3,
+  april: 4,
+  apr: 4,
+  may: 5,
+  june: 6,
+  jun: 6,
+  july: 7,
+  jul: 7,
+  august: 8,
+  aug: 8,
+  september: 9,
+  sep: 9,
+  sept: 9,
+  october: 10,
+  oct: 10,
+  november: 11,
+  nov: 11,
+  december: 12,
+  dec: 12,
+};
 
 function normaliseQuery(query: string): string {
   return query.trim().replace(/\s+/g, " ");
@@ -188,10 +227,169 @@ function extractDestination(
   query: string
 ): string | undefined {
   const destinationMatch = query.match(
-    /\b(?:to|in)\s+([A-Za-z][A-Za-z\s'-]{2,40}?)(?=\s+(?:under|below|for|with|in|during|from|between|all inclusive|half board|full board)\b|[,.!?]|$)/i
+    /\b(?:to|in|near)\s+([A-Za-z][A-Za-z\s'-]{2,40}?)(?=\s+(?:from|between|under|below|for|with|during|on|all inclusive|half board|full board|bed and breakfast|b&b)\b|[,.!?]|$)/i
   );
 
   return destinationMatch?.[1]?.trim();
+}
+
+function toIsoDate(
+  day: number,
+  month: number,
+  year: number
+): string | undefined {
+  const date = new Date(
+    Date.UTC(year, month - 1, day)
+  );
+
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return undefined;
+  }
+
+  return date.toISOString().slice(0, 10);
+}
+
+function parseNamedDate(
+  dayText: string,
+  monthText: string,
+  yearText: string
+): string | undefined {
+  const day = Number(dayText);
+  const month =
+    MONTHS[monthText.toLowerCase()];
+  const year = Number(yearText);
+
+  if (!month) {
+    return undefined;
+  }
+
+  return toIsoDate(day, month, year);
+}
+
+function parseNumericDate(
+  dayText: string,
+  monthText: string,
+  yearText: string
+): string | undefined {
+  const day = Number(dayText);
+  const month = Number(monthText);
+  let year = Number(yearText);
+
+  if (yearText.length === 2) {
+    year += 2000;
+  }
+
+  return toIsoDate(day, month, year);
+}
+
+function extractTravelDates(query: string): {
+  startDate?: string;
+  endDate?: string;
+} {
+  const namedRange = query.match(
+    /\b(?:from|between)\s+(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)\s+(\d{4})\s+(?:to|until|and|-)\s+(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)\s+(\d{4})\b/i
+  );
+
+  if (namedRange) {
+    return {
+      startDate: parseNamedDate(
+        namedRange[1],
+        namedRange[2],
+        namedRange[3]
+      ),
+      endDate: parseNamedDate(
+        namedRange[4],
+        namedRange[5],
+        namedRange[6]
+      ),
+    };
+  }
+
+  const namedSameMonthRange = query.match(
+    /\b(?:from|between)\s+(\d{1,2})(?:st|nd|rd|th)?\s+(?:to|until|and|-)\s+(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)\s+(\d{4})\b/i
+  );
+
+  if (namedSameMonthRange) {
+    return {
+      startDate: parseNamedDate(
+        namedSameMonthRange[1],
+        namedSameMonthRange[3],
+        namedSameMonthRange[4]
+      ),
+      endDate: parseNamedDate(
+        namedSameMonthRange[2],
+        namedSameMonthRange[3],
+        namedSameMonthRange[4]
+      ),
+    };
+  }
+
+  const numericRange = query.match(
+    /\b(?:from|between)?\s*(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\s+(?:to|until|and|-)\s+(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\b/i
+  );
+
+  if (numericRange) {
+    return {
+      startDate: parseNumericDate(
+        numericRange[1],
+        numericRange[2],
+        numericRange[3]
+      ),
+      endDate: parseNumericDate(
+        numericRange[4],
+        numericRange[5],
+        numericRange[6]
+      ),
+    };
+  }
+
+  const allNamedDates = Array.from(
+    query.matchAll(
+      /\b(\d{1,2})(?:st|nd|rd|th)?\s+(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\s+(\d{4})\b/gi
+    )
+  );
+
+  if (allNamedDates.length >= 2) {
+    return {
+      startDate: parseNamedDate(
+        allNamedDates[0][1],
+        allNamedDates[0][2],
+        allNamedDates[0][3]
+      ),
+      endDate: parseNamedDate(
+        allNamedDates[1][1],
+        allNamedDates[1][2],
+        allNamedDates[1][3]
+      ),
+    };
+  }
+
+  const allNumericDates = Array.from(
+    query.matchAll(
+      /\b(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\b/g
+    )
+  );
+
+  if (allNumericDates.length >= 2) {
+    return {
+      startDate: parseNumericDate(
+        allNumericDates[0][1],
+        allNumericDates[0][2],
+        allNumericDates[0][3]
+      ),
+      endDate: parseNumericDate(
+        allNumericDates[1][1],
+        allNumericDates[1][2],
+        allNumericDates[1][3]
+      ),
+    };
+  }
+
+  return {};
 }
 
 function extractKeywords(query: string): string[] {
@@ -204,6 +402,7 @@ function extractKeywords(query: string): string[] {
     "can",
     "find",
     "for",
+    "from",
     "i",
     "in",
     "is",
@@ -229,7 +428,8 @@ function extractKeywords(query: string): string[] {
     .filter(
       (word) =>
         word.length > 1 &&
-        !stopWords.has(word)
+        !stopWords.has(word) &&
+        !/^\d+$/.test(word)
     );
 
   return Array.from(new Set(words));
@@ -246,14 +446,21 @@ function extractPreferences(
     "adults only",
     "beachfront",
     "five star",
+    "four star",
+    "three star",
+    "free breakfast",
+    "breakfast included",
+    "free cancellation",
+    "swimming pool",
+    "sea view",
+    "city centre",
+    "pet friendly",
+    "eco friendly",
     "4k",
     "oled",
     "gaming",
     "wireless",
     "lightweight",
-    "pet friendly",
-    "eco friendly",
-    "free cancellation",
   ];
 
   return knownPreferences.filter((preference) =>
@@ -267,7 +474,7 @@ function extractExclusions(
   const exclusions: string[] = [];
 
   const matches = query.matchAll(
-    /\b(?:not|without|exclude|excluding|avoid)\s+([A-Za-z0-9\s'-]+?)(?=[,.!?]|$|\s+(?:and|but|with|under|for)\b)/gi
+    /\b(?:not|without|exclude|excluding|avoid)\s+([A-Za-z0-9\s'-]+?)(?=[,.!?]|$|\s+(?:and|but|with|under|for|from)\b)/gi
   );
 
   for (const match of matches) {
@@ -294,21 +501,32 @@ export function parseSearchQuery(
 
   const category = detectCategory(query);
   const budget = extractBudget(query);
+  const travelDates =
+    category === "holiday"
+      ? extractTravelDates(query)
+      : {};
 
   return {
     rawQuery: query,
     category,
     keywords: extractKeywords(query),
+
     budgetMin: budget.budgetMin,
     budgetMax: budget.budgetMax,
+
     destination:
       category === "holiday"
         ? extractDestination(query)
         : undefined,
+
+    startDate: travelDates.startDate,
+    endDate: travelDates.endDate,
+
     travellers:
       category === "holiday"
         ? extractTravellerCount(query)
         : undefined,
+
     preferences: extractPreferences(query),
     exclusions: extractExclusions(query),
   };

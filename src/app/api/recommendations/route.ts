@@ -8,6 +8,7 @@ import { selectBestRecommendations } from "@/lib/recommendations/RecommendationR
 import { buildRecommendationResponse } from "@/lib/recommendations/RecommendationExplainer";
 
 import { searchShoppingProducts } from "@/services/shopping/SerpApiShoppingProvider";
+import { searchHotels } from "@/services/travel/SerpApiHotelsProvider";
 
 import {
   generateRecommendations,
@@ -93,7 +94,7 @@ function prepareIntent(
   return intent;
 }
 
-function getErrorStatus(
+function getOpenAIErrorStatus(
   error: RecommendationGenerationError
 ): number {
   if (error.code === "authentication_failed") {
@@ -113,6 +114,15 @@ function getErrorStatus(
   }
 
   return 503;
+}
+
+function createRecommendationRequest(
+  intent: SearchIntent
+): RecommendationRequest {
+  return {
+    intent,
+    limit: 5,
+  };
 }
 
 export async function POST(request: Request) {
@@ -199,17 +209,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const recommendationRequest: RecommendationRequest =
-      {
-        intent,
-        limit: 5,
-      };
+    const recommendationRequest =
+      createRecommendationRequest(intent);
 
     /*
      * SHOPPING
      *
-     * SerpApi supplies the real products, prices,
-     * retailers, images and links.
+     * Uses live Google Shopping data through SerpApi.
      */
     if (intent.category === "product") {
       const liveProducts =
@@ -241,7 +247,8 @@ export async function POST(request: Request) {
             ...response,
             aiSummary:
               "Beacon searched live shopping data, compared suitable products and selected the strongest matches for your request.",
-            dataSource: "serpapi-google-shopping",
+            dataSource:
+              "serpapi-google-shopping",
             liveData: true,
           },
         },
@@ -252,11 +259,92 @@ export async function POST(request: Request) {
     }
 
     /*
-     * HOLIDAYS AND ENTERTAINMENT
+     * GETAWAYS
      *
-     * These temporarily use OpenAI until the live
-     * hotel, flight and entertainment providers are
-     * connected.
+     * Uses live Google Hotels data through SerpApi.
+     * Exact check-in and check-out dates are required.
+     */
+    if (intent.category === "holiday") {
+      if (!intent.destination) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "missing_destination",
+              message:
+                "Please include the destination you would like Beacon to search.",
+            },
+          },
+          {
+            status: 400,
+          }
+        );
+      }
+
+      if (
+        !intent.startDate ||
+        !intent.endDate
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "missing_travel_dates",
+              message:
+                "Please include exact check-in and check-out dates, for example: 12 August 2026 to 19 August 2026.",
+            },
+          },
+          {
+            status: 400,
+          }
+        );
+      }
+
+      const liveHotels =
+        await searchHotels(intent, {
+          limit: 30,
+        });
+
+      const selected =
+        selectBestRecommendations(
+          liveHotels,
+          recommendationRequest,
+          {
+            limit: 5,
+            minimumScore: 35,
+            minimumTrustScore: 30,
+          }
+        );
+
+      const response =
+        buildRecommendationResponse(
+          intent,
+          selected
+        );
+
+      return NextResponse.json(
+        {
+          success: true,
+          data: {
+            ...response,
+            aiSummary:
+              "Beacon searched live hotel data, compared prices, ratings, locations and amenities, and selected the strongest matches for your trip.",
+            dataSource:
+              "serpapi-google-hotels",
+            liveData: true,
+          },
+        },
+        {
+          status: 200,
+        }
+      );
+    }
+
+    /*
+     * ENTERTAINMENT AND OTHER REQUESTS
+     *
+     * These temporarily use OpenAI research suggestions
+     * until another live provider is connected.
      */
     const generated =
       await generateRecommendations(intent);
@@ -301,7 +389,8 @@ export async function POST(request: Request) {
           },
         },
         {
-          status: getErrorStatus(error),
+          status:
+            getOpenAIErrorStatus(error),
         }
       );
     }
