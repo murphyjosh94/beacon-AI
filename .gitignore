@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Private environment files
+.env.local
+.env*.local
+openipkey
+
+# Private environment files
+.env.local
+.env*.local
+openipkey
