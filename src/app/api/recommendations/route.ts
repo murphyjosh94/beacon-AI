@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 
-import { parseSearchQuery } from "@/lib/search/SearchParser";
-import { applyIntentClassification } from "@/lib/search/IntentClassifier";
 import { validateSearchIntent } from "@/lib/search/SearchValidator";
 
 import { selectBestRecommendations } from "@/lib/recommendations/RecommendationRanking";
@@ -15,6 +13,11 @@ import {
   GeneralAnswerError,
 } from "@/services/openai/GeneralAnswerProvider";
 
+import {
+  extractSearchIntent,
+  type ExtractedSearchIntent,
+} from "@/services/openai/SearchIntentExtractor";
+
 import type {
   RecommendationCategory,
   RecommendationRequest,
@@ -25,16 +28,23 @@ type RecommendationRequestBody = {
   query?: unknown;
 };
 
+type DateRange = {
+  startDate: string;
+  endDate: string;
+  explanation?: string;
+};
+
 function readQuery(value: unknown): string {
   return typeof value === "string"
     ? value.trim()
     : "";
 }
 
-function detectSelectedCategory(
+function detectCategoryHint(
   query: string
 ): RecommendationCategory | null {
-  const normalised = query.toLowerCase();
+  const normalised =
+    query.toLowerCase();
 
   if (
     normalised.startsWith(
@@ -82,29 +92,143 @@ function removeCategoryPrefix(
     .trim();
 }
 
-function prepareIntent(
-  originalQuery: string
-): SearchIntent {
-  const selectedCategory =
-    detectSelectedCategory(originalQuery);
+function addDays(
+  date: Date,
+  days: number
+): Date {
+  const result = new Date(date);
 
-  const cleanQuery =
-    removeCategoryPrefix(originalQuery);
+  result.setUTCDate(
+    result.getUTCDate() + days
+  );
 
-  let intent =
-    parseSearchQuery(cleanQuery);
+  return result;
+}
 
-  intent =
-    applyIntentClassification(intent);
+function toIsoDate(date: Date): string {
+  return date
+    .toISOString()
+    .slice(0, 10);
+}
 
-  if (selectedCategory) {
-    intent = {
-      ...intent,
-      category: selectedCategory,
+function createDateRange(
+  start: Date,
+  nights: number,
+  explanation?: string
+): DateRange {
+  const safeNights =
+    Number.isFinite(nights) &&
+    nights > 0
+      ? Math.min(
+          Math.floor(nights),
+          30
+        )
+      : 3;
+
+  return {
+    startDate: toIsoDate(start),
+
+    endDate: toIsoDate(
+      addDays(start, safeNights)
+    ),
+
+    explanation,
+  };
+}
+
+function resolveFlexibleMonth(
+  flexibleMonth: string,
+  nights: number
+): DateRange | null {
+  const match =
+    flexibleMonth.match(
+      /^(\d{4})-(\d{2})$/
+    );
+
+  if (!match) {
+    return null;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+
+  if (
+    !Number.isInteger(year) ||
+    month < 1 ||
+    month > 12
+  ) {
+    return null;
+  }
+
+  const today = new Date();
+
+  const firstPossibleDate =
+    new Date(
+      Date.UTC(
+        year,
+        month - 1,
+        7
+      )
+    );
+
+  const start =
+    firstPossibleDate > today
+      ? firstPossibleDate
+      : new Date(
+          Date.UTC(
+            year,
+            month - 1,
+            21
+          )
+        );
+
+  return createDateRange(
+    start,
+    nights,
+    `Beacon used a representative ${nights}-night stay during ${flexibleMonth} because exact dates were not supplied.`
+  );
+}
+
+function resolveHotelDates(
+  extracted: ExtractedSearchIntent
+): DateRange {
+  const { intent } = extracted;
+
+  if (
+    intent.startDate &&
+    intent.endDate
+  ) {
+    return {
+      startDate: intent.startDate,
+      endDate: intent.endDate,
     };
   }
 
-  return intent;
+  const stayLength =
+    extracted.stayLengthNights ?? 3;
+
+  if (extracted.flexibleMonth) {
+    const monthRange =
+      resolveFlexibleMonth(
+        extracted.flexibleMonth,
+        stayLength
+      );
+
+    if (monthRange) {
+      return monthRange;
+    }
+  }
+
+  const start = addDays(
+    new Date(),
+    14
+  );
+
+  return createDateRange(
+    start,
+    stayLength,
+    `Beacon used a representative ${stayLength}-night stay beginning in two weeks because exact travel dates were not supplied.`
+  );
 }
 
 function createRecommendationRequest(
@@ -116,39 +240,7 @@ function createRecommendationRequest(
   };
 }
 
-function getGeneralAnswerStatus(
-  error: GeneralAnswerError
-): number {
-  if (
-    error.code ===
-    "authentication_failed"
-  ) {
-    return 401;
-  }
-
-  if (
-    error.code === "rate_limited"
-  ) {
-    return 429;
-  }
-
-  if (
-    error.code === "billing_required"
-  ) {
-    return 503;
-  }
-
-  if (
-    error.code ===
-    "invalid_response"
-  ) {
-    return 502;
-  }
-
-  return 503;
-}
-
-function createValidationError(
+function validateRecommendationIntent(
   intent: SearchIntent
 ) {
   const validation =
@@ -163,16 +255,74 @@ function createValidationError(
       success: false,
       error: {
         code: "validation_failed",
+
         message:
-          validation.issues[0]?.message ??
+          validation.issues[0]
+            ?.message ??
           "Please provide more information for this search.",
-        issues: validation.issues,
+
+        issues:
+          validation.issues,
       },
     },
     {
       status: 400,
     }
   );
+}
+
+function getGeneralAnswerStatus(
+  error: GeneralAnswerError
+): number {
+  if (
+    error.code ===
+    "authentication_failed"
+  ) {
+    return 401;
+  }
+
+  if (
+    error.code ===
+    "rate_limited"
+  ) {
+    return 429;
+  }
+
+  if (
+    error.code ===
+    "billing_required"
+  ) {
+    return 503;
+  }
+
+  if (
+    error.code ===
+    "invalid_response"
+  ) {
+    return 502;
+  }
+
+  return 503;
+}
+
+function createAssumptionSummary(
+  assumptions: string[],
+  dateExplanation?: string
+): string | undefined {
+  const items = [
+    ...assumptions,
+    ...(dateExplanation
+      ? [dateExplanation]
+      : []),
+  ]
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  if (items.length === 0) {
+    return undefined;
+  }
+
+  return items.join(" ");
 }
 
 export async function POST(
@@ -224,42 +374,35 @@ export async function POST(
         originalQuery
       );
 
-    let intent: SearchIntent;
-
-    try {
-      intent =
-        prepareIntent(originalQuery);
-    } catch (error) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "invalid_search",
-            message:
-              error instanceof Error
-                ? error.message
-                : "Beacon could not understand this request.",
-          },
-        },
-        {
-          status: 400,
-        }
+    const categoryHint =
+      detectCategoryHint(
+        originalQuery
       );
-    }
 
-    const recommendationRequest =
-      createRecommendationRequest(
-        intent
+    const extracted =
+      await extractSearchIntent(
+        cleanQuery,
+        {
+          categoryHint,
+        }
       );
 
     /*
      * LIVE SHOPPING
      */
     if (
-      intent.category === "product"
+      extracted.requestType ===
+      "shopping"
     ) {
+      const intent: SearchIntent = {
+        ...extracted.intent,
+        category: "product",
+      };
+
       const validationError =
-        createValidationError(intent);
+        validateRecommendationIntent(
+          intent
+        );
 
       if (validationError) {
         return validationError;
@@ -276,7 +419,9 @@ export async function POST(
       const selected =
         selectBestRecommendations(
           liveProducts,
-          recommendationRequest,
+          createRecommendationRequest(
+            intent
+          ),
           {
             limit: 5,
             minimumScore: 35,
@@ -290,61 +435,48 @@ export async function POST(
           selected
         );
 
-      return NextResponse.json(
-        {
-          success: true,
-          data: {
-            responseType:
-              "recommendations",
-            ...response,
-            aiSummary:
-              "Beacon searched live shopping data and selected the strongest matching products.",
-            dataSource:
-              "serpapi-google-shopping",
-            liveData: true,
-          },
+      return NextResponse.json({
+        success: true,
+
+        data: {
+          responseType:
+            "recommendations",
+
+          ...response,
+
+          aiSummary:
+            "Beacon understood your request, searched live shopping data and selected the strongest matching products.",
+
+          assumptions:
+            extracted.assumptions,
+
+          dataSource:
+            "serpapi-google-shopping",
+
+          liveData: true,
         },
-        {
-          status: 200,
-        }
-      );
+      });
     }
 
     /*
      * LIVE HOTELS
      */
     if (
-      intent.category === "holiday"
+      extracted.requestType ===
+      "hotel"
     ) {
-      if (!intent.destination) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              code:
-                "missing_destination",
-              message:
-                "Please include the destination you would like Beacon to search.",
-            },
-          },
-          {
-            status: 400,
-          }
-        );
-      }
-
       if (
-        !intent.startDate ||
-        !intent.endDate
+        !extracted.intent.destination
       ) {
         return NextResponse.json(
           {
             success: false,
             error: {
               code:
-                "missing_travel_dates",
+                "missing_destination",
+
               message:
-                "Please include exact check-in and check-out dates, for example: 12 August 2026 to 19 August 2026.",
+                "Please include the destination or area you would like Beacon to search.",
             },
           },
           {
@@ -353,8 +485,32 @@ export async function POST(
         );
       }
 
+      const dateRange =
+        resolveHotelDates(extracted);
+
+      const intent: SearchIntent = {
+        ...extracted.intent,
+
+        category: "holiday",
+
+        startDate:
+          dateRange.startDate,
+
+        endDate:
+          dateRange.endDate,
+
+        travellers:
+          extracted.intent
+            .travellers ?? {
+            adults: 2,
+            children: 0,
+          },
+      };
+
       const validationError =
-        createValidationError(intent);
+        validateRecommendationIntent(
+          intent
+        );
 
       if (validationError) {
         return validationError;
@@ -365,13 +521,21 @@ export async function POST(
           intent,
           {
             limit: 30,
+
+            checkInDate:
+              dateRange.startDate,
+
+            checkOutDate:
+              dateRange.endDate,
           }
         );
 
       const selected =
         selectBestRecommendations(
           liveHotels,
-          recommendationRequest,
+          createRecommendationRequest(
+            intent
+          ),
           {
             limit: 5,
             minimumScore: 35,
@@ -385,64 +549,137 @@ export async function POST(
           selected
         );
 
-      return NextResponse.json(
-        {
-          success: true,
-          data: {
-            responseType:
-              "recommendations",
-            ...response,
-            aiSummary:
-              "Beacon searched live hotel data and selected the strongest matches for your trip.",
-            dataSource:
-              "serpapi-google-hotels",
-            liveData: true,
+      const assumptionSummary =
+        createAssumptionSummary(
+          extracted.assumptions,
+          dateRange.explanation
+        );
+
+      return NextResponse.json({
+        success: true,
+
+        data: {
+          responseType:
+            "recommendations",
+
+          ...response,
+
+          aiSummary:
+            assumptionSummary
+              ? `Beacon searched live hotel data and selected the strongest matches. ${assumptionSummary}`
+              : "Beacon searched live hotel data and selected the strongest matches for your trip.",
+
+          assumptions: [
+            ...extracted.assumptions,
+
+            ...(dateRange.explanation
+              ? [
+                  dateRange.explanation,
+                ]
+              : []),
+          ],
+
+          searchedDates: {
+            checkIn:
+              dateRange.startDate,
+
+            checkOut:
+              dateRange.endDate,
           },
+
+          dataSource:
+            "serpapi-google-hotels",
+
+          liveData: true,
         },
-        {
-          status: 200,
-        }
-      );
+      });
+    }
+
+    /*
+     * FLIGHTS
+     *
+     * Until the live flight provider is connected,
+     * Beacon gives a useful researched answer.
+     */
+    if (
+      extracted.requestType ===
+      "flight"
+    ) {
+      const flightAnswer =
+        await answerGeneralRequest(
+          `${cleanQuery}
+
+Explain that live flight comparison is being connected. Still help with suitable airports, likely route options, date flexibility and practical booking considerations. Do not invent live fares or availability.`
+        );
+
+      return NextResponse.json({
+        success: true,
+
+        data: {
+          responseType:
+            "general_answer",
+
+          query: cleanQuery,
+
+          generalAnswer:
+            flightAnswer.answer,
+
+          usedWebSearch:
+            flightAnswer.usedWebSearch,
+
+          generatedAt:
+            new Date().toISOString(),
+
+          recommendations: [],
+
+          dataSource:
+            flightAnswer.usedWebSearch
+              ? "openai-web-search"
+              : "openai",
+
+          liveData:
+            flightAnswer.usedWebSearch,
+        },
+      });
     }
 
     /*
      * GENERAL BEACON ANSWER
-     *
-     * Handles advice, explanations,
-     * planning, entertainment, services,
-     * comparisons and general questions.
      */
     const generalResult =
       await answerGeneralRequest(
         cleanQuery
       );
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: {
-          responseType:
-            "general_answer",
-          query: cleanQuery,
-          generalAnswer:
-            generalResult.answer,
-          usedWebSearch:
-            generalResult.usedWebSearch,
-          dataSource:
-            generalResult.usedWebSearch
-              ? "openai-web-search"
-              : "openai",
-          liveData:
-            generalResult.usedWebSearch,
-          generatedAt:
-            new Date().toISOString(),
-          recommendations: [],
-        },
+    return NextResponse.json({
+      success: true,
+
+      data: {
+        responseType:
+          "general_answer",
+
+        query: cleanQuery,
+
+        generalAnswer:
+          generalResult.answer,
+
+        usedWebSearch:
+          generalResult.usedWebSearch,
+
+        generatedAt:
+          new Date().toISOString(),
+
+        recommendations: [],
+
+        dataSource:
+          generalResult.usedWebSearch
+            ? "openai-web-search"
+            : "openai",
+
+        liveData:
+          generalResult.usedWebSearch,
       },
-      {
-        status: 200,
-      }
-    );
+    });
   } catch (error) {
     if (
       error instanceof
@@ -451,6 +688,7 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
+
           error: {
             code: error.code,
             message: error.message,
@@ -473,8 +711,10 @@ export async function POST(
     return NextResponse.json(
       {
         success: false,
+
         error: {
           code: "internal_error",
+
           message:
             error instanceof Error
               ? error.message
