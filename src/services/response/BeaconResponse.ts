@@ -18,11 +18,13 @@ export type BeaconResponseSource =
 export type BeaconDataProvider =
   | "serpapi-google-shopping"
   | "serpapi-google-hotels"
+  | "serpapi-google-maps"
   | "serpapi-google-flights"
   | "cjs-cdkeys"
   | "gsf-car-parts"
   | "laterooms"
   | "champions-travel"
+  | "holiday-extras"
   | "openai"
   | "openai-web-search"
   | "mixed";
@@ -68,7 +70,6 @@ export type BeaconApiErrorCode =
   | "invalid_search"
   | "validation_failed"
   | "missing_destination"
-  | "missing_travel_dates"
   | "provider_unavailable"
   | "authentication_failed"
   | "billing_required"

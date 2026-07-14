@@ -17,32 +17,43 @@ type SearchCategory =
   | "getaways"
   | "entertainment";
 
-const categories: {
+type SearchCategoryDefinition = {
   value: SearchCategory;
   label: string;
   example: string;
-}[] = [
+  placeholder: string;
+};
+
+const categories: SearchCategoryDefinition[] = [
   {
     value: "shopping",
     label: "Shopping",
     example:
       "Find me a smart navy suit for a man with a 34-inch waist and 38-inch chest under £80",
+    placeholder:
+      "Describe the product, budget, size, colour or features you need...",
   },
   {
     value: "getaways",
     label: "Getaways",
     example:
-      "Find me a hotel in Tenerife from 12 August 2026 to 19 August 2026 for 2 adults under £150 per night",
+      "Find me highly rated beachfront hotels in Tenerife for two adults under £150 per night",
+    placeholder:
+      "Describe the destination, hotel style, budget or facilities you want. Dates are optional...",
   },
   {
     value: "entertainment",
     label: "Ask Beacon",
     example:
       "Help me plan a memorable weekend for two in Manchester",
+    placeholder:
+      "Ask Beacon for advice, ideas, explanations, research or recommendations...",
   },
 ];
 
-function getScoreLabel(score: number): string {
+function getScoreLabel(
+  score: number
+): string {
   if (score >= 90) {
     return "Exceptional";
   }
@@ -89,23 +100,23 @@ function getLoadingSteps(
       "Searching live product data",
       "Checking prices and retailers",
       "Calculating Beacon Scores",
-      "Preparing your five recommendations",
+      "Preparing the strongest recommendations",
     ];
   }
 
   if (category === "getaways") {
     return [
-      "Understanding your trip",
-      "Searching live hotel data",
-      "Comparing prices and ratings",
-      "Checking amenities and locations",
-      "Preparing your strongest matches",
+      "Understanding your travel preferences",
+      "Exploring suitable destinations and accommodation",
+      "Comparing locations, ratings and amenities",
+      "Checking live availability when dates are supplied",
+      "Preparing the strongest matches",
     ];
   }
 
   return [
     "Understanding your request",
-    "Deciding how Beacon can help",
+    "Selecting the best Beacon capability",
     "Researching current information where needed",
     "Preparing a clear answer",
   ];
@@ -119,6 +130,48 @@ function readApiError(
   }
 
   return "Beacon could not complete this request.";
+}
+
+function getEmptyResultsMessage(
+  source: BeaconResponse["source"]
+): string {
+  if (source === "hotel") {
+    return (
+      "Try broadening the destination, budget, preferred area, " +
+      "hotel style or amenities. Dates are optional and can be " +
+      "added later when you want date-specific availability."
+    );
+  }
+
+  if (source === "shopping") {
+    return (
+      "Try broadening the budget, brand, size, colour, retailer " +
+      "or features you are willing to consider."
+    );
+  }
+
+  return (
+    "Try broadening your request or adding more detail about " +
+    "the result you are hoping to find."
+  );
+}
+
+function getResultIcon(
+  category: string
+): string {
+  if (category === "holiday") {
+    return "🏨";
+  }
+
+  if (category === "experience") {
+    return "🎟️";
+  }
+
+  if (category === "service") {
+    return "🧭";
+  }
+
+  return "🛍️";
 }
 
 export default function BeaconSearch() {
@@ -143,10 +196,27 @@ export default function BeaconSearch() {
     categories.find(
       (item) =>
         item.value === category
-    );
+    ) ?? categories[0];
 
   const loadingSteps =
     getLoadingSteps(category);
+
+  function chooseCategory(
+    nextCategory: SearchCategory
+  ) {
+    const selected =
+      categories.find(
+        (item) =>
+          item.value === nextCategory
+      );
+
+    setCategory(nextCategory);
+    setQuery(
+      selected?.example ?? ""
+    );
+    setResult(null);
+    setError("");
+  }
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
@@ -218,16 +288,11 @@ export default function BeaconSearch() {
             <button
               key={item.value}
               type="button"
-              onClick={() => {
-                setCategory(
+              onClick={() =>
+                chooseCategory(
                   item.value
-                );
-                setQuery(
-                  item.example
-                );
-                setResult(null);
-                setError("");
-              }}
+                )
+              }
               className={`rounded-full px-4 py-2 text-sm font-extrabold transition ${
                 active
                   ? "bg-white text-blue-950 shadow-lg"
@@ -261,8 +326,7 @@ export default function BeaconSearch() {
               )
             }
             placeholder={
-              selectedCategory?.example ??
-              "Ask Beacon anything..."
+              selectedCategory.placeholder
             }
             rows={2}
             className="min-h-24 flex-1 resize-none rounded-2xl border-2 border-slate-300 bg-white px-5 py-4 text-lg font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-blue-700 focus:ring-4 focus:ring-blue-100"
@@ -272,8 +336,7 @@ export default function BeaconSearch() {
             type="submit"
             disabled={
               isResearching ||
-              query.trim().length ===
-                0
+              query.trim().length === 0
             }
             className="rounded-2xl bg-blue-900 px-8 py-4 text-lg font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
@@ -285,9 +348,19 @@ export default function BeaconSearch() {
       </form>
 
       <p className="mt-4 text-right text-sm font-semibold text-blue-50">
-        Five free personalised
-        searches each day.
+        Five free personalised searches each day.
       </p>
+
+      {category === "getaways" && (
+        <div className="mt-4 rounded-2xl border border-white/15 bg-slate-950/55 px-5 py-4 text-left text-sm leading-6 text-blue-50 backdrop-blur">
+          <span className="font-extrabold">
+            Plan your trip your way.
+          </span>{" "}
+          Explore destinations and hotels without dates.
+          Add exact dates only when you want Beacon to check
+          date-specific availability and prices.
+        </div>
+      )}
 
       {isResearching && (
         <div
@@ -329,12 +402,10 @@ export default function BeaconSearch() {
           </p>
 
           <p className="mt-3 leading-7 text-slate-600">
-            Please check the details
-            in your request and try
-            again. For hotel searches,
-            include a destination and
-            exact check-in and
-            check-out dates.
+            Try adding more detail about what you need,
+            such as your destination, budget, preferred
+            area, hotel style, product features or other
+            priorities. Travel dates are always optional.
           </p>
         </div>
       )}
@@ -368,9 +439,8 @@ export default function BeaconSearch() {
                   </p>
 
                   <h2 className="mt-3 text-2xl font-extrabold">
-                    {result
-                      .recommendations
-                      .length === 1
+                    {result.recommendations.length ===
+                    1
                       ? "One carefully selected option"
                       : `${result.recommendations.length} carefully selected options`}
                   </h2>
@@ -389,20 +459,17 @@ export default function BeaconSearch() {
               </p>
             </div>
 
-            {result
-              .recommendations
-              .length === 0 ? (
+            {result.recommendations.length ===
+            0 ? (
               <div className="mt-6 rounded-3xl bg-white p-8 text-center shadow-xl">
                 <h3 className="text-2xl font-extrabold text-slate-900">
-                  No suitable options
-                  found
+                  No suitable options found
                 </h3>
 
-                <p className="mt-3 text-slate-600">
-                  Try changing your
-                  budget, dates,
-                  destination or other
-                  preferences.
+                <p className="mt-3 leading-7 text-slate-600">
+                  {getEmptyResultsMessage(
+                    result.source
+                  )}
                 </p>
               </div>
             ) : (
@@ -433,18 +500,13 @@ export default function BeaconSearch() {
                           ) : (
                             <div className="text-center">
                               <div className="text-5xl">
-                                {recommendation.category ===
-                                "holiday"
-                                  ? "🏨"
-                                  : recommendation.category ===
-                                      "experience"
-                                    ? "🎟️"
-                                    : "🛍️"}
+                                {getResultIcon(
+                                  recommendation.category
+                                )}
                               </div>
 
                               <p className="mt-3 text-sm font-bold text-slate-500">
-                                Beacon
-                                recommendation
+                                Beacon recommendation
                               </p>
                             </div>
                           )}
@@ -454,9 +516,7 @@ export default function BeaconSearch() {
                           <div className="flex flex-wrap items-start justify-between gap-4">
                             <div>
                               <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-blue-800">
-                                Option{" "}
-                                {index +
-                                  1}
+                                Option {index + 1}
                               </p>
 
                               <h3 className="mt-2 text-2xl font-extrabold text-slate-950">
@@ -476,8 +536,7 @@ export default function BeaconSearch() {
 
                             <div className="rounded-2xl bg-blue-950 px-5 py-4 text-center text-white">
                               <p className="text-xs font-bold uppercase tracking-wider text-blue-200">
-                                Beacon
-                                Score
+                                Beacon Score
                               </p>
 
                               <p className="mt-1 text-3xl font-black">
@@ -516,8 +575,7 @@ export default function BeaconSearch() {
 
                           <div className="mt-5 rounded-2xl bg-blue-50 p-5">
                             <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-blue-900">
-                              Why Beacon
-                              selected it
+                              Why Beacon selected it
                             </p>
 
                             <p className="mt-2 leading-7 text-slate-700">
@@ -527,10 +585,8 @@ export default function BeaconSearch() {
                             </p>
                           </div>
 
-                          {recommendation
-                            .highlights
-                            .length >
-                            0 && (
+                          {recommendation.highlights
+                            .length > 0 && (
                             <div className="mt-5">
                               <p className="font-extrabold text-slate-900">
                                 Highlights
@@ -547,10 +603,7 @@ export default function BeaconSearch() {
                                       }
                                       className="rounded-xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700"
                                     >
-                                      ✓{" "}
-                                      {
-                                        highlight
-                                      }
+                                      ✓ {highlight}
                                     </li>
                                   )
                                 )}
@@ -559,15 +612,11 @@ export default function BeaconSearch() {
                           )}
 
                           {recommendation.warnings &&
-                            recommendation
-                              .warnings
-                              .length >
-                              0 && (
+                            recommendation.warnings
+                              .length > 0 && (
                               <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4">
                                 <p className="font-extrabold text-amber-900">
-                                  Check
-                                  before
-                                  deciding
+                                  Check before deciding
                                 </p>
 
                                 <ul className="mt-2 space-y-2 text-sm text-amber-900">
@@ -580,10 +629,7 @@ export default function BeaconSearch() {
                                           warning
                                         }
                                       >
-                                        •{" "}
-                                        {
-                                          warning
-                                        }
+                                        • {warning}
                                       </li>
                                     )
                                   )}
@@ -600,16 +646,12 @@ export default function BeaconSearch() {
                               rel="noopener noreferrer sponsored"
                               className="mt-6 inline-flex rounded-xl bg-blue-900 px-6 py-3 font-extrabold text-white transition hover:bg-blue-800"
                             >
-                              View
-                              Option
+                              View Option
                             </a>
                           ) : (
                             <p className="mt-6 text-sm font-semibold text-slate-500">
-                              A direct
-                              destination
-                              link was not
-                              supplied for
-                              this result.
+                              A direct destination link was
+                              not supplied for this result.
                             </p>
                           )}
                         </div>
