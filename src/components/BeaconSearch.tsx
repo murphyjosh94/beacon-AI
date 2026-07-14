@@ -1,9 +1,8 @@
 "use client";
 
-import {
-  FormEvent,
-  useState,
-} from "react";
+import { FormEvent, useState } from "react";
+
+import GeneralAnswerCard from "@/components/engine/GeneralAnswerCard";
 
 type SearchCategory =
   | "shopping"
@@ -26,41 +25,73 @@ type RecommendationScore = {
 
 type Recommendation = {
   id: string;
+
   category:
     | "product"
     | "holiday"
     | "service"
     | "experience"
     | "unknown";
+
   source:
     | "affiliate"
     | "merchant"
     | "travel"
     | "search"
     | "manual";
+
   title: string;
   description: string;
   reason: string;
+
   url: string;
   imageUrl?: string;
   merchant?: string;
+
   price?: RecommendationPrice;
+
   score: RecommendationScore;
+
   highlights: string[];
   warnings?: string[];
 };
 
 type RecommendationResponseData = {
+  responseType: "recommendations";
+
   query: string;
   summary: string;
   aiSummary?: string;
+
   generatedAt: string;
   recommendations: Recommendation[];
+
+  dataSource?: string;
+  liveData?: boolean;
 };
+
+type GeneralAnswerResponseData = {
+  responseType: "general_answer";
+
+  query: string;
+  generalAnswer: string;
+
+  usedWebSearch?: boolean;
+  generatedAt: string;
+
+  dataSource?: string;
+  liveData?: boolean;
+
+  recommendations: [];
+};
+
+type BeaconResponseData =
+  | RecommendationResponseData
+  | GeneralAnswerResponseData;
 
 type SuccessfulApiResponse = {
   success: true;
-  data: RecommendationResponseData;
+  data: BeaconResponseData;
 };
 
 type FailedApiResponse = {
@@ -90,13 +121,13 @@ const categories: {
     value: "getaways",
     label: "Getaways",
     example:
-      "Find a family staycation near a sandy beach under £1,200",
+      "Find me a hotel in Tenerife from 12 August 2026 to 19 August 2026 for 2 adults under £150 per night",
   },
   {
     value: "entertainment",
-    label: "Entertainment",
+    label: "Ask Beacon",
     example:
-      "Find a weekend experience for two in Manchester under £150",
+      "Plan a memorable weekend in Manchester for two people under £200",
   },
 ];
 
@@ -124,15 +155,59 @@ function getCategoryPrefix(
   return "Entertainment and experience request";
 }
 
+function getRecommendationIcon(
+  category: Recommendation["category"]
+): string {
+  if (category === "holiday") {
+    return "✈️";
+  }
+
+  if (category === "experience") {
+    return "🎟️";
+  }
+
+  if (category === "service") {
+    return "🧭";
+  }
+
+  return "🛍️";
+}
+
+function getApiErrorMessage(
+  data: unknown
+): string {
+  if (
+    typeof data === "object" &&
+    data !== null &&
+    "error" in data
+  ) {
+    const error = data.error;
+
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "message" in error &&
+      typeof error.message === "string"
+    ) {
+      return error.message;
+    }
+
+    if (typeof error === "string") {
+      return error;
+    }
+  }
+
+  return "Beacon could not complete this request.";
+}
+
 export default function BeaconSearch() {
   const [category, setCategory] =
     useState<SearchCategory>("shopping");
 
   const [query, setQuery] = useState("");
+
   const [result, setResult] =
-    useState<RecommendationResponseData | null>(
-      null
-    );
+    useState<BeaconResponseData | null>(null);
 
   const [isResearching, setIsResearching] =
     useState(false);
@@ -178,12 +253,9 @@ export default function BeaconSearch() {
         (await response.json()) as ApiResponse;
 
       if (!response.ok || !data.success) {
-        const message =
-          !data.success
-            ? data.error.message
-            : "Beacon could not complete this search.";
-
-        throw new Error(message);
+        throw new Error(
+          getApiErrorMessage(data)
+        );
       }
 
       setResult(data.data);
@@ -191,7 +263,7 @@ export default function BeaconSearch() {
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "Beacon could not complete this search."
+          : "Beacon could not complete this request."
       );
     } finally {
       setIsResearching(false);
@@ -235,7 +307,7 @@ export default function BeaconSearch() {
           htmlFor="beacon-search"
           className="sr-only"
         >
-          Tell Beacon what you are looking for
+          Tell Beacon what you need
         </label>
 
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -247,7 +319,7 @@ export default function BeaconSearch() {
             }
             placeholder={
               selectedCategory?.example ??
-              "Tell Beacon what you are looking for..."
+              "Tell Beacon what you need..."
             }
             rows={2}
             className="min-h-24 flex-1 resize-none rounded-2xl border-2 border-slate-300 bg-white px-5 py-4 text-lg font-medium text-slate-950 outline-none placeholder:text-slate-500 focus:border-blue-700 focus:ring-4 focus:ring-blue-100"
@@ -284,10 +356,10 @@ export default function BeaconSearch() {
           <div className="mt-5 space-y-3">
             {[
               "Understanding your request",
-              "Researching suitable options",
-              "Comparing relevance and value",
-              "Calculating Beacon Scores",
-              "Preparing your five recommendations",
+              "Choosing the best research source",
+              "Checking live information where needed",
+              "Comparing the strongest options",
+              "Preparing your Beacon response",
             ].map((step) => (
               <div
                 key={step}
@@ -315,186 +387,198 @@ export default function BeaconSearch() {
           </p>
 
           <p className="mt-3 leading-7 text-slate-600">
-            No demo products have been shown.
-            Once OpenAI billing is active,
-            Beacon will research and return live
-            AI-generated recommendations here.
+            Try adding more detail, changing the
+            selected category or submitting the
+            request again shortly.
           </p>
         </div>
       )}
 
-      {result && !isResearching && (
-        <section className="mt-10 text-left">
-          <div className="rounded-3xl border border-white/20 bg-slate-950/80 p-6 text-white shadow-2xl backdrop-blur-xl">
-            <p className="text-sm font-extrabold uppercase tracking-[0.22em] text-blue-200">
-              Beacon Results
-            </p>
-
-            <h2 className="mt-3 text-2xl font-extrabold">
-              Five carefully selected options
-            </h2>
-
-            <p className="mt-4 leading-7 text-blue-50">
-              {result.aiSummary ||
-                result.summary}
-            </p>
+      {result &&
+        !isResearching &&
+        result.responseType ===
+          "general_answer" && (
+          <div className="mt-10">
+            <GeneralAnswerCard
+              query={result.query}
+              answer={result.generalAnswer}
+              usedWebSearch={
+                result.usedWebSearch
+              }
+              generatedAt={
+                result.generatedAt
+              }
+            />
           </div>
+        )}
 
-          {result.recommendations.length ===
-          0 ? (
-            <div className="mt-6 rounded-3xl bg-white p-8 text-center shadow-xl">
-              <h3 className="text-2xl font-extrabold text-slate-900">
-                No suitable options found
-              </h3>
+      {result &&
+        !isResearching &&
+        result.responseType ===
+          "recommendations" && (
+          <section className="mt-10 text-left">
+            <div className="rounded-3xl border border-white/20 bg-slate-950/80 p-6 text-white shadow-2xl backdrop-blur-xl">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-extrabold uppercase tracking-[0.22em] text-blue-200">
+                    Beacon Results
+                  </p>
 
-              <p className="mt-3 text-slate-600">
-                Try increasing your budget or
-                adding more detail about what you
-                need.
+                  <h2 className="mt-3 text-2xl font-extrabold">
+                    Five carefully selected options
+                  </h2>
+                </div>
+
+                {result.liveData && (
+                  <span className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-blue-100">
+                    Live data
+                  </span>
+                )}
+              </div>
+
+              <p className="mt-4 leading-7 text-blue-50">
+                {result.aiSummary ||
+                  result.summary}
               </p>
             </div>
-          ) : (
-            <div className="mt-6 grid gap-6">
-              {result.recommendations.map(
-                (recommendation, index) => (
-                  <article
-                    key={recommendation.id}
-                    className="overflow-hidden rounded-3xl bg-white shadow-2xl"
-                  >
-                    <div className="grid md:grid-cols-[220px_1fr]">
-                      <div className="flex min-h-52 items-center justify-center bg-gradient-to-br from-blue-50 to-slate-100 p-6">
-                        {recommendation.imageUrl ? (
-                          <img
-                            src={
-                              recommendation.imageUrl
-                            }
-                            alt={
-                              recommendation.title
-                            }
-                            className="max-h-48 w-full object-contain"
-                          />
-                        ) : (
-                          <div className="text-center">
-                            <div className="text-5xl">
-                              {recommendation.category ===
-                              "holiday"
-                                ? "✈️"
-                                : recommendation.category ===
-                                    "experience"
-                                  ? "🎟️"
-                                  : "🛍️"}
-                            </div>
 
-                            <p className="mt-3 text-sm font-bold text-slate-500">
-                              Research suggestion
-                            </p>
-                          </div>
-                        )}
-                      </div>
+            {result.recommendations.length ===
+            0 ? (
+              <div className="mt-6 rounded-3xl bg-white p-8 text-center shadow-xl">
+                <h3 className="text-2xl font-extrabold text-slate-900">
+                  No suitable options found
+                </h3>
 
-                      <div className="p-6 sm:p-8">
-                        <div className="flex flex-wrap items-start justify-between gap-4">
-                          <div>
-                            <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-blue-800">
-                              Option {index + 1}
-                            </p>
-
-                            <h3 className="mt-2 text-2xl font-extrabold text-slate-950">
-                              {
+                <p className="mt-3 text-slate-600">
+                  Try changing your budget,
+                  destination, dates or preferences.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-6 grid gap-6">
+                {result.recommendations.map(
+                  (
+                    recommendation,
+                    index
+                  ) => (
+                    <article
+                      key={recommendation.id}
+                      className="overflow-hidden rounded-3xl bg-white shadow-2xl"
+                    >
+                      <div className="grid md:grid-cols-[220px_1fr]">
+                        <div className="flex min-h-52 items-center justify-center bg-gradient-to-br from-blue-50 to-slate-100 p-6">
+                          {recommendation.imageUrl ? (
+                            <img
+                              src={
+                                recommendation.imageUrl
+                              }
+                              alt={
                                 recommendation.title
                               }
-                            </h3>
+                              className="max-h-48 w-full object-contain"
+                            />
+                          ) : (
+                            <div className="text-center">
+                              <div className="text-5xl">
+                                {getRecommendationIcon(
+                                  recommendation.category
+                                )}
+                              </div>
 
-                            {recommendation.merchant && (
-                              <p className="mt-2 font-semibold text-slate-500">
-                                {
-                                  recommendation.merchant
-                                }
+                              <p className="mt-3 text-sm font-bold text-slate-500">
+                                Beacon recommendation
                               </p>
-                            )}
-                          </div>
-
-                          <div className="rounded-2xl bg-blue-950 px-5 py-4 text-center text-white">
-                            <p className="text-xs font-bold uppercase tracking-wider text-blue-200">
-                              Beacon Score
-                            </p>
-
-                            <p className="mt-1 text-3xl font-black">
-                              {Math.round(
-                                recommendation.score
-                                  .overall
-                              )}
-                            </p>
-
-                            <p className="text-xs font-bold text-blue-100">
-                              {getScoreLabel(
-                                recommendation.score
-                                  .overall
-                              )}
-                            </p>
-                          </div>
+                            </div>
+                          )}
                         </div>
 
-                        {recommendation.price && (
-                          <p className="mt-5 text-2xl font-extrabold text-blue-900">
+                        <div className="p-6 sm:p-8">
+                          <div className="flex flex-wrap items-start justify-between gap-4">
+                            <div>
+                              <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-blue-800">
+                                Option {index + 1}
+                              </p>
+
+                              <h3 className="mt-2 text-2xl font-extrabold text-slate-950">
+                                {
+                                  recommendation.title
+                                }
+                              </h3>
+
+                              {recommendation.merchant && (
+                                <p className="mt-2 font-semibold text-slate-500">
+                                  {
+                                    recommendation.merchant
+                                  }
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="rounded-2xl bg-blue-950 px-5 py-4 text-center text-white">
+                              <p className="text-xs font-bold uppercase tracking-wider text-blue-200">
+                                Beacon Score
+                              </p>
+
+                              <p className="mt-1 text-3xl font-black">
+                                {Math.round(
+                                  recommendation.score
+                                    .overall
+                                )}
+                              </p>
+
+                              <p className="text-xs font-bold text-blue-100">
+                                {getScoreLabel(
+                                  recommendation.score
+                                    .overall
+                                )}
+                              </p>
+                            </div>
+                          </div>
+
+                          {recommendation.price && (
+                            <p className="mt-5 text-2xl font-extrabold text-blue-900">
+                              {
+                                recommendation.price
+                                  .display
+                              }
+                            </p>
+                          )}
+
+                          <p className="mt-5 leading-7 text-slate-600">
                             {
-                              recommendation.price
-                                .display
+                              recommendation.description
                             }
                           </p>
-                        )}
 
-                        <p className="mt-5 leading-7 text-slate-600">
-                          {
-                            recommendation.description
-                          }
-                        </p>
-
-                        <div className="mt-5 rounded-2xl bg-blue-50 p-5">
-                          <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-blue-900">
-                            Why Beacon selected it
-                          </p>
-
-                          <p className="mt-2 leading-7 text-slate-700">
-                            {recommendation.reason}
-                          </p>
-                        </div>
-
-                        {recommendation.highlights
-                          .length > 0 && (
-                          <div className="mt-5">
-                            <p className="font-extrabold text-slate-900">
-                              Highlights
+                          <div className="mt-5 rounded-2xl bg-blue-50 p-5">
+                            <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-blue-900">
+                              Why Beacon selected it
                             </p>
 
-                            <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-                              {recommendation.highlights.map(
-                                (highlight) => (
-                                  <li
-                                    key={highlight}
-                                    className="rounded-xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700"
-                                  >
-                                    ✓ {highlight}
-                                  </li>
-                                )
-                              )}
-                            </ul>
+                            <p className="mt-2 leading-7 text-slate-700">
+                              {recommendation.reason}
+                            </p>
                           </div>
-                        )}
 
-                        {recommendation.warnings &&
-                          recommendation.warnings
+                          {recommendation.highlights
                             .length > 0 && (
-                            <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                              <p className="font-extrabold text-amber-900">
-                                Check before deciding
+                            <div className="mt-5">
+                              <p className="font-extrabold text-slate-900">
+                                Highlights
                               </p>
 
-                              <ul className="mt-2 space-y-2 text-sm text-amber-900">
-                                {recommendation.warnings.map(
-                                  (warning) => (
-                                    <li key={warning}>
-                                      • {warning}
+                              <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+                                {recommendation.highlights.map(
+                                  (
+                                    highlight
+                                  ) => (
+                                    <li
+                                      key={
+                                        highlight
+                                      }
+                                      className="rounded-xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700"
+                                    >
+                                      ✓ {highlight}
                                     </li>
                                   )
                                 )}
@@ -502,33 +586,59 @@ export default function BeaconSearch() {
                             </div>
                           )}
 
-                        {recommendation.url ? (
-                          <a
-                            href={
-                              recommendation.url
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer sponsored"
-                            className="mt-6 inline-flex rounded-xl bg-blue-900 px-6 py-3 font-extrabold text-white transition hover:bg-blue-800"
-                          >
-                            View Option
-                          </a>
-                        ) : (
-                          <p className="mt-6 text-sm font-semibold text-slate-500">
-                            Live retailer links will
-                            appear when trusted partner
-                            feeds are connected.
-                          </p>
-                        )}
+                          {recommendation.warnings &&
+                            recommendation.warnings
+                              .length > 0 && (
+                              <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                                <p className="font-extrabold text-amber-900">
+                                  Check before deciding
+                                </p>
+
+                                <ul className="mt-2 space-y-2 text-sm text-amber-900">
+                                  {recommendation.warnings.map(
+                                    (
+                                      warning
+                                    ) => (
+                                      <li
+                                        key={
+                                          warning
+                                        }
+                                      >
+                                        • {warning}
+                                      </li>
+                                    )
+                                  )}
+                                </ul>
+                              </div>
+                            )}
+
+                          {recommendation.url ? (
+                            <a
+                              href={
+                                recommendation.url
+                              }
+                              target="_blank"
+                              rel="noopener noreferrer sponsored"
+                              className="mt-6 inline-flex rounded-xl bg-blue-900 px-6 py-3 font-extrabold text-white transition hover:bg-blue-800"
+                            >
+                              View Option
+                            </a>
+                          ) : (
+                            <p className="mt-6 text-sm font-semibold text-slate-500">
+                              A direct destination
+                              link was not available
+                              for this result.
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </article>
-                )
-              )}
-            </div>
-          )}
-        </section>
-      )}
+                    </article>
+                  )
+                )}
+              </div>
+            )}
+          </section>
+        )}
     </div>
   );
 }

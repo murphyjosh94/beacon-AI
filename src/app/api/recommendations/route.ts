@@ -11,9 +11,9 @@ import { searchShoppingProducts } from "@/services/shopping/SerpApiShoppingProvi
 import { searchHotels } from "@/services/travel/SerpApiHotelsProvider";
 
 import {
-  generateRecommendations,
-  RecommendationGenerationError,
-} from "@/services/openai/RecommendationGenerator";
+  answerGeneralRequest,
+  GeneralAnswerError,
+} from "@/services/openai/GeneralAnswerProvider";
 
 import type {
   RecommendationCategory,
@@ -26,7 +26,9 @@ type RecommendationRequestBody = {
 };
 
 function readQuery(value: unknown): string {
-  return typeof value === "string" ? value.trim() : "";
+  return typeof value === "string"
+    ? value.trim()
+    : "";
 }
 
 function detectSelectedCategory(
@@ -34,7 +36,11 @@ function detectSelectedCategory(
 ): RecommendationCategory | null {
   const normalised = query.toLowerCase();
 
-  if (normalised.startsWith("shopping request:")) {
+  if (
+    normalised.startsWith(
+      "shopping request:"
+    )
+  ) {
     return "product";
   }
 
@@ -57,9 +63,14 @@ function detectSelectedCategory(
   return null;
 }
 
-function removeCategoryPrefix(query: string): string {
+function removeCategoryPrefix(
+  query: string
+): string {
   return query
-    .replace(/^shopping request:\s*/i, "")
+    .replace(
+      /^shopping request:\s*/i,
+      ""
+    )
     .replace(
       /^holiday and getaway request:\s*/i,
       ""
@@ -80,10 +91,11 @@ function prepareIntent(
   const cleanQuery =
     removeCategoryPrefix(originalQuery);
 
-  let intent = parseSearchQuery(cleanQuery);
+  let intent =
+    parseSearchQuery(cleanQuery);
 
-  intent = applyIntentClassification(intent);
-  console.log("Beacon intent:", intent);
+  intent =
+    applyIntentClassification(intent);
 
   if (selectedCategory) {
     intent = {
@@ -95,28 +107,6 @@ function prepareIntent(
   return intent;
 }
 
-function getOpenAIErrorStatus(
-  error: RecommendationGenerationError
-): number {
-  if (error.code === "authentication_failed") {
-    return 401;
-  }
-
-  if (error.code === "rate_limited") {
-    return 429;
-  }
-
-  if (error.code === "billing_required") {
-    return 503;
-  }
-
-  if (error.code === "invalid_response") {
-    return 502;
-  }
-
-  return 503;
-}
-
 function createRecommendationRequest(
   intent: SearchIntent
 ): RecommendationRequest {
@@ -126,7 +116,68 @@ function createRecommendationRequest(
   };
 }
 
-export async function POST(request: Request) {
+function getGeneralAnswerStatus(
+  error: GeneralAnswerError
+): number {
+  if (
+    error.code ===
+    "authentication_failed"
+  ) {
+    return 401;
+  }
+
+  if (
+    error.code === "rate_limited"
+  ) {
+    return 429;
+  }
+
+  if (
+    error.code === "billing_required"
+  ) {
+    return 503;
+  }
+
+  if (
+    error.code ===
+    "invalid_response"
+  ) {
+    return 502;
+  }
+
+  return 503;
+}
+
+function createValidationError(
+  intent: SearchIntent
+) {
+  const validation =
+    validateSearchIntent(intent);
+
+  if (validation.valid) {
+    return null;
+  }
+
+  return NextResponse.json(
+    {
+      success: false,
+      error: {
+        code: "validation_failed",
+        message:
+          validation.issues[0]?.message ??
+          "Please provide more information for this search.",
+        issues: validation.issues,
+      },
+    },
+    {
+      status: 400,
+    }
+  );
+}
+
+export async function POST(
+  request: Request
+) {
   try {
     let body: RecommendationRequestBody;
 
@@ -140,7 +191,7 @@ export async function POST(request: Request) {
           error: {
             code: "invalid_request",
             message:
-              "Beacon could not read this search request.",
+              "Beacon could not read this request.",
           },
         },
         {
@@ -149,7 +200,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const originalQuery = readQuery(body.query);
+    const originalQuery =
+      readQuery(body.query);
 
     if (!originalQuery) {
       return NextResponse.json(
@@ -158,7 +210,7 @@ export async function POST(request: Request) {
           error: {
             code: "missing_query",
             message:
-              "Please enter something for Beacon to search for.",
+              "Please enter something for Beacon to help with.",
           },
         },
         {
@@ -167,10 +219,16 @@ export async function POST(request: Request) {
       );
     }
 
+    const cleanQuery =
+      removeCategoryPrefix(
+        originalQuery
+      );
+
     let intent: SearchIntent;
 
     try {
-      intent = prepareIntent(originalQuery);
+      intent =
+        prepareIntent(originalQuery);
     } catch (error) {
       return NextResponse.json(
         {
@@ -180,28 +238,7 @@ export async function POST(request: Request) {
             message:
               error instanceof Error
                 ? error.message
-                : "Beacon could not understand this search.",
-          },
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    const validation =
-      validateSearchIntent(intent);
-
-    if (!validation.valid) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "validation_failed",
-            message:
-              validation.issues[0]?.message ??
-              "Please provide more information for this search.",
-            issues: validation.issues,
+                : "Beacon could not understand this request.",
           },
         },
         {
@@ -211,18 +248,30 @@ export async function POST(request: Request) {
     }
 
     const recommendationRequest =
-      createRecommendationRequest(intent);
+      createRecommendationRequest(
+        intent
+      );
 
     /*
-     * SHOPPING
-     *
-     * Uses live Google Shopping data through SerpApi.
+     * LIVE SHOPPING
      */
-    if (intent.category === "product") {
+    if (
+      intent.category === "product"
+    ) {
+      const validationError =
+        createValidationError(intent);
+
+      if (validationError) {
+        return validationError;
+      }
+
       const liveProducts =
-        await searchShoppingProducts(intent, {
-          limit: 30,
-        });
+        await searchShoppingProducts(
+          intent,
+          {
+            limit: 30,
+          }
+        );
 
       const selected =
         selectBestRecommendations(
@@ -245,9 +294,11 @@ export async function POST(request: Request) {
         {
           success: true,
           data: {
+            responseType:
+              "recommendations",
             ...response,
             aiSummary:
-              "Beacon searched live shopping data, compared suitable products and selected the strongest matches for your request.",
+              "Beacon searched live shopping data and selected the strongest matching products.",
             dataSource:
               "serpapi-google-shopping",
             liveData: true,
@@ -260,18 +311,18 @@ export async function POST(request: Request) {
     }
 
     /*
-     * GETAWAYS
-     *
-     * Uses live Google Hotels data through SerpApi.
-     * Exact check-in and check-out dates are required.
+     * LIVE HOTELS
      */
-    if (intent.category === "holiday") {
+    if (
+      intent.category === "holiday"
+    ) {
       if (!intent.destination) {
         return NextResponse.json(
           {
             success: false,
             error: {
-              code: "missing_destination",
+              code:
+                "missing_destination",
               message:
                 "Please include the destination you would like Beacon to search.",
             },
@@ -290,7 +341,8 @@ export async function POST(request: Request) {
           {
             success: false,
             error: {
-              code: "missing_travel_dates",
+              code:
+                "missing_travel_dates",
               message:
                 "Please include exact check-in and check-out dates, for example: 12 August 2026 to 19 August 2026.",
             },
@@ -301,10 +353,20 @@ export async function POST(request: Request) {
         );
       }
 
+      const validationError =
+        createValidationError(intent);
+
+      if (validationError) {
+        return validationError;
+      }
+
       const liveHotels =
-        await searchHotels(intent, {
-          limit: 30,
-        });
+        await searchHotels(
+          intent,
+          {
+            limit: 30,
+          }
+        );
 
       const selected =
         selectBestRecommendations(
@@ -327,9 +389,11 @@ export async function POST(request: Request) {
         {
           success: true,
           data: {
+            responseType:
+              "recommendations",
             ...response,
             aiSummary:
-              "Beacon searched live hotel data, compared prices, ratings, locations and amenities, and selected the strongest matches for your trip.",
+              "Beacon searched live hotel data and selected the strongest matches for your trip.",
             dataSource:
               "serpapi-google-hotels",
             liveData: true,
@@ -342,34 +406,37 @@ export async function POST(request: Request) {
     }
 
     /*
-     * ENTERTAINMENT AND OTHER REQUESTS
+     * GENERAL BEACON ANSWER
      *
-     * These temporarily use OpenAI research suggestions
-     * until another live provider is connected.
+     * Handles advice, explanations,
+     * planning, entertainment, services,
+     * comparisons and general questions.
      */
-    const generated =
-      await generateRecommendations(intent);
-
-    const selected =
-      selectBestRecommendations(
-        generated.recommendations,
-        recommendationRequest
-      );
-
-    const response =
-      buildRecommendationResponse(
-        intent,
-        selected
+    const generalResult =
+      await answerGeneralRequest(
+        cleanQuery
       );
 
     return NextResponse.json(
       {
         success: true,
         data: {
-          ...response,
-          aiSummary: generated.summary,
-          dataSource: "openai",
-          liveData: false,
+          responseType:
+            "general_answer",
+          query: cleanQuery,
+          generalAnswer:
+            generalResult.answer,
+          usedWebSearch:
+            generalResult.usedWebSearch,
+          dataSource:
+            generalResult.usedWebSearch
+              ? "openai-web-search"
+              : "openai",
+          liveData:
+            generalResult.usedWebSearch,
+          generatedAt:
+            new Date().toISOString(),
+          recommendations: [],
         },
       },
       {
@@ -379,7 +446,7 @@ export async function POST(request: Request) {
   } catch (error) {
     if (
       error instanceof
-      RecommendationGenerationError
+      GeneralAnswerError
     ) {
       return NextResponse.json(
         {
@@ -391,7 +458,9 @@ export async function POST(request: Request) {
         },
         {
           status:
-            getOpenAIErrorStatus(error),
+            getGeneralAnswerStatus(
+              error
+            ),
         }
       );
     }
@@ -409,7 +478,7 @@ export async function POST(request: Request) {
           message:
             error instanceof Error
               ? error.message
-              : "Beacon AI could not complete this search. Please try again shortly.",
+              : "Beacon could not complete this request. Please try again shortly.",
         },
       },
       {
