@@ -33,11 +33,21 @@ const PRODUCT_KEYWORDS = [
   "dress",
   "shoes",
   "clothing",
+  "car part",
+  "car parts",
+  "battery",
+  "wiper",
+  "engine oil",
+  "game key",
+  "software key",
+  "windows key",
+  "office key",
 ];
 
 const HOLIDAY_KEYWORDS = [
   "holiday",
   "hotel",
+  "hotels",
   "flight",
   "flights",
   "resort",
@@ -52,6 +62,9 @@ const HOLIDAY_KEYWORDS = [
   "accommodation",
   "apartment",
   "villa",
+  "cottage",
+  "bed and breakfast",
+  "b&b",
 ];
 
 const EXPERIENCE_KEYWORDS = [
@@ -64,6 +77,9 @@ const EXPERIENCE_KEYWORDS = [
   "event",
   "theme park",
   "tickets",
+  "theatre",
+  "show",
+  "attraction",
 ];
 
 const SERVICE_KEYWORDS = [
@@ -102,11 +118,16 @@ const MONTHS: Record<string, number> = {
   dec: 12,
 };
 
+const DATE_MONTH_PATTERN =
+  "january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec";
+
 function normaliseQuery(query: string): string {
   return query.trim().replace(/\s+/g, " ");
 }
 
-function detectCategory(query: string): RecommendationCategory {
+function detectCategory(
+  query: string
+): RecommendationCategory {
   const normalised = query.toLowerCase();
 
   if (
@@ -217,20 +238,76 @@ function extractTravellerCount(
     adults: adultsMatch
       ? Number(adultsMatch[1])
       : 1,
+
     children: childrenMatch
       ? Number(childrenMatch[1])
       : 0,
   };
 }
 
+function cleanDestination(
+  value: string | undefined
+): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const cleaned = value
+    .replace(/\s+/g, " ")
+    .replace(
+      /\b(?:hotel|hotels|accommodation|stay|stays)\b/gi,
+      ""
+    )
+    .replace(/\s+/g, " ")
+    .replace(/^[,.\s-]+|[,.\s-]+$/g, "")
+    .trim();
+
+  return cleaned || undefined;
+}
+
 function extractDestination(
   query: string
 ): string | undefined {
-  const destinationMatch = query.match(
-    /\b(?:to|in|near)\s+([A-Za-z][A-Za-z\s'-]{2,40}?)(?=\s+(?:from|between|under|below|for|with|during|on|all inclusive|half board|full board|bed and breakfast|b&b)\b|[,.!?]|$)/i
+  /*
+   * Supports:
+   *
+   * hotels near Wales 12 August 2026 to 19 August 2026
+   * hotel in Tenerife from 12 August 2026 to 19 August 2026
+   * stay in Edinburgh between 4 September 2026 and 8 September 2026
+   * accommodation near Manchester under £150
+   */
+
+  const beforeNamedDate = new RegExp(
+    `\\b(?:to|in|near|around)\\s+([A-Za-z][A-Za-z\\s'-]{1,60}?)(?=\\s+\\d{1,2}(?:st|nd|rd|th)?\\s+(?:${DATE_MONTH_PATTERN})\\b)`,
+    "i"
   );
 
-  return destinationMatch?.[1]?.trim();
+  const namedDateMatch =
+    query.match(beforeNamedDate);
+
+  if (namedDateMatch) {
+    return cleanDestination(
+      namedDateMatch[1]
+    );
+  }
+
+  const beforeNumericDate = query.match(
+    /\b(?:to|in|near|around)\s+([A-Za-z][A-Za-z\s'-]{1,60}?)(?=\s+\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b)/i
+  );
+
+  if (beforeNumericDate) {
+    return cleanDestination(
+      beforeNumericDate[1]
+    );
+  }
+
+  const destinationMatch = query.match(
+    /\b(?:to|in|near|around)\s+([A-Za-z][A-Za-z\s'-]{1,60}?)(?=\s+(?:from|between|under|below|over|above|for|with|during|on|all inclusive|half board|full board|bed and breakfast|b&b)\b|[,.!?]|$)/i
+  );
+
+  return cleanDestination(
+    destinationMatch?.[1]
+  );
 }
 
 function toIsoDate(
@@ -277,6 +354,7 @@ function parseNumericDate(
 ): string | undefined {
   const day = Number(dayText);
   const month = Number(monthText);
+
   let year = Number(yearText);
 
   if (yearText.length === 2) {
@@ -291,7 +369,7 @@ function extractTravelDates(query: string): {
   endDate?: string;
 } {
   const namedRange = query.match(
-    /\b(?:from|between)\s+(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)\s+(\d{4})\s+(?:to|until|and|-)\s+(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)\s+(\d{4})\b/i
+    /\b(?:from|between)?\s*(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)\s+(\d{4})\s+(?:to|until|and|-)\s+(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)\s+(\d{4})\b/i
   );
 
   if (namedRange) {
@@ -301,6 +379,7 @@ function extractTravelDates(query: string): {
         namedRange[2],
         namedRange[3]
       ),
+
       endDate: parseNamedDate(
         namedRange[4],
         namedRange[5],
@@ -310,7 +389,7 @@ function extractTravelDates(query: string): {
   }
 
   const namedSameMonthRange = query.match(
-    /\b(?:from|between)\s+(\d{1,2})(?:st|nd|rd|th)?\s+(?:to|until|and|-)\s+(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)\s+(\d{4})\b/i
+    /\b(?:from|between)?\s*(\d{1,2})(?:st|nd|rd|th)?\s+(?:to|until|and|-)\s+(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)\s+(\d{4})\b/i
   );
 
   if (namedSameMonthRange) {
@@ -320,6 +399,7 @@ function extractTravelDates(query: string): {
         namedSameMonthRange[3],
         namedSameMonthRange[4]
       ),
+
       endDate: parseNamedDate(
         namedSameMonthRange[2],
         namedSameMonthRange[3],
@@ -339,6 +419,7 @@ function extractTravelDates(query: string): {
         numericRange[2],
         numericRange[3]
       ),
+
       endDate: parseNumericDate(
         numericRange[4],
         numericRange[5],
@@ -360,6 +441,7 @@ function extractTravelDates(query: string): {
         allNamedDates[0][2],
         allNamedDates[0][3]
       ),
+
       endDate: parseNamedDate(
         allNamedDates[1][1],
         allNamedDates[1][2],
@@ -381,6 +463,7 @@ function extractTravelDates(query: string): {
         allNumericDates[0][2],
         allNumericDates[0][3]
       ),
+
       endDate: parseNumericDate(
         allNumericDates[1][1],
         allNumericDates[1][2],
@@ -392,7 +475,9 @@ function extractTravelDates(query: string): {
   return {};
 }
 
-function extractKeywords(query: string): string[] {
+function extractKeywords(
+  query: string
+): string[] {
   const stopWords = new Set([
     "a",
     "an",
@@ -408,6 +493,7 @@ function extractKeywords(query: string): string[] {
     "is",
     "me",
     "my",
+    "near",
     "of",
     "on",
     "please",
@@ -455,6 +541,7 @@ function extractPreferences(
     "sea view",
     "city centre",
     "pet friendly",
+    "dog friendly",
     "eco friendly",
     "4k",
     "oled",
@@ -463,8 +550,9 @@ function extractPreferences(
     "lightweight",
   ];
 
-  return knownPreferences.filter((preference) =>
-    normalised.includes(preference)
+  return knownPreferences.filter(
+    (preference) =>
+      normalised.includes(preference)
   );
 }
 
@@ -481,17 +569,22 @@ function extractExclusions(
     const value = match[1]?.trim();
 
     if (value) {
-      exclusions.push(value.toLowerCase());
+      exclusions.push(
+        value.toLowerCase()
+      );
     }
   }
 
-  return Array.from(new Set(exclusions));
+  return Array.from(
+    new Set(exclusions)
+  );
 }
 
 export function parseSearchQuery(
   rawQuery: string
 ): SearchIntent {
-  const query = normaliseQuery(rawQuery);
+  const query =
+    normaliseQuery(rawQuery);
 
   if (!query) {
     throw new Error(
@@ -499,8 +592,12 @@ export function parseSearchQuery(
     );
   }
 
-  const category = detectCategory(query);
-  const budget = extractBudget(query);
+  const category =
+    detectCategory(query);
+
+  const budget =
+    extractBudget(query);
+
   const travelDates =
     category === "holiday"
       ? extractTravelDates(query)
@@ -509,25 +606,36 @@ export function parseSearchQuery(
   return {
     rawQuery: query,
     category,
-    keywords: extractKeywords(query),
 
-    budgetMin: budget.budgetMin,
-    budgetMax: budget.budgetMax,
+    keywords:
+      extractKeywords(query),
+
+    budgetMin:
+      budget.budgetMin,
+
+    budgetMax:
+      budget.budgetMax,
 
     destination:
       category === "holiday"
         ? extractDestination(query)
         : undefined,
 
-    startDate: travelDates.startDate,
-    endDate: travelDates.endDate,
+    startDate:
+      travelDates.startDate,
+
+    endDate:
+      travelDates.endDate,
 
     travellers:
       category === "holiday"
         ? extractTravellerCount(query)
         : undefined,
 
-    preferences: extractPreferences(query),
-    exclusions: extractExclusions(query),
+    preferences:
+      extractPreferences(query),
+
+    exclusions:
+      extractExclusions(query),
   };
 }
