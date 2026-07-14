@@ -52,34 +52,24 @@ export type BeaconEngineErrorCode =
   | "internal_error";
 
 export class BeaconEngineError extends Error {
-  public readonly code:
-    BeaconEngineErrorCode;
-
+  public readonly code: BeaconEngineErrorCode;
   public readonly status: number;
   public readonly issues?: unknown[];
 
   constructor(
     message: string,
     options: {
-      code:
-        BeaconEngineErrorCode;
+      code: BeaconEngineErrorCode;
       status: number;
       issues?: unknown[];
     }
   ) {
     super(message);
 
-    this.name =
-      "BeaconEngineError";
-
-    this.code =
-      options.code;
-
-    this.status =
-      options.status;
-
-    this.issues =
-      options.issues;
+    this.name = "BeaconEngineError";
+    this.code = options.code;
+    this.status = options.status;
+    this.issues = options.issues;
   }
 }
 
@@ -87,24 +77,16 @@ function prepareIntent(
   originalQuery: string
 ): SearchIntent {
   const selectedCategory =
-    detectSelectedCategory(
-      originalQuery
-    );
+    detectSelectedCategory(originalQuery);
 
   const cleanQuery =
-    removeCategoryPrefix(
-      originalQuery
-    );
+    removeCategoryPrefix(originalQuery);
 
   let intent =
-    parseSearchQuery(
-      cleanQuery
-    );
+    parseSearchQuery(cleanQuery);
 
   intent =
-    applyIntentClassification(
-      intent
-    );
+    applyIntentClassification(intent);
 
   const forcedCategory =
     mapSelectedCategory(
@@ -114,8 +96,7 @@ function prepareIntent(
   if (forcedCategory) {
     intent = {
       ...intent,
-      category:
-        forcedCategory,
+      category: forcedCategory,
     };
   }
 
@@ -131,28 +112,43 @@ function createRecommendationRequest(
   };
 }
 
-function validateLiveRecommendationIntent(
+function validateShoppingIntent(
   intent: SearchIntent
 ): void {
   const validation =
-    validateSearchIntent(
-      intent
-    );
+    validateSearchIntent(intent);
 
   if (validation.valid) {
     return;
   }
 
   throw new BeaconEngineError(
-    validation.issues[0]
-      ?.message ??
-      "Please provide more information for this search.",
+    validation.issues[0]?.message ??
+      "Please provide more information for this shopping search.",
     {
-      code:
-        "validation_failed",
+      code: "validation_failed",
       status: 400,
-      issues:
-        validation.issues,
+      issues: validation.issues,
+    }
+  );
+}
+
+function validateHotelIntent(
+  intent: SearchIntent
+): void {
+  const destination =
+    intent.destination?.trim() ||
+    intent.location?.trim();
+
+  if (destination) {
+    return;
+  }
+
+  throw new BeaconEngineError(
+    "Please include the destination or area you would like Beacon to explore.",
+    {
+      code: "missing_destination",
+      status: 400,
     }
   );
 }
@@ -175,14 +171,12 @@ function mapGeneralAnswerError(
   }
 
   if (
-    error.code ===
-    "rate_limited"
+    error.code === "rate_limited"
   ) {
     return new BeaconEngineError(
       error.message,
       {
-        code:
-          "rate_limited",
+        code: "rate_limited",
         status: 429,
       }
     );
@@ -195,8 +189,7 @@ function mapGeneralAnswerError(
     return new BeaconEngineError(
       error.message,
       {
-        code:
-          "billing_required",
+        code: "billing_required",
         status: 503,
       }
     );
@@ -209,8 +202,7 @@ function mapGeneralAnswerError(
     return new BeaconEngineError(
       error.message,
       {
-        code:
-          "invalid_response",
+        code: "invalid_response",
         status: 502,
       }
     );
@@ -226,21 +218,24 @@ function mapGeneralAnswerError(
   );
 }
 
-async function runRecommendationProvider(
-  input: {
-    query: string;
-    intent: SearchIntent;
-    source: Exclude<
-      BeaconResponseSource,
-      "general"
-    >;
-    dataProvider:
-      BeaconDataProvider;
-    recommendations:
-      Recommendation[];
-    aiSummary: string;
-  }
-): Promise<BeaconResponse> {
+async function createRankedResponse(input: {
+  query: string;
+  intent: SearchIntent;
+
+  source: Exclude<
+    BeaconResponseSource,
+    "general"
+  >;
+
+  dataProvider:
+    BeaconDataProvider;
+
+  recommendations:
+    Recommendation[];
+
+  liveData: boolean;
+  aiSummary: string;
+}): Promise<BeaconResponse> {
   const request =
     createRecommendationRequest(
       input.intent
@@ -268,10 +263,9 @@ async function runRecommendationProvider(
     source: input.source,
     dataProvider:
       input.dataProvider,
-    liveData: true,
+    liveData: input.liveData,
     intent: input.intent,
-    summary:
-      explained.summary,
+    summary: explained.summary,
     aiSummary:
       input.aiSummary,
     recommendations:
@@ -283,9 +277,7 @@ async function handleShopping(
   query: string,
   intent: SearchIntent
 ): Promise<BeaconResponse> {
-  validateLiveRecommendationIntent(
-    intent
-  );
+  validateShoppingIntent(intent);
 
   const products =
     await searchShoppingProducts(
@@ -295,37 +287,24 @@ async function handleShopping(
       }
     );
 
-  return runRecommendationProvider({
+  return createRankedResponse({
     query,
     intent,
     source: "shopping",
     dataProvider:
       "serpapi-google-shopping",
-    recommendations:
-      products,
+    recommendations: products,
+    liveData: true,
     aiSummary:
-      "Beacon searched live shopping data, compared suitable products and selected the strongest matches.",
+      "Beacon searched live shopping data and selected the five strongest product matches.",
   });
 }
 
-async function handleHotelAvailability(
+async function handleHotelDiscovery(
   query: string,
   intent: SearchIntent
 ): Promise<BeaconResponse> {
-  if (!intent.destination) {
-    throw new BeaconEngineError(
-      "Please include a destination for this hotel availability search.",
-      {
-        code:
-          "missing_destination",
-        status: 400,
-      }
-    );
-  }
-
-  validateLiveRecommendationIntent(
-    intent
-  );
+  validateHotelIntent(intent);
 
   const hotels =
     await searchHotels(
@@ -335,16 +314,47 @@ async function handleHotelAvailability(
       }
     );
 
-  return runRecommendationProvider({
+  return createRankedResponse({
+    query,
+    intent,
+    source: "hotel",
+    dataProvider:
+      "serpapi-google-maps",
+    recommendations: hotels,
+    liveData: true,
+    aiSummary:
+      "Beacon searched live hotel discovery data and selected five strong accommodation options based on location, ratings, reviews, amenities and suitability. Dates were not required.",
+  });
+}
+
+async function handleHotelAvailability(
+  query: string,
+  intent: SearchIntent
+): Promise<BeaconResponse> {
+  validateHotelIntent(intent);
+
+  const hotels =
+    await searchHotels(
+      intent,
+      {
+        limit: 30,
+        checkInDate:
+          intent.startDate,
+        checkOutDate:
+          intent.endDate,
+      }
+    );
+
+  return createRankedResponse({
     query,
     intent,
     source: "hotel",
     dataProvider:
       "serpapi-google-hotels",
-    recommendations:
-      hotels,
+    recommendations: hotels,
+    liveData: true,
     aiSummary:
-      "Beacon checked live hotel availability for the dates supplied and selected the strongest matches.",
+      "Beacon checked live hotel availability for the supplied dates and selected the five strongest matches.",
   });
 }
 
@@ -359,8 +369,7 @@ async function handleGeneralRequest(
 
     return createGeneralAnswerResponse({
       query,
-      answer:
-        result.answer,
+      answer: result.answer,
       usedWebSearch:
         result.usedWebSearch,
     });
@@ -378,59 +387,19 @@ async function handleGeneralRequest(
   }
 }
 
-async function handleHotelDiscovery(
-  query: string,
-  intent: SearchIntent
+async function handleFlightRequest(
+  query: string
 ): Promise<BeaconResponse> {
-  const destination =
-    intent.destination?.trim() ||
-    intent.location?.trim();
-
-  const discoveryQuery =
-    destination
-      ? [
-          `Help me discover the best hotels and areas to stay in ${destination}.`,
-          `My original request was: ${query}.`,
-          "Do not require exact travel dates.",
-          "Focus on location, hotel character, typical price level, amenities, suitability and important trade-offs.",
-          "Explain that exact availability and date-specific prices can be checked later when dates are chosen.",
-        ].join(" ")
-      : [
-          `Help me explore suitable holiday destinations and accommodation options for this request: ${query}.`,
-          "Do not require exact travel dates.",
-          "Help me decide on the destination or type of stay first.",
-        ].join(" ");
-
   return handleGeneralRequest(
-    discoveryQuery
+    query
   );
 }
 
-async function handleFlightPlanning(
+async function handleEntertainmentRequest(
   query: string
 ): Promise<BeaconResponse> {
-  const planningQuery = [
-    `Help with this flight or air-travel request: ${query}.`,
-    "If exact dates are not supplied, provide useful route, airport, airline, timing and planning guidance without demanding dates.",
-    "Do not claim to have checked live fares unless live web information supports it.",
-  ].join(" ");
-
   return handleGeneralRequest(
-    planningQuery
-  );
-}
-
-async function handleEntertainment(
-  query: string
-): Promise<BeaconResponse> {
-  const entertainmentQuery = [
-    `Help with this entertainment, event or experience request: ${query}.`,
-    "Suggest useful options and use current web information where appropriate.",
-    "Do not invent ticket availability or current prices.",
-  ].join(" ");
-
-  return handleGeneralRequest(
-    entertainmentQuery
+    query
   );
 }
 
@@ -438,14 +407,6 @@ async function handleMerchantFeedRequest(
   query: string,
   intent: SearchIntent
 ): Promise<BeaconResponse> {
-  /*
-   * Until the CJS and GSF feed providers are connected,
-   * merchant-feed requests use the live shopping provider.
-   *
-   * The planner already separates this capability so the
-   * dedicated providers can be inserted without changing
-   * the API route or frontend.
-   */
   return handleShopping(
     query,
     {
@@ -465,8 +426,7 @@ export async function executeBeaconRequest(
     throw new BeaconEngineError(
       "Please enter something for Beacon to help with.",
       {
-        code:
-          "missing_query",
+        code: "missing_query",
         status: 400,
       }
     );
@@ -481,8 +441,7 @@ export async function executeBeaconRequest(
     throw new BeaconEngineError(
       "Please enter something for Beacon to help with.",
       {
-        code:
-          "missing_query",
+        code: "missing_query",
         status: 400,
       }
     );
@@ -501,8 +460,7 @@ export async function executeBeaconRequest(
         ? error.message
         : "Beacon could not understand this request.",
       {
-        code:
-          "invalid_search",
+        code: "invalid_search",
         status: 400,
       }
     );
@@ -517,42 +475,42 @@ export async function executeBeaconRequest(
   switch (plan.capability) {
     case "shopping":
       return handleShopping(
-        plan.query,
-        plan.intent
+        cleanQuery,
+        intent
       );
 
     case "merchant_feed":
       return handleMerchantFeedRequest(
-        plan.query,
-        plan.intent
-      );
-
-    case "hotel_availability":
-      return handleHotelAvailability(
-        plan.query,
-        plan.intent
+        cleanQuery,
+        intent
       );
 
     case "hotel_discovery":
       return handleHotelDiscovery(
-        plan.query,
-        plan.intent
+        cleanQuery,
+        intent
+      );
+
+    case "hotel_availability":
+      return handleHotelAvailability(
+        cleanQuery,
+        intent
       );
 
     case "flights":
-      return handleFlightPlanning(
-        plan.query
+      return handleFlightRequest(
+        cleanQuery
       );
 
     case "entertainment":
-      return handleEntertainment(
-        plan.query
+      return handleEntertainmentRequest(
+        cleanQuery
       );
 
     case "general_ai":
     default:
       return handleGeneralRequest(
-        plan.query
+        cleanQuery
       );
   }
 }
