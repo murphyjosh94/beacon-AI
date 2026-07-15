@@ -15,6 +15,10 @@ import {
 } from "@/services/aggregator/Deduplicator";
 
 import {
+  applyResultPolicy,
+} from "@/services/aggregator/ResultPolicy";
+
+import {
   applyAffiliateLinks,
 } from "@/services/affiliate/AffiliateEngine";
 
@@ -52,6 +56,9 @@ const DEFAULT_FINAL_RESULT_LIMIT = 5;
 const DEFAULT_MINIMUM_SCORE = 35;
 const DEFAULT_MINIMUM_TRUST_SCORE = 25;
 const DEFAULT_TIMEOUT_MS = 15_000;
+
+const DEFAULT_MAXIMUM_PARTNER_CARDS = 1;
+const DEFAULT_MINIMUM_CONCRETE_RESULTS = 3;
 
 function clampInteger(
   value: number | undefined,
@@ -111,32 +118,39 @@ function calculateFallbackRelevance(
         : String(value)
     ),
   ]
+    .filter(Boolean)
     .join(" ")
     .toLowerCase();
 
-  const keywords = intent.keywords
-    .map((keyword) =>
-      keyword
-        .trim()
-        .toLowerCase()
-    )
-    .filter(Boolean);
+  const keywords =
+    intent.keywords
+      .map((keyword) =>
+        keyword
+          .trim()
+          .toLowerCase()
+      )
+      .filter(Boolean);
 
-  if (keywords.length === 0) {
+  if (
+    keywords.length === 0
+  ) {
     return 70;
   }
 
-  const matches = keywords.filter(
-    (keyword) =>
-      searchableText.includes(
-        keyword
-      )
-  ).length;
+  const matches =
+    keywords.filter(
+      (keyword) =>
+        searchableText.includes(
+          keyword
+        )
+    ).length;
 
   return clampScore(
     45 +
-      (matches /
-        keywords.length) *
+      (
+        matches /
+        keywords.length
+      ) *
         55,
     65
   );
@@ -173,22 +187,30 @@ function calculateFallbackValue(
     maximum !== undefined &&
     maximum > 0
   ) {
-    if (price > maximum) {
+    if (
+      price > maximum
+    ) {
       return 0;
     }
 
     const ratio =
       price / maximum;
 
-    if (ratio <= 0.5) {
+    if (
+      ratio <= 0.5
+    ) {
       return 95;
     }
 
-    if (ratio <= 0.7) {
+    if (
+      ratio <= 0.7
+    ) {
       return 87;
     }
 
-    if (ratio <= 0.85) {
+    if (
+      ratio <= 0.85
+    ) {
       return 78;
     }
 
@@ -222,21 +244,34 @@ function calculateFallbackQuality(
     Number.isFinite(rating)
   ) {
     score =
-      (Math.max(
-        0,
-        Math.min(5, rating)
-      ) /
-        5) *
+      (
+        Math.max(
+          0,
+          Math.min(
+            5,
+            rating
+          )
+        ) /
+        5
+      ) *
       82;
   }
 
-  if (reviews >= 1000) {
+  if (
+    reviews >= 1000
+  ) {
     score += 14;
-  } else if (reviews >= 250) {
+  } else if (
+    reviews >= 250
+  ) {
     score += 10;
-  } else if (reviews >= 50) {
+  } else if (
+    reviews >= 50
+  ) {
     score += 6;
-  } else if (reviews > 0) {
+  } else if (
+    reviews > 0
+  ) {
     score += 3;
   }
 
@@ -272,15 +307,21 @@ function calculateFallbackTrust(
     score += 6;
   }
 
-  if (result.destinationUrl) {
+  if (
+    result.destinationUrl
+  ) {
     score += 10;
   }
 
-  if (result.merchant) {
+  if (
+    result.merchant
+  ) {
     score += 8;
   }
 
-  if (result.imageUrl) {
+  if (
+    result.imageUrl
+  ) {
     score += 5;
   }
 
@@ -343,22 +384,25 @@ function scoreAggregatorResult(
       )
     );
 
+  const calculatedOverall =
+    calculateRecommendationScore({
+      relevance:
+        relevanceScore,
+
+      value:
+        valueScore,
+
+      quality:
+        qualityScore,
+
+      trust:
+        trustScore,
+    }).overall;
+
   const overallScore =
     clampScore(
       result.overallScore,
-      calculateRecommendationScore({
-        relevance:
-          relevanceScore,
-
-        value:
-          valueScore,
-
-        quality:
-          qualityScore,
-
-        trust:
-          trustScore,
-      }).overall
+      calculatedOverall
     );
 
   return {
@@ -402,19 +446,11 @@ function resultMatchesBudget(
   return true;
 }
 
-function selectRankedResults(
+function scoreAndFilterResults(
   results: AggregatorResult[],
   intent: SearchIntent,
   options: AggregatorExecutionOptions
 ): AggregatorResult[] {
-  const finalLimit =
-    clampInteger(
-      options.finalLimit,
-      DEFAULT_FINAL_RESULT_LIMIT,
-      1,
-      20
-    );
-
   const minimumScore =
     clampScore(
       options.minimumScore,
@@ -445,7 +481,8 @@ function selectRankedResults(
         (
           result.overallScore ??
           0
-        ) >= minimumScore
+        ) >=
+        minimumScore
     )
     .filter(
       (result) =>
@@ -458,10 +495,14 @@ function selectRankedResults(
     .sort(
       (left, right) => {
         const overallDifference =
-          (right.overallScore ??
-            0) -
-          (left.overallScore ??
-            0);
+          (
+            right.overallScore ??
+            0
+          ) -
+          (
+            left.overallScore ??
+            0
+          );
 
         if (
           overallDifference !== 0
@@ -469,11 +510,31 @@ function selectRankedResults(
           return overallDifference;
         }
 
+        const relevanceDifference =
+          (
+            right.relevanceScore ??
+            0
+          ) -
+          (
+            left.relevanceScore ??
+            0
+          );
+
+        if (
+          relevanceDifference !== 0
+        ) {
+          return relevanceDifference;
+        }
+
         const trustDifference =
-          (right.trustScore ??
-            0) -
-          (left.trustScore ??
-            0);
+          (
+            right.trustScore ??
+            0
+          ) -
+          (
+            left.trustScore ??
+            0
+          );
 
         if (
           trustDifference !== 0
@@ -482,14 +543,48 @@ function selectRankedResults(
         }
 
         return (
-          (right.qualityScore ??
-            0) -
-          (left.qualityScore ??
-            0)
+          (
+            right.qualityScore ??
+            0
+          ) -
+          (
+            left.qualityScore ??
+            0
+          )
         );
       }
-    )
-    .slice(0, finalLimit);
+    );
+}
+
+function selectResultsUsingPolicy(
+  results: AggregatorResult[],
+  vertical: AggregatorVertical,
+  options: AggregatorExecutionOptions
+): AggregatorResult[] {
+  const finalLimit =
+    clampInteger(
+      options.finalLimit,
+      DEFAULT_FINAL_RESULT_LIMIT,
+      1,
+      20
+    );
+
+  const policyResult =
+    applyResultPolicy(
+      results,
+      vertical,
+      {
+        finalLimit,
+
+        maximumPartnerCards:
+          DEFAULT_MAXIMUM_PARTNER_CARDS,
+
+        minimumConcreteResults:
+          DEFAULT_MINIMUM_CONCRETE_RESULTS,
+      }
+    );
+
+  return policyResult.results;
 }
 
 function mapRecommendationSource(
@@ -589,14 +684,17 @@ function createSelectionReason(
           ]
         }`;
 
-  return `Beacon selected this option because ${finalReason}.`;
+  return (
+    `Beacon selected this option because ${finalReason}.`
+  );
 }
 
 function mapAggregatorResultToRecommendation(
   result: AggregatorResult
 ): Recommendation {
   return {
-    id: result.id,
+    id:
+      result.id,
 
     category:
       result.category,
@@ -674,17 +772,20 @@ function mapAggregatorResultToRecommendation(
         result.vertical,
 
       brand:
-        result.brand ?? null,
+        result.brand ??
+        null,
 
       rating:
-        result.rating ?? null,
+        result.rating ??
+        null,
 
       reviewCount:
         result.reviewCount ??
         null,
 
       location:
-        result.location ?? null,
+        result.location ??
+        null,
 
       sponsored:
         result.sponsored,
@@ -765,17 +866,22 @@ export async function executeAggregator(
       selectedProviders,
       {
         query,
+
         intent:
           input.intent,
+
         vertical:
           input.vertical,
+
         limit:
           providerLimit,
+
         signal:
           options.signal,
       },
       {
         timeoutMs,
+
         signal:
           options.signal,
       }
@@ -799,10 +905,17 @@ export async function executeAggregator(
       normalisation.results
     );
 
-  const selectedResults =
-    selectRankedResults(
+  const rankedResults =
+    scoreAndFilterResults(
       deduplication.results,
       input.intent,
+      options
+    );
+
+  const selectedResults =
+    selectResultsUsingPolicy(
+      rankedResults,
+      input.vertical,
       options
     );
 
@@ -852,22 +965,18 @@ export async function executeAggregator(
             providerResult
           ) =>
             total +
-            providerResult.results
-              .length,
+            providerResult.results.length,
           0
         ),
 
       normalisedResults:
-        normalisation.statistics
-          .accepted,
+        normalisation.statistics.accepted,
 
       deduplicatedResults:
-        deduplication.statistics
-          .remaining,
+        deduplication.statistics.remaining,
 
       selectedResults:
-        enrichedRecommendations
-          .length,
+        enrichedRecommendations.length,
     },
   };
 }
