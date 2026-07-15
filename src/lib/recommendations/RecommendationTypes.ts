@@ -26,6 +26,22 @@ export type RecommendationScore = {
   trust: number;
 };
 
+export type RecommendationMetadataValue =
+  | string
+  | number
+  | boolean
+  | null
+  | RecommendationPrice
+  | Record<
+      string,
+      string | number | boolean | null
+    >;
+
+export type RecommendationMetadata = Record<
+  string,
+  RecommendationMetadataValue
+>;
+
 export type Recommendation = {
   id: string;
 
@@ -49,7 +65,7 @@ export type Recommendation = {
 
   affiliateUrl?: string;
 
-  metadata?: Record<string, string | number | boolean | null>;
+  metadata?: RecommendationMetadata;
 };
 
 export type SearchIntent = {
