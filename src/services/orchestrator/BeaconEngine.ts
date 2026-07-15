@@ -2,13 +2,6 @@ import "server-only";
 
 import { parseSearchQuery } from "@/lib/search/SearchParser";
 import { applyIntentClassification } from "@/lib/search/IntentClassifier";
-import { validateSearchIntent } from "@/lib/search/SearchValidator";
-
-import { selectBestRecommendations } from "@/lib/recommendations/RecommendationRanking";
-import { buildRecommendationResponse } from "@/lib/recommendations/RecommendationExplainer";
-
-import { searchShoppingProducts } from "@/services/shopping/SerpApiShoppingProvider";
-import { searchHotels } from "@/services/travel/SerpApiHotelsProvider";
 
 import {
   answerGeneralRequest,
@@ -28,9 +21,17 @@ import {
 } from "@/services/orchestrator/BeaconPlanner";
 
 import {
-  applyAffiliateLinks,
-  type AffiliateEnrichmentResult,
-} from "@/services/affiliate/AffiliateEngine";
+  executeAggregator,
+} from "@/services/aggregator/Aggregator";
+
+import {
+  getAggregatorProvidersForVertical,
+} from "@/services/aggregator/ProviderRegistry";
+
+import type {
+  AggregatorExecutionResult,
+  AggregatorVertical,
+} from "@/services/aggregator/AggregatorTypes";
 
 import type {
   BeaconDataProvider,
@@ -39,8 +40,7 @@ import type {
 } from "@/services/response/BeaconResponse";
 
 import type {
-  Recommendation,
-  RecommendationRequest,
+  RecommendationCategory,
   SearchIntent,
 } from "@/lib/recommendations/RecommendationTypes";
 
@@ -78,24 +78,15 @@ export class BeaconEngineError extends Error {
   }
 }
 
-type RankedResponseInput = {
-  query: string;
-  intent: SearchIntent;
-
+type AggregatorResponseConfiguration = {
+  vertical: AggregatorVertical;
   source: Exclude<
     BeaconResponseSource,
     "general"
   >;
-
   dataProvider: BeaconDataProvider;
-
-  recommendations: Recommendation[];
-
-  liveData: boolean;
-
-  aiSummary: string;
-
   affiliateCampaign: string;
+  aiSummary: string;
 };
 
 function prepareIntent(
@@ -129,63 +120,12 @@ function prepareIntent(
   if (forcedCategory) {
     intent = {
       ...intent,
-      category: forcedCategory,
+      category:
+        forcedCategory,
     };
   }
 
   return intent;
-}
-
-function createRecommendationRequest(
-  intent: SearchIntent
-): RecommendationRequest {
-  return {
-    intent,
-    limit: 5,
-  };
-}
-
-function validateShoppingIntent(
-  intent: SearchIntent
-): void {
-  const validation =
-    validateSearchIntent(
-      intent
-    );
-
-  if (validation.valid) {
-    return;
-  }
-
-  throw new BeaconEngineError(
-    validation.issues[0]?.message ??
-      "Please provide more information for this shopping search.",
-    {
-      code: "validation_failed",
-      status: 400,
-      issues: validation.issues,
-    }
-  );
-}
-
-function validateHotelIntent(
-  intent: SearchIntent
-): void {
-  const destination =
-    intent.destination?.trim() ||
-    intent.location?.trim();
-
-  if (destination) {
-    return;
-  }
-
-  throw new BeaconEngineError(
-    "Please include the destination or area you would like Beacon to explore.",
-    {
-      code: "missing_destination",
-      status: 400,
-    }
-  );
 }
 
 function mapGeneralAnswerError(
@@ -198,7 +138,8 @@ function mapGeneralAnswerError(
     return new BeaconEngineError(
       error.message,
       {
-        code: "authentication_failed",
+        code:
+          "authentication_failed",
         status: 401,
       }
     );
@@ -211,7 +152,8 @@ function mapGeneralAnswerError(
     return new BeaconEngineError(
       error.message,
       {
-        code: "rate_limited",
+        code:
+          "rate_limited",
         status: 429,
       }
     );
@@ -224,7 +166,8 @@ function mapGeneralAnswerError(
     return new BeaconEngineError(
       error.message,
       {
-        code: "billing_required",
+        code:
+          "billing_required",
         status: 503,
       }
     );
@@ -237,7 +180,8 @@ function mapGeneralAnswerError(
     return new BeaconEngineError(
       error.message,
       {
-        code: "invalid_response",
+        code:
+          "invalid_response",
         status: 502,
       }
     );
@@ -246,109 +190,169 @@ function mapGeneralAnswerError(
   return new BeaconEngineError(
     error.message,
     {
-      code: "provider_unavailable",
+      code:
+        "provider_unavailable",
       status: 503,
     }
   );
 }
 
-function createAffiliateSummary(
+function getDestination(
+  intent: SearchIntent
+): string | undefined {
+  return (
+    intent.destination?.trim() ||
+    intent.location?.trim() ||
+    undefined
+  );
+}
+
+function ensureHotelDestination(
+  intent: SearchIntent
+): void {
+  if (getDestination(intent)) {
+    return;
+  }
+
+  throw new BeaconEngineError(
+    "Please include the destination or area you would like Beacon to explore.",
+    {
+      code:
+        "missing_destination",
+      status: 400,
+    }
+  );
+}
+
+function createAggregatorSummary(
   baseSummary: string,
-  affiliateResult: AffiliateEnrichmentResult
+  result: AggregatorExecutionResult
 ): string {
-  if (
-    affiliateResult.summary.converted === 0
-  ) {
+  const failureCount =
+    result.providerFailures.length;
+
+  if (failureCount === 0) {
     return baseSummary;
   }
 
-  const converted =
-    affiliateResult.summary.converted;
+  if (
+    result.recommendations.length > 0
+  ) {
+    return (
+      `${baseSummary} ` +
+      `${failureCount === 1
+        ? "One source was temporarily unavailable."
+        : `${failureCount} sources were temporarily unavailable.`}`
+    );
+  }
 
-  const label =
-    converted === 1
-      ? "One result uses a tracked partner link."
-      : `${converted} results use tracked partner links.`;
-
-  return `${baseSummary} ${label}`;
+  return baseSummary;
 }
 
-async function createRankedResponse(
-  input: RankedResponseInput
+function ensureAggregatorProducedResults(
+  result: AggregatorExecutionResult,
+  verticalLabel: string
+): void {
+  if (
+    result.recommendations.length > 0
+  ) {
+    return;
+  }
+
+  const providerMessages =
+    result.providerFailures
+      .map(
+        (failure) =>
+          failure.message
+      )
+      .filter(Boolean);
+
+  const message =
+    providerMessages[0] ??
+    `Beacon could not find suitable ${verticalLabel} results for this request.`;
+
+  throw new BeaconEngineError(
+    message,
+    {
+      code:
+        "provider_unavailable",
+      status: 503,
+    }
+  );
+}
+
+async function executeRecommendationAggregator(
+  query: string,
+  intent: SearchIntent,
+  configuration: AggregatorResponseConfiguration
 ): Promise<BeaconResponse> {
-  const recommendationRequest =
-    createRecommendationRequest(
-      input.intent
+  const providers =
+    getAggregatorProvidersForVertical(
+      configuration.vertical
     );
 
-  const selected =
-    selectBestRecommendations(
-      input.recommendations,
-      recommendationRequest,
+  if (providers.length === 0) {
+    throw new BeaconEngineError(
+      `Beacon does not currently have an available ${configuration.vertical} provider.`,
       {
-        limit: 5,
+        code:
+          "provider_unavailable",
+        status: 503,
+      }
+    );
+  }
+
+  const result =
+    await executeAggregator({
+      query,
+      intent,
+
+      vertical:
+        configuration.vertical,
+
+      providers,
+
+      affiliateCampaign:
+        configuration.affiliateCampaign,
+
+      options: {
+        providerLimit: 30,
+        finalLimit: 5,
         minimumScore: 35,
-        minimumTrustScore: 30,
-      }
-    );
+        minimumTrustScore: 25,
+        timeoutMs: 15_000,
+      },
+    });
 
-  const explained =
-    buildRecommendationResponse(
-      input.intent,
-      selected
-    );
-
-  /*
-   * Affiliate conversion happens only after:
-   *
-   * 1. Providers return genuine results.
-   * 2. Beacon ranks them objectively.
-   * 3. The five strongest results are selected.
-   *
-   * Affiliate status never increases the Beacon Score.
-   */
-  const affiliateResult =
-    await applyAffiliateLinks(
-      explained.recommendations,
-      {
-        campaign:
-          input.affiliateCampaign,
-
-        clickReferencePrefix:
-          `beacon-${input.source}`,
-
-        shortenLinks: false,
-
-        concurrency: 4,
-      }
-    );
+  ensureAggregatorProducedResults(
+    result,
+    configuration.vertical
+  );
 
   return createRecommendationResponse({
-    query: input.query,
+    query,
 
     source:
-      input.source,
+      configuration.source,
 
     dataProvider:
-      input.dataProvider,
+      configuration.dataProvider,
 
-    liveData:
-      input.liveData,
+    liveData: true,
 
-    intent:
-      input.intent,
+    intent,
 
     summary:
-      explained.summary,
+      `${result.recommendations.length} strong options selected from live provider results.`,
 
     aiSummary:
-      createAffiliateSummary(
-        input.aiSummary,
-        affiliateResult
+      createAggregatorSummary(
+        configuration.aiSummary,
+        result
       ),
 
     recommendations:
-      affiliateResult.recommendations,
+      result.recommendations,
   });
 }
 
@@ -356,120 +360,166 @@ async function handleShopping(
   query: string,
   intent: SearchIntent
 ): Promise<BeaconResponse> {
-  validateShoppingIntent(
-    intent
-  );
-
-  const products =
-    await searchShoppingProducts(
-      intent,
-      {
-        limit: 30,
-      }
-    );
-
-  return createRankedResponse({
+  return executeRecommendationAggregator(
     query,
-    intent,
+    {
+      ...intent,
+      category: "product",
+    },
+    {
+      vertical: "shopping",
+      source: "shopping",
 
-    source: "shopping",
+      dataProvider:
+        "serpapi-google-shopping",
 
-    dataProvider:
-      "serpapi-google-shopping",
+      affiliateCampaign:
+        "beacon-shopping",
 
-    recommendations:
-      products,
-
-    liveData: true,
-
-    aiSummary:
-      "Beacon searched live shopping data, compared relevant products and selected the five strongest matches.",
-
-    affiliateCampaign:
-      "beacon-shopping",
-  });
+      aiSummary:
+        "Beacon searched live shopping providers, normalised and compared the results, removed duplicates, ranked the strongest options and then applied eligible partner tracking links.",
+    }
+  );
 }
 
 async function handleHotelDiscovery(
   query: string,
   intent: SearchIntent
 ): Promise<BeaconResponse> {
-  validateHotelIntent(
-    intent
-  );
+  ensureHotelDestination(intent);
 
-  const hotels =
-    await searchHotels(
-      intent,
-      {
-        limit: 30,
-      }
-    );
-
-  return createRankedResponse({
+  return executeRecommendationAggregator(
     query,
-    intent,
+    {
+      ...intent,
+      category: "holiday",
+    },
+    {
+      vertical: "travel",
+      source: "hotel",
 
-    source: "hotel",
+      dataProvider:
+        "serpapi-google-maps",
 
-    dataProvider:
-      "serpapi-google-maps",
+      affiliateCampaign:
+        "beacon-hotel-discovery",
 
-    recommendations:
-      hotels,
-
-    liveData: true,
-
-    aiSummary:
-      "Beacon searched live hotel discovery data and selected five accommodation options using location, reviews, ratings, amenities and suitability. Exact dates were not required.",
-
-    affiliateCampaign:
-      "beacon-hotel-discovery",
-  });
+      aiSummary:
+        "Beacon searched live accommodation discovery sources and selected real hotel listings using destination, suitability, ratings, reviews, amenities and location. Exact travel dates were not required.",
+    }
+  );
 }
 
 async function handleHotelAvailability(
   query: string,
   intent: SearchIntent
 ): Promise<BeaconResponse> {
-  validateHotelIntent(
-    intent
+  ensureHotelDestination(intent);
+
+  return executeRecommendationAggregator(
+    query,
+    {
+      ...intent,
+      category: "holiday",
+    },
+    {
+      vertical: "travel",
+      source: "hotel",
+
+      dataProvider:
+        "serpapi-google-hotels",
+
+      affiliateCampaign:
+        "beacon-hotel-availability",
+
+      aiSummary:
+        "Beacon searched live accommodation providers using the dates supplied, compared availability, prices, ratings, reviews, amenities and location, and selected the strongest hotel listings.",
+    }
   );
+}
 
-  const hotels =
-    await searchHotels(
-      intent,
-      {
-        limit: 30,
+async function handleMerchantFeedRequest(
+  query: string,
+  intent: SearchIntent
+): Promise<BeaconResponse> {
+  return handleShopping(
+    query,
+    {
+      ...intent,
+      category: "product",
+    }
+  );
+}
 
-        checkInDate:
-          intent.startDate,
-
-        checkOutDate:
-          intent.endDate,
-      }
+async function handleFlightRequest(
+  query: string,
+  intent: SearchIntent
+): Promise<BeaconResponse> {
+  const providers =
+    getAggregatorProvidersForVertical(
+      "flights"
     );
 
-  return createRankedResponse({
-    query,
-    intent,
+  if (providers.length > 0) {
+    return executeRecommendationAggregator(
+      query,
+      intent,
+      {
+        vertical: "flights",
+        source: "flight",
 
-    source: "hotel",
+        dataProvider:
+          "serpapi-google-flights",
 
-    dataProvider:
-      "serpapi-google-hotels",
+        affiliateCampaign:
+          "beacon-flights",
 
-    recommendations:
-      hotels,
+        aiSummary:
+          "Beacon searched live flight providers and selected the strongest routes based on relevance, timing, value and source reliability.",
+      }
+    );
+  }
 
-    liveData: true,
+  return handleGeneralRequest(query);
+}
 
-    aiSummary:
-      "Beacon checked live hotel availability for the supplied dates and selected the five strongest matches.",
+async function handleEntertainmentRequest(
+  query: string,
+  intent: SearchIntent
+): Promise<BeaconResponse> {
+  const providers =
+    getAggregatorProvidersForVertical(
+      "entertainment"
+    );
 
-    affiliateCampaign:
-      "beacon-hotel-availability",
-  });
+  if (providers.length > 0) {
+    return executeRecommendationAggregator(
+      query,
+      {
+        ...intent,
+        category:
+          "experience",
+      },
+      {
+        vertical:
+          "entertainment",
+
+        source:
+          "entertainment",
+
+        dataProvider:
+          "mixed",
+
+        affiliateCampaign:
+          "beacon-entertainment",
+
+        aiSummary:
+          "Beacon searched live entertainment and experience providers and selected the strongest matching options.",
+      }
+    );
+  }
+
+  return handleGeneralRequest(query);
 }
 
 async function handleGeneralRequest(
@@ -504,40 +554,10 @@ async function handleGeneralRequest(
   }
 }
 
-async function handleFlightRequest(
-  query: string
-): Promise<BeaconResponse> {
-  return handleGeneralRequest(
-    query
-  );
-}
-
-async function handleEntertainmentRequest(
-  query: string
-): Promise<BeaconResponse> {
-  return handleGeneralRequest(
-    query
-  );
-}
-
-async function handleMerchantFeedRequest(
-  query: string,
-  intent: SearchIntent
-): Promise<BeaconResponse> {
-  /*
-   * Until dedicated CJS and GSF feed providers are connected,
-   * these searches continue through live shopping data.
-   *
-   * Affiliate conversion still runs after ranking, so joined
-   * Awin merchants can receive tracked links automatically.
-   */
-  return handleShopping(
-    query,
-    {
-      ...intent,
-      category: "product",
-    }
-  );
+function ensureExpectedCategory(
+  category: RecommendationCategory
+): RecommendationCategory {
+  return category;
 }
 
 export async function executeBeaconRequest(
@@ -550,7 +570,8 @@ export async function executeBeaconRequest(
     throw new BeaconEngineError(
       "Please enter something for Beacon to help with.",
       {
-        code: "missing_query",
+        code:
+          "missing_query",
         status: 400,
       }
     );
@@ -565,7 +586,8 @@ export async function executeBeaconRequest(
     throw new BeaconEngineError(
       "Please enter something for Beacon to help with.",
       {
-        code: "missing_query",
+        code:
+          "missing_query",
         status: 400,
       }
     );
@@ -584,15 +606,22 @@ export async function executeBeaconRequest(
         ? error.message
         : "Beacon could not understand this request.",
       {
-        code: "invalid_search",
+        code:
+          "invalid_search",
         status: 400,
       }
     );
   }
 
+  ensureExpectedCategory(
+    intent.category
+  );
+
   const plan =
     createBeaconPlan({
-      query: cleanQuery,
+      query:
+        cleanQuery,
+
       intent,
     });
 
@@ -623,12 +652,14 @@ export async function executeBeaconRequest(
 
     case "flights":
       return handleFlightRequest(
-        plan.query
+        plan.query,
+        plan.intent
       );
 
     case "entertainment":
       return handleEntertainmentRequest(
-        plan.query
+        plan.query,
+        plan.intent
       );
 
     case "general_ai":
