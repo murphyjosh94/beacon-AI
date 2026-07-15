@@ -1,7 +1,15 @@
 import "server-only";
 
 import { requestSerpApi } from "@/services/shopping/SerpApiClient";
+
 import { calculateRecommendationScore } from "@/lib/recommendations/RecommendationScore";
+
+import {
+  checkVehicleCompatibility,
+  parseVehiclePartIntent,
+  type VehicleCompatibilityResult,
+  type VehiclePartIntent,
+} from "@/lib/vehicle/VehicleCompatibility";
 
 import type {
   Recommendation,
@@ -61,10 +69,14 @@ type SerpApiShoppingResponse = {
   };
 
   shopping_results?: SerpApiShoppingResult[];
-
   inline_shopping_results?: SerpApiShoppingResult[];
 
   error?: string;
+};
+
+type EvaluatedShoppingResult = {
+  result: SerpApiShoppingResult;
+  compatibility: VehicleCompatibilityResult | null;
 };
 
 export type ShoppingSearchOptions = {
@@ -91,10 +103,15 @@ function clamp(
   );
 }
 
-function normaliseText(value: string): string {
+function normaliseText(
+  value: string
+): string {
   return value
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s'-]/gu, " ")
+    .replace(
+      /[^\p{L}\p{N}.\s'-]/gu,
+      " "
+    )
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -105,7 +122,11 @@ function createStableId(
 ): string {
   const suppliedId =
     result.product_id?.trim() ||
-    `${result.source ?? "merchant"}-${result.title ?? "product"}-${index}`;
+    [
+      result.source ?? "merchant",
+      result.title ?? "product",
+      index,
+    ].join("-");
 
   return normaliseText(suppliedId)
     .replace(/\s+/g, "-")
@@ -113,25 +134,66 @@ function createStableId(
     .slice(0, 100);
 }
 
+function isHttpUrl(
+  value: string
+): boolean {
+  try {
+    const url = new URL(value);
+
+    return (
+      url.protocol === "https:" ||
+      url.protocol === "http:"
+    );
+  } catch {
+    return false;
+  }
+}
+
 function getResultUrl(
   result: SerpApiShoppingResult
 ): string {
-  return (
-    result.direct_link?.trim() ||
-    result.product_link?.trim() ||
-    result.link?.trim() ||
-    ""
-  );
+  const candidates = [
+    result.direct_link,
+    result.product_link,
+    result.link,
+  ];
+
+  for (const candidate of candidates) {
+    const cleaned =
+      candidate?.trim();
+
+    if (
+      cleaned &&
+      isHttpUrl(cleaned)
+    ) {
+      return cleaned;
+    }
+  }
+
+  return "";
 }
 
 function getImageUrl(
   result: SerpApiShoppingResult
 ): string | undefined {
-  return (
-    result.thumbnail?.trim() ||
-    result.serpapi_thumbnail?.trim() ||
-    undefined
-  );
+  const candidates = [
+    result.thumbnail,
+    result.serpapi_thumbnail,
+  ];
+
+  for (const candidate of candidates) {
+    const cleaned =
+      candidate?.trim();
+
+    if (
+      cleaned &&
+      isHttpUrl(cleaned)
+    ) {
+      return cleaned;
+    }
+  }
+
+  return undefined;
 }
 
 function getPriceAmount(
@@ -155,7 +217,10 @@ function getPriceAmount(
       .replace(/[^\d.]/g, "")
   );
 
-  return Number.isFinite(parsed)
+  return (
+    Number.isFinite(parsed) &&
+    parsed >= 0
+  )
     ? parsed
     : undefined;
 }
@@ -163,7 +228,8 @@ function getPriceAmount(
 function createPrice(
   result: SerpApiShoppingResult
 ): RecommendationPrice | undefined {
-  const amount = getPriceAmount(result);
+  const amount =
+    getPriceAmount(result);
 
   if (amount === undefined) {
     return undefined;
@@ -174,10 +240,13 @@ function createPrice(
     currency: "GBP",
     display:
       result.price?.trim() ||
-      new Intl.NumberFormat("en-GB", {
-        style: "currency",
-        currency: "GBP",
-      }).format(amount),
+      new Intl.NumberFormat(
+        "en-GB",
+        {
+          style: "currency",
+          currency: "GBP",
+        }
+      ).format(amount),
   };
 }
 
@@ -186,7 +255,8 @@ function isWithinBudget(
   minimumPrice?: number,
   maximumPrice?: number
 ): boolean {
-  const price = getPriceAmount(result);
+  const price =
+    getPriceAmount(result);
 
   if (price === undefined) {
     return true;
@@ -209,46 +279,123 @@ function isWithinBudget(
   return true;
 }
 
-function calculateRelevanceScore(
+function buildSearchableProductText(
+  result: SerpApiShoppingResult
+): string {
+  return [
+    result.title,
+    result.snippet,
+    result.source,
+    result.tag,
+    result.badge,
+    result.second_hand_condition,
+    ...(result.extensions ?? []),
+  ]
+    .filter(
+      (
+        value
+      ): value is string =>
+        typeof value === "string" &&
+        value.trim().length > 0
+    )
+    .join(" ");
+}
+
+function evaluateVehicleCompatibility(
   result: SerpApiShoppingResult,
-  intent: SearchIntent
-): number {
-  const searchableText = normaliseText(
-    [
-      result.title,
-      result.snippet,
-      result.source,
-      result.tag,
-      result.badge,
-      ...(result.extensions ?? []),
-    ]
-      .filter(Boolean)
-      .join(" ")
-  );
-
-  const usefulKeywords = intent.keywords
-    .map(normaliseText)
-    .filter(Boolean);
-
-  if (usefulKeywords.length === 0) {
-    return 65;
+  vehicleIntent: VehiclePartIntent
+): VehicleCompatibilityResult | null {
+  if (!vehicleIntent.automotive) {
+    return null;
   }
 
-  const matches = usefulKeywords.filter(
-    (keyword) =>
-      searchableText.includes(keyword)
-  ).length;
+  return checkVehicleCompatibility(
+    buildSearchableProductText(
+      result
+    ),
+    vehicleIntent
+  );
+}
 
-  const ratio = matches / usefulKeywords.length;
+function evaluateResults(
+  results: SerpApiShoppingResult[],
+  vehicleIntent: VehiclePartIntent
+): EvaluatedShoppingResult[] {
+  return results.map((result) => ({
+    result,
+    compatibility:
+      evaluateVehicleCompatibility(
+        result,
+        vehicleIntent
+      ),
+  }));
+}
 
-  return clamp(45 + ratio * 55);
+function keepCompatibleResults(
+  evaluatedResults: EvaluatedShoppingResult[],
+  vehicleIntent: VehiclePartIntent
+): EvaluatedShoppingResult[] {
+  if (!vehicleIntent.automotive) {
+    return evaluatedResults;
+  }
+
+  return evaluatedResults.filter(
+    ({ compatibility }) =>
+      compatibility?.status ===
+      "compatible"
+  );
+}
+
+function calculateRelevanceScore(
+  result: SerpApiShoppingResult,
+  intent: SearchIntent,
+  compatibility: VehicleCompatibilityResult | null
+): number {
+  const searchableText =
+    normaliseText(
+      buildSearchableProductText(
+        result
+      )
+    );
+
+  const usefulKeywords =
+    intent.keywords
+      .map(normaliseText)
+      .filter(Boolean);
+
+  const keywordScore =
+    usefulKeywords.length === 0
+      ? 65
+      : clamp(
+          45 +
+            (
+              usefulKeywords.filter(
+                (keyword) =>
+                  searchableText.includes(
+                    keyword
+                  )
+              ).length /
+              usefulKeywords.length
+            ) *
+              55
+        );
+
+  if (!compatibility) {
+    return keywordScore;
+  }
+
+  return clamp(
+    keywordScore * 0.35 +
+      compatibility.score * 0.65
+  );
 }
 
 function calculateValueScore(
   result: SerpApiShoppingResult,
   intent: SearchIntent
 ): number {
-  const price = getPriceAmount(result);
+  const price =
+    getPriceAmount(result);
 
   if (price === undefined) {
     return 50;
@@ -265,7 +412,8 @@ function calculateValueScore(
       return 0;
     }
 
-    const ratio = price / maximum;
+    const ratio =
+      price / maximum;
 
     if (ratio <= 0.55) {
       return 92;
@@ -291,9 +439,13 @@ function calculateValueScore(
     oldPrice > price
   ) {
     const savingRatio =
-      (oldPrice - price) / oldPrice;
+      (oldPrice - price) /
+      oldPrice;
 
-    return clamp(65 + savingRatio * 100);
+    return clamp(
+      65 +
+        savingRatio * 100
+    );
   }
 
   return 65;
@@ -313,11 +465,15 @@ function calculateQualityScore(
       : 0;
 
   if (rating === undefined) {
-    return reviews > 0 ? 60 : 50;
+    return reviews > 0
+      ? 60
+      : 50;
   }
 
   const ratingScore =
-    clamp((rating / 5) * 100);
+    clamp(
+      (rating / 5) * 100
+    );
 
   const reviewConfidence =
     reviews >= 1000
@@ -337,12 +493,13 @@ function calculateQualityScore(
 }
 
 function calculateTrustScore(
-  result: SerpApiShoppingResult
+  result: SerpApiShoppingResult,
+  compatibility: VehicleCompatibilityResult | null
 ): number {
-  let score = 45;
+  let score = 40;
 
   if (result.source?.trim()) {
-    score += 15;
+    score += 12;
   }
 
   if (getResultUrl(result)) {
@@ -356,29 +513,45 @@ function calculateTrustScore(
   if (
     typeof result.rating === "number"
   ) {
-    score += 8;
+    score += 7;
   }
 
   if (
     typeof result.reviews === "number" &&
     result.reviews > 0
   ) {
-    score += 7;
+    score += 6;
+  }
+
+  if (result.delivery?.trim()) {
+    score += 4;
   }
 
   if (
-    result.delivery?.trim()
+    compatibility?.status ===
+    "compatible"
   ) {
-    score += 5;
+    score += 11;
   }
 
   return clamp(score);
 }
 
 function buildHighlights(
-  result: SerpApiShoppingResult
+  result: SerpApiShoppingResult,
+  compatibility: VehicleCompatibilityResult | null
 ): string[] {
-  const highlights: string[] = [];
+  const highlights: string[] =
+    [];
+
+  if (
+    compatibility?.status ===
+    "compatible"
+  ) {
+    highlights.push(
+      "Requested vehicle and engine details confirmed in the listing"
+    );
+  }
 
   if (
     typeof result.rating === "number"
@@ -407,7 +580,9 @@ function buildHighlights(
     highlights.push(
       result.tag.trim()
     );
-  } else if (result.badge?.trim()) {
+  } else if (
+    result.badge?.trim()
+  ) {
     highlights.push(
       result.badge.trim()
     );
@@ -423,13 +598,15 @@ function buildHighlights(
 
   return Array.from(
     new Set(highlights)
-  ).slice(0, 3);
+  ).slice(0, 4);
 }
 
 function buildWarnings(
-  result: SerpApiShoppingResult
+  result: SerpApiShoppingResult,
+  compatibility: VehicleCompatibilityResult | null
 ): string[] {
-  const warnings: string[] = [];
+  const warnings: string[] =
+    [];
 
   if (!getResultUrl(result)) {
     warnings.push(
@@ -438,7 +615,8 @@ function buildWarnings(
   }
 
   if (
-    getPriceAmount(result) === undefined
+    getPriceAmount(result) ===
+    undefined
   ) {
     warnings.push(
       "The current price could not be verified from the search result."
@@ -447,21 +625,59 @@ function buildWarnings(
 
   if (
     result.second_hand_condition
+      ?.trim()
   ) {
     warnings.push(
-      `Condition: ${result.second_hand_condition}.`
+      `Condition: ${result.second_hand_condition.trim()}.`
     );
   }
 
-  return warnings.slice(0, 2);
+  if (
+    compatibility?.status ===
+    "compatible"
+  ) {
+    warnings.push(
+      "Confirm final vehicle compatibility on the retailer's website before purchasing."
+    );
+  }
+
+  return Array.from(
+    new Set(warnings)
+  ).slice(0, 3);
+}
+
+function createSelectionReason(
+  compatibility: VehicleCompatibilityResult | null
+): string {
+  if (
+    compatibility?.status ===
+    "compatible"
+  ) {
+    return (
+      "Selected because the listing confirms the requested " +
+      "part type, vehicle model and engine details before " +
+      "Beacon considered price, quality and retailer signals."
+    );
+  }
+
+  return (
+    "Selected from live shopping data because it matches " +
+    "the request, budget and available quality signals."
+  );
 }
 
 function mapShoppingResult(
-  result: SerpApiShoppingResult,
+  evaluatedResult: EvaluatedShoppingResult,
   intent: SearchIntent,
   index: number
 ): Recommendation | null {
-  const title = result.title?.trim();
+  const {
+    result,
+    compatibility,
+  } = evaluatedResult;
+
+  const title =
+    result.title?.trim();
 
   if (!title) {
     return null;
@@ -470,7 +686,8 @@ function mapShoppingResult(
   const relevance =
     calculateRelevanceScore(
       result,
-      intent
+      intent,
+      compatibility
     );
 
   const value =
@@ -480,10 +697,15 @@ function mapShoppingResult(
     );
 
   const quality =
-    calculateQualityScore(result);
+    calculateQualityScore(
+      result
+    );
 
   const trust =
-    calculateTrustScore(result);
+    calculateTrustScore(
+      result,
+      compatibility
+    );
 
   return {
     id: createStableId(
@@ -492,7 +714,7 @@ function mapShoppingResult(
     ),
 
     category: "product",
-    source: "merchant",
+    source: "search",
 
     title,
 
@@ -504,9 +726,12 @@ function mapShoppingResult(
       }.`,
 
     reason:
-      "Selected from live Google Shopping data because it appears relevant to your request and available budget.",
+      createSelectionReason(
+        compatibility
+      ),
 
-    url: getResultUrl(result),
+    url:
+      getResultUrl(result),
 
     imageUrl:
       getImageUrl(result),
@@ -526,25 +751,72 @@ function mapShoppingResult(
       }),
 
     highlights:
-      buildHighlights(result),
+      buildHighlights(
+        result,
+        compatibility
+      ),
 
     warnings:
-      buildWarnings(result),
+      buildWarnings(
+        result,
+        compatibility
+      ),
 
     metadata: {
       provider: "serpapi",
-      searchEngine: "google_shopping",
+
+      searchEngine:
+        "google_shopping",
+
       position:
-        result.position ?? index + 1,
+        result.position ??
+        index + 1,
+
       productId:
-        result.product_id ?? null,
+        result.product_id ??
+        null,
+
       rating:
         result.rating ?? null,
+
       reviews:
         result.reviews ?? null,
+
       oldPrice:
         result.extracted_old_price ??
         null,
+
+      automotive:
+        compatibility !== null,
+
+      compatibilityStatus:
+        compatibility?.status ??
+        null,
+
+      compatibilityScore:
+        compatibility?.score ??
+        null,
+
+      compatibilityMatchedTerms:
+        compatibility
+          ? compatibility.matchedTerms.join(
+              ", "
+            )
+          : null,
+
+      compatibilityMissingTerms:
+        compatibility
+          ? compatibility.missingTerms.join(
+              ", "
+            )
+          : null,
+
+      compatibilityConflicts:
+        compatibility
+          ? compatibility.conflictingTerms.join(
+              ", "
+            )
+          : null,
     },
   };
 }
@@ -553,8 +825,11 @@ function combineShoppingResults(
   response: SerpApiShoppingResponse
 ): SerpApiShoppingResult[] {
   return [
-    ...(response.shopping_results ?? []),
-    ...(response.inline_shopping_results ??
+    ...(response.shopping_results ??
+      []),
+
+    ...(response
+      .inline_shopping_results ??
       []),
   ];
 }
@@ -562,22 +837,30 @@ function combineShoppingResults(
 function removeDuplicateResults(
   results: SerpApiShoppingResult[]
 ): SerpApiShoppingResult[] {
-  const seen = new Set<string>();
-  const unique: SerpApiShoppingResult[] = [];
+  const seen =
+    new Set<string>();
+
+  const unique:
+    SerpApiShoppingResult[] =
+    [];
 
   for (const result of results) {
-    const key = normaliseText(
-      [
-        result.product_id,
-        result.title,
-        result.source,
-        getResultUrl(result),
-      ]
-        .filter(Boolean)
-        .join("|")
-    );
+    const key =
+      normaliseText(
+        [
+          result.product_id,
+          result.title,
+          result.source,
+          getResultUrl(result),
+        ]
+          .filter(Boolean)
+          .join("|")
+      );
 
-    if (!key || seen.has(key)) {
+    if (
+      !key ||
+      seen.has(key)
+    ) {
       continue;
     }
 
@@ -588,27 +871,63 @@ function removeDuplicateResults(
   return unique;
 }
 
+function createSearchQuery(
+  intent: SearchIntent,
+  vehicleIntent: VehiclePartIntent
+): string {
+  if (!vehicleIntent.automotive) {
+    return intent.rawQuery.trim();
+  }
+
+  return [
+    vehicleIntent.partType,
+    vehicleIntent.model,
+    vehicleIntent.engine,
+    vehicleIntent.year,
+  ]
+    .filter(
+      (
+        value
+      ): value is string | number =>
+        value !== undefined &&
+        value !== ""
+    )
+    .join(" ");
+}
+
 export async function searchShoppingProducts(
   intent: SearchIntent,
   options: ShoppingSearchOptions = {}
 ): Promise<Recommendation[]> {
-  const query =
+  const originalQuery =
     intent.rawQuery.trim();
 
-  if (!query) {
+  if (!originalQuery) {
     throw new Error(
       "A shopping search query is required."
     );
   }
 
-  const requestedLimit = clamp(
-    Math.floor(
-      options.limit ??
-        DEFAULT_LIMIT
-    ),
-    1,
-    MAXIMUM_RESULTS
-  );
+  const vehicleIntent =
+    parseVehiclePartIntent(
+      originalQuery
+    );
+
+  const searchQuery =
+    createSearchQuery(
+      intent,
+      vehicleIntent
+    );
+
+  const requestedLimit =
+    clamp(
+      Math.floor(
+        options.limit ??
+          DEFAULT_LIMIT
+      ),
+      1,
+      MAXIMUM_RESULTS
+    );
 
   const minimumPrice =
     options.minimumPrice ??
@@ -621,35 +940,67 @@ export async function searchShoppingProducts(
   const response =
     await requestSerpApi<SerpApiShoppingResponse>(
       {
-        engine: "google_shopping",
-        q: query,
+        engine:
+          "google_shopping",
+
+        q: searchQuery,
+
         gl: "uk",
         hl: "en",
-        google_domain: "google.co.uk",
+
+        google_domain:
+          "google.co.uk",
+
         direct_link: true,
-        num: requestedLimit,
+
+        num:
+          requestedLimit,
       }
     );
 
-  const results = removeDuplicateResults(
-    combineShoppingResults(response)
-  )
-    .filter((result) =>
-      isWithinBudget(
-        result,
-        minimumPrice,
-        maximumPrice
+  const uniqueResults =
+    removeDuplicateResults(
+      combineShoppingResults(
+        response
       )
-    )
-    .slice(0, requestedLimit);
+    );
 
-  return results
-    .map((result, index) =>
-      mapShoppingResult(
-        result,
-        intent,
+  const budgetFilteredResults =
+    uniqueResults.filter(
+      (result) =>
+        isWithinBudget(
+          result,
+          minimumPrice,
+          maximumPrice
+        )
+    );
+
+  const evaluatedResults =
+    evaluateResults(
+      budgetFilteredResults,
+      vehicleIntent
+    );
+
+  const compatibleResults =
+    keepCompatibleResults(
+      evaluatedResults,
+      vehicleIntent
+    ).slice(
+      0,
+      requestedLimit
+    );
+
+  return compatibleResults
+    .map(
+      (
+        evaluatedResult,
         index
-      )
+      ) =>
+        mapShoppingResult(
+          evaluatedResult,
+          intent,
+          index
+        )
     )
     .filter(
       (
