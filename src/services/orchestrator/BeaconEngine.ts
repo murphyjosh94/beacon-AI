@@ -27,6 +27,11 @@ import {
   removeCategoryPrefix,
 } from "@/services/orchestrator/BeaconPlanner";
 
+import {
+  applyAffiliateLinks,
+  type AffiliateEnrichmentResult,
+} from "@/services/affiliate/AffiliateEngine";
+
 import type {
   BeaconDataProvider,
   BeaconResponse,
@@ -73,20 +78,48 @@ export class BeaconEngineError extends Error {
   }
 }
 
+type RankedResponseInput = {
+  query: string;
+  intent: SearchIntent;
+
+  source: Exclude<
+    BeaconResponseSource,
+    "general"
+  >;
+
+  dataProvider: BeaconDataProvider;
+
+  recommendations: Recommendation[];
+
+  liveData: boolean;
+
+  aiSummary: string;
+
+  affiliateCampaign: string;
+};
+
 function prepareIntent(
   originalQuery: string
 ): SearchIntent {
   const selectedCategory =
-    detectSelectedCategory(originalQuery);
+    detectSelectedCategory(
+      originalQuery
+    );
 
   const cleanQuery =
-    removeCategoryPrefix(originalQuery);
+    removeCategoryPrefix(
+      originalQuery
+    );
 
   let intent =
-    parseSearchQuery(cleanQuery);
+    parseSearchQuery(
+      cleanQuery
+    );
 
   intent =
-    applyIntentClassification(intent);
+    applyIntentClassification(
+      intent
+    );
 
   const forcedCategory =
     mapSelectedCategory(
@@ -116,7 +149,9 @@ function validateShoppingIntent(
   intent: SearchIntent
 ): void {
   const validation =
-    validateSearchIntent(intent);
+    validateSearchIntent(
+      intent
+    );
 
   if (validation.valid) {
     return;
@@ -163,15 +198,15 @@ function mapGeneralAnswerError(
     return new BeaconEngineError(
       error.message,
       {
-        code:
-          "authentication_failed",
+        code: "authentication_failed",
         status: 401,
       }
     );
   }
 
   if (
-    error.code === "rate_limited"
+    error.code ===
+    "rate_limited"
   ) {
     return new BeaconEngineError(
       error.message,
@@ -211,32 +246,37 @@ function mapGeneralAnswerError(
   return new BeaconEngineError(
     error.message,
     {
-      code:
-        "provider_unavailable",
+      code: "provider_unavailable",
       status: 503,
     }
   );
 }
 
-async function createRankedResponse(input: {
-  query: string;
-  intent: SearchIntent;
+function createAffiliateSummary(
+  baseSummary: string,
+  affiliateResult: AffiliateEnrichmentResult
+): string {
+  if (
+    affiliateResult.summary.converted === 0
+  ) {
+    return baseSummary;
+  }
 
-  source: Exclude<
-    BeaconResponseSource,
-    "general"
-  >;
+  const converted =
+    affiliateResult.summary.converted;
 
-  dataProvider:
-    BeaconDataProvider;
+  const label =
+    converted === 1
+      ? "One result uses a tracked partner link."
+      : `${converted} results use tracked partner links.`;
 
-  recommendations:
-    Recommendation[];
+  return `${baseSummary} ${label}`;
+}
 
-  liveData: boolean;
-  aiSummary: string;
-}): Promise<BeaconResponse> {
-  const request =
+async function createRankedResponse(
+  input: RankedResponseInput
+): Promise<BeaconResponse> {
+  const recommendationRequest =
     createRecommendationRequest(
       input.intent
     );
@@ -244,7 +284,7 @@ async function createRankedResponse(input: {
   const selected =
     selectBestRecommendations(
       input.recommendations,
-      request,
+      recommendationRequest,
       {
         limit: 5,
         minimumScore: 35,
@@ -258,18 +298,57 @@ async function createRankedResponse(input: {
       selected
     );
 
+  /*
+   * Affiliate conversion happens only after:
+   *
+   * 1. Providers return genuine results.
+   * 2. Beacon ranks them objectively.
+   * 3. The five strongest results are selected.
+   *
+   * Affiliate status never increases the Beacon Score.
+   */
+  const affiliateResult =
+    await applyAffiliateLinks(
+      explained.recommendations,
+      {
+        campaign:
+          input.affiliateCampaign,
+
+        clickReferencePrefix:
+          `beacon-${input.source}`,
+
+        shortenLinks: false,
+
+        concurrency: 4,
+      }
+    );
+
   return createRecommendationResponse({
     query: input.query,
-    source: input.source,
+
+    source:
+      input.source,
+
     dataProvider:
       input.dataProvider,
-    liveData: input.liveData,
-    intent: input.intent,
-    summary: explained.summary,
+
+    liveData:
+      input.liveData,
+
+    intent:
+      input.intent,
+
+    summary:
+      explained.summary,
+
     aiSummary:
-      input.aiSummary,
+      createAffiliateSummary(
+        input.aiSummary,
+        affiliateResult
+      ),
+
     recommendations:
-      explained.recommendations,
+      affiliateResult.recommendations,
   });
 }
 
@@ -277,7 +356,9 @@ async function handleShopping(
   query: string,
   intent: SearchIntent
 ): Promise<BeaconResponse> {
-  validateShoppingIntent(intent);
+  validateShoppingIntent(
+    intent
+  );
 
   const products =
     await searchShoppingProducts(
@@ -290,13 +371,22 @@ async function handleShopping(
   return createRankedResponse({
     query,
     intent,
+
     source: "shopping",
+
     dataProvider:
       "serpapi-google-shopping",
-    recommendations: products,
+
+    recommendations:
+      products,
+
     liveData: true,
+
     aiSummary:
-      "Beacon searched live shopping data and selected the five strongest product matches.",
+      "Beacon searched live shopping data, compared relevant products and selected the five strongest matches.",
+
+    affiliateCampaign:
+      "beacon-shopping",
   });
 }
 
@@ -304,7 +394,9 @@ async function handleHotelDiscovery(
   query: string,
   intent: SearchIntent
 ): Promise<BeaconResponse> {
-  validateHotelIntent(intent);
+  validateHotelIntent(
+    intent
+  );
 
   const hotels =
     await searchHotels(
@@ -317,13 +409,22 @@ async function handleHotelDiscovery(
   return createRankedResponse({
     query,
     intent,
+
     source: "hotel",
+
     dataProvider:
       "serpapi-google-maps",
-    recommendations: hotels,
+
+    recommendations:
+      hotels,
+
     liveData: true,
+
     aiSummary:
-      "Beacon searched live hotel discovery data and selected five strong accommodation options based on location, ratings, reviews, amenities and suitability. Dates were not required.",
+      "Beacon searched live hotel discovery data and selected five accommodation options using location, reviews, ratings, amenities and suitability. Exact dates were not required.",
+
+    affiliateCampaign:
+      "beacon-hotel-discovery",
   });
 }
 
@@ -331,15 +432,19 @@ async function handleHotelAvailability(
   query: string,
   intent: SearchIntent
 ): Promise<BeaconResponse> {
-  validateHotelIntent(intent);
+  validateHotelIntent(
+    intent
+  );
 
   const hotels =
     await searchHotels(
       intent,
       {
         limit: 30,
+
         checkInDate:
           intent.startDate,
+
         checkOutDate:
           intent.endDate,
       }
@@ -348,13 +453,22 @@ async function handleHotelAvailability(
   return createRankedResponse({
     query,
     intent,
+
     source: "hotel",
+
     dataProvider:
       "serpapi-google-hotels",
-    recommendations: hotels,
+
+    recommendations:
+      hotels,
+
     liveData: true,
+
     aiSummary:
       "Beacon checked live hotel availability for the supplied dates and selected the five strongest matches.",
+
+    affiliateCampaign:
+      "beacon-hotel-availability",
   });
 }
 
@@ -369,7 +483,10 @@ async function handleGeneralRequest(
 
     return createGeneralAnswerResponse({
       query,
-      answer: result.answer,
+
+      answer:
+        result.answer,
+
       usedWebSearch:
         result.usedWebSearch,
     });
@@ -407,6 +524,13 @@ async function handleMerchantFeedRequest(
   query: string,
   intent: SearchIntent
 ): Promise<BeaconResponse> {
+  /*
+   * Until dedicated CJS and GSF feed providers are connected,
+   * these searches continue through live shopping data.
+   *
+   * Affiliate conversion still runs after ranking, so joined
+   * Awin merchants can receive tracked links automatically.
+   */
   return handleShopping(
     query,
     {
@@ -475,42 +599,42 @@ export async function executeBeaconRequest(
   switch (plan.capability) {
     case "shopping":
       return handleShopping(
-        cleanQuery,
-        intent
+        plan.query,
+        plan.intent
       );
 
     case "merchant_feed":
       return handleMerchantFeedRequest(
-        cleanQuery,
-        intent
+        plan.query,
+        plan.intent
       );
 
     case "hotel_discovery":
       return handleHotelDiscovery(
-        cleanQuery,
-        intent
+        plan.query,
+        plan.intent
       );
 
     case "hotel_availability":
       return handleHotelAvailability(
-        cleanQuery,
-        intent
+        plan.query,
+        plan.intent
       );
 
     case "flights":
       return handleFlightRequest(
-        cleanQuery
+        plan.query
       );
 
     case "entertainment":
       return handleEntertainmentRequest(
-        cleanQuery
+        plan.query
       );
 
     case "general_ai":
     default:
       return handleGeneralRequest(
-        cleanQuery
+        plan.query
       );
   }
 }
