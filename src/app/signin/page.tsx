@@ -7,6 +7,7 @@ import {
 } from "next/navigation";
 import {
   FormEvent,
+  Suspense,
   useEffect,
   useState,
 } from "react";
@@ -57,7 +58,7 @@ function readSafeDestination(
   return value;
 }
 
-export default function SignInPage() {
+function SignInForm() {
   const router =
     useRouter();
 
@@ -87,9 +88,7 @@ export default function SignInPage() {
 
   const destination =
     readSafeDestination(
-      searchParams.get(
-        "next"
-      )
+      searchParams.get("next")
     );
 
   useEffect(() => {
@@ -118,7 +117,9 @@ export default function SignInPage() {
     }
 
     const cleanedEmail =
-      email.trim().toLowerCase();
+      email
+        .trim()
+        .toLowerCase();
 
     setError("");
 
@@ -175,6 +176,157 @@ export default function SignInPage() {
   }
 
   return (
+    <div className="rounded-[2rem] border border-white/20 bg-white p-7 shadow-2xl sm:p-10">
+      <div>
+        <p className="text-sm font-extrabold uppercase tracking-[0.24em] text-blue-800">
+          Sign in
+        </p>
+
+        <h2 className="mt-3 text-3xl font-black text-slate-950">
+          Welcome back
+        </h2>
+
+        <p className="mt-3 leading-7 text-slate-600">
+          Enter the details used when creating your
+          Beacon account.
+        </p>
+      </div>
+
+      {error && (
+        <div
+          role="alert"
+          className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800"
+        >
+          {error}
+        </div>
+      )}
+
+      <form
+        onSubmit={handleSubmit}
+        className="mt-7 space-y-5"
+      >
+        <div>
+          <label
+            htmlFor="email"
+            className="block text-sm font-extrabold text-slate-800"
+          >
+            Email address
+          </label>
+
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(event) =>
+              setEmail(
+                event.target.value
+              )
+            }
+            disabled={submitting}
+            placeholder="you@example.com"
+            className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3.5 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-700 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+          />
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between gap-4">
+            <label
+              htmlFor="password"
+              className="block text-sm font-extrabold text-slate-800"
+            >
+              Password
+            </label>
+
+            <Link
+              href="/forgot-password"
+              className="text-sm font-bold text-blue-800 hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
+
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(event) =>
+              setPassword(
+                event.target.value
+              )
+            }
+            disabled={submitting}
+            placeholder="Enter your password"
+            className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3.5 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-700 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+          />
+        </div>
+
+        <label className="flex items-center gap-3 text-sm font-semibold text-slate-600">
+          <input
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(event) =>
+              setRememberMe(
+                event.target.checked
+              )
+            }
+            disabled={submitting}
+            className="h-4 w-4 rounded border-slate-300"
+          />
+
+          Keep me signed in
+        </label>
+
+        <button
+          type="submit"
+          disabled={
+            submitting ||
+            sessionPending
+          }
+          className="w-full rounded-2xl bg-blue-900 px-5 py-4 font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {submitting
+            ? "Signing In..."
+            : "Sign In to Beacon"}
+        </button>
+      </form>
+
+      <p className="mt-7 text-center text-sm text-slate-600">
+        New to Beacon?{" "}
+        <Link
+          href="/signup"
+          className="font-extrabold text-blue-800 hover:underline"
+        >
+          Create an account
+        </Link>
+      </p>
+    </div>
+  );
+}
+
+function SignInFormFallback() {
+  return (
+    <div className="rounded-[2rem] border border-white/20 bg-white p-7 shadow-2xl sm:p-10">
+      <div className="animate-pulse space-y-5">
+        <div className="h-4 w-24 rounded bg-slate-200" />
+        <div className="h-10 w-64 rounded bg-slate-200" />
+        <div className="h-5 w-full rounded bg-slate-100" />
+
+        <div className="mt-8 h-14 rounded-2xl bg-slate-100" />
+        <div className="h-14 rounded-2xl bg-slate-100" />
+        <div className="h-14 rounded-2xl bg-blue-100" />
+      </div>
+    </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
     <main className="min-h-screen bg-slate-50">
       <Navbar />
 
@@ -204,144 +356,19 @@ export default function SignInPage() {
               </p>
 
               <p className="mt-3 leading-7 text-blue-100">
-                Searches and purchases will be tied
-                securely to the signed-in account
-                rather than trusting information sent
-                from the browser.
+                Searches and purchases are tied
+                securely to your signed-in account.
               </p>
             </div>
           </div>
 
-          <div className="rounded-[2rem] border border-white/20 bg-white p-7 shadow-2xl sm:p-10">
-            <div>
-              <p className="text-sm font-extrabold uppercase tracking-[0.24em] text-blue-800">
-                Sign in
-              </p>
-
-              <h2 className="mt-3 text-3xl font-black text-slate-950">
-                Welcome back
-              </h2>
-
-              <p className="mt-3 leading-7 text-slate-600">
-                Enter the details used when creating
-                your Beacon account.
-              </p>
-            </div>
-
-            {error && (
-              <div
-                role="alert"
-                className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800"
-              >
-                {error}
-              </div>
-            )}
-
-            <form
-              onSubmit={handleSubmit}
-              className="mt-7 space-y-5"
-            >
-              <div>
-                <label
-                  htmlFor="email"
-                  className="block text-sm font-extrabold text-slate-800"
-                >
-                  Email address
-                </label>
-
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(event) =>
-                    setEmail(
-                      event.target.value
-                    )
-                  }
-                  disabled={submitting}
-                  placeholder="you@example.com"
-                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3.5 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-700 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between gap-4">
-                  <label
-                    htmlFor="password"
-                    className="block text-sm font-extrabold text-slate-800"
-                  >
-                    Password
-                  </label>
-
-                  <Link
-                    href="/forgot-password"
-                    className="text-sm font-bold text-blue-800 hover:underline"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
-
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(event) =>
-                    setPassword(
-                      event.target.value
-                    )
-                  }
-                  disabled={submitting}
-                  placeholder="Enter your password"
-                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3.5 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-700 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-                />
-              </div>
-
-              <label className="flex items-center gap-3 text-sm font-semibold text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(event) =>
-                    setRememberMe(
-                      event.target.checked
-                    )
-                  }
-                  disabled={submitting}
-                  className="h-4 w-4 rounded border-slate-300"
-                />
-
-                Keep me signed in
-              </label>
-
-              <button
-                type="submit"
-                disabled={
-                  submitting ||
-                  sessionPending
-                }
-                className="w-full rounded-2xl bg-blue-900 px-5 py-4 font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {submitting
-                  ? "Signing In..."
-                  : "Sign In to Beacon"}
-              </button>
-            </form>
-
-            <p className="mt-7 text-center text-sm text-slate-600">
-              New to Beacon?{" "}
-              <Link
-                href="/signup"
-                className="font-extrabold text-blue-800 hover:underline"
-              >
-                Create an account
-              </Link>
-            </p>
-          </div>
+          <Suspense
+            fallback={
+              <SignInFormFallback />
+            }
+          >
+            <SignInForm />
+          </Suspense>
         </div>
       </section>
 
