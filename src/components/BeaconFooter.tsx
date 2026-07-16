@@ -40,7 +40,7 @@ export default function BeaconFooter() {
               </li>
 
               <li>
-                <Link href="/login">
+                <Link href="/signin">
                   Log In
                 </Link>
               </li>

@@ -77,7 +77,7 @@ export default function Navbar() {
 
           <div className="flex shrink-0 items-center gap-3">
             <Link
-              href="/login"
+              href="/signin"
               className="hidden rounded-xl px-4 py-3 font-extrabold text-blue-950 transition hover:bg-blue-50 sm:inline-flex"
             >
               Log In

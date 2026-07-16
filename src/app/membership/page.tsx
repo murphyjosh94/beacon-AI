@@ -86,7 +86,7 @@ export default function MembershipPage() {
             </ul>
 
             <Link
-              href="/login"
+              href="/signin"
               className="mt-10 inline-flex w-full items-center justify-center rounded-2xl border-2 border-blue-900 px-6 py-4 text-lg font-extrabold text-blue-900 transition hover:bg-blue-50"
             >
               Create Free Account
@@ -133,7 +133,7 @@ export default function MembershipPage() {
               </ul>
 
               <Link
-                href="/login"
+                href="/signin"
                 className="mt-10 inline-flex w-full items-center justify-center rounded-2xl bg-white px-6 py-4 text-lg font-extrabold text-blue-950 shadow-xl transition hover:-translate-y-0.5 hover:bg-blue-50"
               >
                 Join the Beacon+ Waitlist
