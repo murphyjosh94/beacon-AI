@@ -8,93 +8,165 @@ import {
   Geist_Mono,
 } from "next/font/google";
 
+import {
+  absoluteUrl,
+  siteConfig,
+} from "@/lib/seo/SiteConfig";
+
 import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    "https://beacon-ai.co.uk"
-  ),
+  metadataBase: new URL(siteConfig.url),
 
   title: {
-    default: "Beacon AI",
+    default:
+      "Beacon AI | Personalised Shopping and Travel Recommendations",
     template: "%s | Beacon AI",
   },
 
   description:
-    "Beacon AI helps you discover and compare products, hotels, getaways, entertainment and useful offers through personalised AI-powered recommendations.",
+    siteConfig.description,
 
   applicationName:
-    "Beacon AI",
+    siteConfig.name,
+
+  keywords: [
+    ...siteConfig.keywords,
+  ],
+
+  authors: [
+    {
+      name: siteConfig.officialName,
+      url: siteConfig.url,
+    },
+  ],
+
+  creator:
+    siteConfig.officialName,
+
+  publisher:
+    siteConfig.officialName,
+
+  category:
+    "technology",
+
+  referrer:
+    "origin-when-cross-origin",
+
+  alternates: {
+    canonical: "/",
+  },
 
   icons: {
     icon: [
       {
-        url: "/images/logo.svg",
+        url: siteConfig.logo,
         type: "image/svg+xml",
       },
     ],
 
     shortcut:
-      "/images/logo.svg",
+      siteConfig.logo,
 
-    apple:
-      "/images/logo.svg",
+    apple: [
+      {
+        url: siteConfig.socialImage,
+        type: "image/png",
+      },
+    ],
   },
 
   openGraph: {
     type: "website",
-
-    url:
-      "https://beacon-ai.co.uk",
-
-    siteName:
-      "Beacon AI",
+    locale: siteConfig.locale,
+    url: siteConfig.url,
+    siteName: siteConfig.name,
 
     title:
-      "Beacon AI",
+      "Beacon AI | Personalised Shopping and Travel Recommendations",
 
     description:
-      "Personalised AI-powered recommendations for smarter shopping, travel and entertainment choices.",
+      siteConfig.shortDescription,
 
     images: [
       {
-        url:
-          "/images/logo.svg",
+        url: absoluteUrl(
+          siteConfig.socialImage
+        ),
 
         alt:
-          "Beacon AI lighthouse logo",
+          "Beacon AI logo",
+
+        type:
+          "image/png",
       },
     ],
   },
 
   twitter: {
     card:
-      "summary",
+      "summary_large_image",
 
     title:
-      "Beacon AI",
+      "Beacon AI | Personalised Recommendations",
 
     description:
-      "Personalised AI-powered recommendations for smarter choices.",
+      siteConfig.shortDescription,
 
     images: [
-      "/images/logo.svg",
+      absoluteUrl(
+        siteConfig.socialImage
+      ),
     ],
   },
 
   robots: {
     index: true,
     follow: true,
+
+    googleBot: {
+      index: true,
+      follow: true,
+      noimageindex: false,
+
+      "max-image-preview":
+        "large",
+
+      "max-snippet":
+        -1,
+
+      "max-video-preview":
+        -1,
+    },
+  },
+
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+
+  appleWebApp: {
+    capable: true,
+    title: siteConfig.name,
+    statusBarStyle: "default",
+  },
+
+  other: {
+    "impact-site-verification":
+      "7b474d9c-e6d8-448c-b333-b24afe8fcd54",
   },
 };
 
@@ -102,10 +174,14 @@ export const viewport: Viewport = {
   width:
     "device-width",
 
-  initialScale: 1,
+  initialScale:
+    1,
 
   themeColor:
-    "#0f172a",
+    siteConfig.themeColor,
+
+  colorScheme:
+    "light",
 };
 
 export default function RootLayout({
@@ -115,16 +191,9 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en-GB"
+      lang={siteConfig.language}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <head>
-        <meta
-          name="impact-site-verification"
-          content="7b474d9c-e6d8-448c-b333-b24afe8fcd54"
-        />
-      </head>
-
       <body className="flex min-h-full flex-col">
         {children}
       </body>

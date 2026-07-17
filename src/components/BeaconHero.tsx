@@ -1,4 +1,4 @@
-import BeaconSearch from "@/components/BeaconSearch";
+import BeaconSearch from "./BeaconSearch";
 
 export default function BeaconHero() {
   return (
@@ -26,10 +26,10 @@ export default function BeaconHero() {
           </p>
 
           <h1 className="mt-6 text-5xl font-black leading-[1.02] tracking-tight text-white drop-shadow-2xl sm:text-6xl xl:text-7xl">
-            Your Personal
-            <br />
-            AI Shopper
-          </h1>
+  Find Better Choices
+  <br />
+  with AI
+</h1>
 
           <p className="ml-auto mt-6 max-w-2xl text-lg font-medium leading-8 text-blue-50 drop-shadow">
             Tell Beacon what you need. We research trusted partners, compare

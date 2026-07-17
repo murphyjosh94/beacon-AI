@@ -964,6 +964,166 @@ export const savedSearch =
   );
 
 /*
+ * Public SEO search pages
+ *
+ * These records are separate from private user search history.
+ * They store completed recommendation responses that can be
+ * served at stable, indexable URLs.
+ */
+
+export const searchPage =
+  pgTable(
+    "search_page",
+    {
+      id:
+        uuid("id")
+          .defaultRandom()
+          .primaryKey(),
+
+      category:
+        text("category")
+          .notNull(),
+
+      slug:
+        text("slug")
+          .notNull(),
+
+      path:
+        text("path")
+          .notNull(),
+
+      query:
+        text("query")
+          .notNull(),
+
+      title:
+        text("title")
+          .notNull(),
+
+      description:
+        text("description")
+          .notNull(),
+
+      responseType:
+        text("response_type")
+          .notNull(),
+
+      source:
+        text("source")
+          .notNull(),
+
+      dataProvider:
+        text("data_provider")
+          .notNull(),
+
+      liveData:
+        boolean("live_data")
+          .notNull()
+          .default(false),
+
+      resultCount:
+        integer("result_count")
+          .notNull()
+          .default(0),
+
+      responseData:
+        jsonb("response_data")
+          .$type<unknown>()
+          .notNull(),
+
+      generatedByUserId:
+        text("generated_by_user_id")
+          .references(
+            () => user.id,
+            {
+              onDelete:
+                "set null",
+            }
+          ),
+
+      isIndexable:
+        boolean("is_indexable")
+          .notNull()
+          .default(true),
+
+      viewCount:
+        integer("view_count")
+          .notNull()
+          .default(0),
+
+      generatedAt:
+        timestamp(
+          "generated_at",
+          {
+            withTimezone: true,
+          }
+        )
+          .notNull()
+          .defaultNow(),
+
+      lastViewedAt:
+        timestamp(
+          "last_viewed_at",
+          {
+            withTimezone: true,
+          }
+        ),
+
+      createdAt:
+        timestamp(
+          "created_at",
+          {
+            withTimezone: true,
+          }
+        )
+          .notNull()
+          .defaultNow(),
+
+      updatedAt:
+        timestamp(
+          "updated_at",
+          {
+            withTimezone: true,
+          }
+        )
+          .notNull()
+          .defaultNow(),
+    },
+    (table) => [
+      uniqueIndex(
+        "search_page_category_slug_unique"
+      ).on(
+        table.category,
+        table.slug
+      ),
+
+      uniqueIndex(
+        "search_page_path_unique"
+      ).on(
+        table.path
+      ),
+
+      index(
+        "search_page_indexable_idx"
+      ).on(
+        table.isIndexable
+      ),
+
+      index(
+        "search_page_updated_at_idx"
+      ).on(
+        table.updatedAt
+      ),
+
+      index(
+        "search_page_generated_by_user_idx"
+      ).on(
+        table.generatedByUserId
+      ),
+    ]
+  );
+
+/*
  * Stripe webhook idempotency
  */
 
@@ -1110,6 +1270,11 @@ export const userRelations =
           savedSearch
         ),
 
+      searchPages:
+        many(
+          searchPage
+        ),
+
       stripeWebhookEvents:
         many(
           stripeWebhookEvent
@@ -1220,6 +1385,23 @@ export const savedSearchRelations =
     })
   );
 
+export const searchPageRelations =
+  relations(
+    searchPage,
+    ({ one }) => ({
+      generatedByUser:
+        one(user, {
+          fields: [
+            searchPage.generatedByUserId,
+          ],
+
+          references: [
+            user.id,
+          ],
+        }),
+    })
+  );
+
 export const stripeWebhookEventRelations =
   relations(
     stripeWebhookEvent,
@@ -1265,6 +1447,12 @@ export type SearchHistoryEntry =
 
 export type SavedSearchEntry =
   typeof savedSearch.$inferSelect;
+
+export type SearchPageEntry =
+  typeof searchPage.$inferSelect;
+
+export type NewSearchPageEntry =
+  typeof searchPage.$inferInsert;
 
 export type StripeWebhookEvent =
   typeof stripeWebhookEvent.$inferSelect;

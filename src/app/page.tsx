@@ -1,39 +1,111 @@
-import Navbar from "@/components/Navbar";
-import BeaconHero from "@/components/BeaconHero";
-import BeaconFooter from "@/components/BeaconFooter";
+import type {
+  Metadata,
+} from "next";
+
 import AmazonSubscriptionBanner from "@/components/AmazonSubscriptionBanner";
+import BeaconFooter from "@/components/BeaconFooter";
+import BeaconHero from "@/components/BeaconHero";
+import Navbar from "@/components/Navbar";
+import JsonLd from "@/components/seo/JsonLd";
+
+import {
+  absoluteUrl,
+  siteConfig,
+} from "@/lib/seo/SiteConfig";
+
+export const metadata: Metadata = {
+  title:
+    "AI Shopping, Travel and Entertainment Recommendations",
+
+  description:
+    "Find five personalised recommendations for products, holidays, hotels, entertainment and useful services with Beacon AI.",
+
+  alternates: {
+    canonical: "/",
+  },
+
+  openGraph: {
+    type: "website",
+
+    url:
+      siteConfig.url,
+
+    title:
+      "Beacon AI | Find Better Products, Trips and Experiences",
+
+    description:
+      "Tell Beacon what matters to you and receive five personalised recommendations without searching through hundreds of results.",
+
+    images: [
+      {
+        url:
+          absoluteUrl(
+            siteConfig.socialImage
+          ),
+
+        alt:
+          "Beacon AI personalised recommendation platform",
+      },
+    ],
+  },
+
+  twitter: {
+    card:
+      "summary_large_image",
+
+    title:
+      "Beacon AI | Find Better Choices with AI",
+
+    description:
+      "Five personalised recommendations for shopping, travel, entertainment and more.",
+
+    images: [
+      absoluteUrl(
+        siteConfig.socialImage
+      ),
+    ],
+  },
+};
 
 const categories = [
   {
     id: "shopping",
     eyebrow: "Beacon Shopping",
     title: "Find the right product",
+
     description:
       "Tell Beacon what matters to you and receive five carefully selected products that match your budget, needs and preferences.",
+
     examples: [
       "Best 55-inch TV under £800",
       "Quiet cordless vacuum for pet hair",
       "Laptop for university and light gaming",
     ],
   },
+
   {
     id: "getaways",
     eyebrow: "Beacon Getaways",
     title: "Plan the right break",
+
     description:
       "From UK staycations to holidays abroad, Beacon helps narrow hundreds of options into five clear recommendations.",
+
     examples: [
       "Family beach holiday under £2,500",
       "Dog-friendly cottage in Cornwall",
       "Weekend break for two in Edinburgh",
     ],
   },
+
   {
     id: "entertainment",
     eyebrow: "Beacon Entertainment",
     title: "Discover something memorable",
+
     description:
       "Find events, attractions and experiences matched to your location, interests, dates and budget.",
+
     examples: [
       "Family day out near Manchester",
       "West End show and hotel package",
@@ -42,131 +114,252 @@ const categories = [
   },
 ];
 
+const organizationSchema = {
+  "@context":
+    "https://schema.org",
+
+  "@type":
+    "Organization",
+
+  "@id":
+    absoluteUrl(
+      "/#organization"
+    ),
+
+  name:
+    siteConfig.officialName,
+
+  alternateName:
+    siteConfig.name,
+
+  url:
+    siteConfig.url,
+
+  logo: {
+    "@type":
+      "ImageObject",
+
+    url:
+      absoluteUrl(
+        siteConfig.socialImage
+      ),
+  },
+};
+
+const websiteSchema = {
+  "@context":
+    "https://schema.org",
+
+  "@type":
+    "WebSite",
+
+  "@id":
+    absoluteUrl(
+      "/#website"
+    ),
+
+  name:
+    siteConfig.name,
+
+  alternateName:
+    siteConfig.officialName,
+
+  url:
+    siteConfig.url,
+
+  description:
+    siteConfig.description,
+
+  inLanguage:
+    siteConfig.language,
+
+  publisher: {
+    "@id":
+      absoluteUrl(
+        "/#organization"
+      ),
+  },
+};
+
 export default function Home() {
   return (
-    <main className="min-h-screen bg-slate-50">
-      <Navbar />
+    <>
+      <JsonLd
+        data={[
+          organizationSchema,
+          websiteSchema,
+        ]}
+      />
 
-<AmazonSubscriptionBanner />
+      <main className="min-h-screen bg-slate-50">
+        <Navbar />
 
-      <BeaconHero />
+        <AmazonSubscriptionBanner />
 
-      <section className="px-6 py-20">
-        <div className="mx-auto max-w-7xl">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-blue-900">
-              How Beacon Helps
-            </p>
+        <BeaconHero />
 
-            <h2 className="mt-4 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">
-              Five strong choices. Not five hundred results.
-            </h2>
+        <section
+          className="px-6 py-20"
+          aria-labelledby="how-beacon-helps"
+        >
+          <div className="mx-auto max-w-7xl">
+            <div className="mx-auto max-w-3xl text-center">
+              <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-blue-900">
+                How Beacon Helps
+              </p>
 
-            <p className="mt-5 text-lg leading-8 text-slate-600">
-              Beacon learns what matters to you, compares suitable options and
-              explains why each recommendation deserves your attention.
-            </p>
-          </div>
-
-          <div className="mt-14 grid gap-8 lg:grid-cols-3">
-            {categories.map((category) => (
-              <article
-                key={category.id}
-                id={category.id}
-                className="scroll-mt-32 rounded-[2rem] border border-slate-200 bg-white p-8 shadow-xl"
+              <h2
+                id="how-beacon-helps"
+                className="mt-4 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl"
               >
-                <p className="text-sm font-extrabold uppercase tracking-[0.24em] text-blue-900">
-                  {category.eyebrow}
-                </p>
+                Five strong choices. Not five hundred results.
+              </h2>
 
-                <h3 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
-                  {category.title}
-                </h3>
+              <p className="mt-5 text-lg leading-8 text-slate-600">
+                Beacon learns what matters to you, compares suitable options
+                and explains why each recommendation deserves your attention.
+              </p>
+            </div>
 
-                <p className="mt-4 leading-7 text-slate-600">
-                  {category.description}
-                </p>
+            <div className="mt-14 grid gap-8 lg:grid-cols-3">
+              {categories.map(
+                (category) => (
+                  <article
+                    key={
+                      category.id
+                    }
+                    id={
+                      category.id
+                    }
+                    className="scroll-mt-32 rounded-[2rem] border border-slate-200 bg-white p-8 shadow-xl"
+                  >
+                    <p className="text-sm font-extrabold uppercase tracking-[0.24em] text-blue-900">
+                      {
+                        category.eyebrow
+                      }
+                    </p>
 
-                <div className="mt-6 space-y-3">
-                  {category.examples.map((example) => (
-                    <div
-                      key={example}
-                      className="rounded-2xl bg-slate-50 px-4 py-3 font-semibold text-slate-700"
-                    >
-                      “{example}”
+                    <h3 className="mt-3 text-3xl font-black tracking-tight text-slate-950">
+                      {
+                        category.title
+                      }
+                    </h3>
+
+                    <p className="mt-4 leading-7 text-slate-600">
+                      {
+                        category.description
+                      }
+                    </p>
+
+                    <div className="mt-6 space-y-3">
+                      {category.examples.map(
+                        (
+                          example
+                        ) => (
+                          <div
+                            key={
+                              example
+                            }
+                            className="rounded-2xl bg-slate-50 px-4 py-3 font-semibold text-slate-700"
+                          >
+                            “
+                            {
+                              example
+                            }
+                            ”
+                          </div>
+                        )
+                      )}
                     </div>
-                  ))}
-                </div>
-              </article>
-            ))}
+                  </article>
+                )
+              )}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="bg-blue-950 px-6 py-20 text-white">
-        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
-          <div>
-            <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-blue-200">
-              The Beacon Difference
+        <section
+          className="bg-blue-950 px-6 py-20 text-white"
+          aria-labelledby="beacon-difference"
+        >
+          <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
+            <div>
+              <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-blue-200">
+                The Beacon Difference
+              </p>
+
+              <h2
+                id="beacon-difference"
+                className="mt-4 text-4xl font-black tracking-tight sm:text-5xl"
+              >
+                Recommendations built around you.
+              </h2>
+
+              <p className="mt-6 max-w-2xl text-lg leading-8 text-blue-100">
+                Beacon is not designed to overwhelm you with sponsored
+                listings. It is designed to understand your request, compare
+                trusted options and explain the five strongest matches in
+                plain English.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[
+                "Personalised recommendations",
+                "Clear Beacon Score",
+                "Trusted partner links",
+                "Transparent sponsored labels",
+                "Saved preferences",
+                "Price and holiday alerts",
+              ].map(
+                (item) => (
+                  <div
+                    key={
+                      item
+                    }
+                    className="rounded-2xl border border-white/15 bg-white/10 p-5 font-bold backdrop-blur"
+                  >
+                    ✓ {item}
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section
+          className="px-6 py-20"
+          aria-labelledby="beacon-plus"
+        >
+          <div className="mx-auto max-w-5xl rounded-[2rem] bg-white p-8 text-center shadow-2xl sm:p-12">
+            <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-blue-900">
+              Beacon+
             </p>
 
-            <h2 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl">
-              Recommendations built around you.
+            <h2
+              id="beacon-plus"
+              className="mt-4 text-4xl font-black tracking-tight text-slate-950"
+            >
+              Your personal shopper gets better with you.
             </h2>
 
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-blue-100">
-              Beacon is not designed to overwhelm you with sponsored listings.
-              It is designed to understand your request, compare trusted
-              options and explain the five strongest matches in plain English.
+            <p className="mx-auto mt-5 max-w-3xl text-lg leading-8 text-slate-600">
+              Save preferences, track prices, create family profiles, remember
+              your vehicles and pets, and receive personalised alerts when
+              better options appear.
             </p>
+
+            <a
+              href="/membership"
+              className="mt-8 inline-flex rounded-2xl bg-blue-900 px-8 py-4 text-lg font-extrabold text-white shadow-xl transition hover:-translate-y-0.5 hover:bg-blue-800"
+            >
+              Explore Beacon+
+            </a>
           </div>
+        </section>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            {[
-              "Personalised recommendations",
-              "Clear Beacon Score",
-              "Trusted partner links",
-              "Transparent sponsored labels",
-              "Saved preferences",
-              "Price and holiday alerts",
-            ].map((item) => (
-              <div
-                key={item}
-                className="rounded-2xl border border-white/15 bg-white/10 p-5 font-bold backdrop-blur"
-              >
-                ✓ {item}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="px-6 py-20">
-        <div className="mx-auto max-w-5xl rounded-[2rem] bg-white p-8 text-center shadow-2xl sm:p-12">
-          <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-blue-900">
-            Beacon+
-          </p>
-
-          <h2 className="mt-4 text-4xl font-black tracking-tight text-slate-950">
-            Your personal shopper gets better with you.
-          </h2>
-
-          <p className="mx-auto mt-5 max-w-3xl text-lg leading-8 text-slate-600">
-            Save preferences, track prices, create family profiles, remember
-            your vehicles and pets, and receive personalised alerts when better
-            options appear.
-          </p>
-
-          <a
-            href="/membership"
-            className="mt-8 inline-flex rounded-2xl bg-blue-900 px-8 py-4 text-lg font-extrabold text-white shadow-xl transition hover:-translate-y-0.5 hover:bg-blue-800"
-          >
-            Explore Beacon+
-          </a>
-        </div>
-      </section>
-
-      <BeaconFooter />
-   </main>
+        <BeaconFooter />
+      </main>
+    </>
   );
 }

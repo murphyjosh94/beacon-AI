@@ -1,538 +1,335 @@
 import "server-only";
 
 import {
-  executeAggregator,
-} from "@/services/aggregator/Aggregator";
+  answerGeneralRequest,
+  GeneralAnswerError,
+} from "@/services/openai/GeneralAnswerProvider";
 
 import {
-  getAggregatorProvidersForVertical,
-} from "@/services/aggregator/ProviderRegistry";
+  generateGuidedRecommendations,
+  GuidedRecommendationError,
+} from "@/services/openai/GuidedRecommendationProvider";
 
 import {
+  createGeneralAnswerResponse,
   createRecommendationResponse,
 } from "@/services/response/BeaconResponse";
 
 import {
-  handleGuidedDiscovery,
-} from "@/services/orchestrator/BeaconGeneralHandler";
-
-import {
-  createMissingDestinationError,
-  createProviderUnavailableError,
-  isProviderUnavailableError,
+  mapGeneralAnswerError,
 } from "@/services/orchestrator/BeaconEngineErrors";
-
-import type {
-  AggregatorExecutionResult,
-  AggregatorVertical,
-} from "@/services/aggregator/AggregatorTypes";
 
 import type {
   BeaconCapability,
 } from "@/services/intelligence/IntentEngine";
 
 import type {
-  BeaconDataProvider,
+  RecommendationCategory,
+  SearchIntent,
+} from "@/lib/recommendations/RecommendationTypes";
+
+import type {
   BeaconResponse,
   BeaconResponseSource,
 } from "@/services/response/BeaconResponse";
 
-import type {
-  SearchIntent,
-} from "@/lib/recommendations/RecommendationTypes";
-
-type AggregatorResponseConfiguration = {
-  vertical: AggregatorVertical;
-
-  source: Exclude<
-    BeaconResponseSource,
-    "general"
+type RecommendationCapability =
+  Exclude<
+    BeaconCapability,
+    "general_answer"
   >;
 
-  dataProvider:
-    BeaconDataProvider;
-
-  affiliateCampaign:
-    string;
-
-  aiSummary: string;
-};
-
-type LocalDiscoveryCapability =
-  | "travel_ideas"
-  | "restaurants"
-  | "activities"
-  | "local_services"
-  | "places"
-  | "weekend_plan";
-
-type EntertainmentCapability =
-  | "tickets"
-  | "events"
-  | "experiences"
-  | "sports_travel";
-
-type CombinedTravelCapability =
-  | "package_holiday"
-  | "flight_and_hotel";
-
-function getDestination(
-  intent: SearchIntent
-): string | undefined {
+function isRecommendationCapability(
+  capability: BeaconCapability
+): capability is RecommendationCapability {
   return (
-    intent.destination?.trim() ||
-    intent.location?.trim() ||
-    undefined
+    capability !==
+    "general_answer"
   );
 }
 
-function ensureDestination(
-  intent: SearchIntent,
-  question =
-    "Which destination or area would you like Beacon to search?"
-): string {
-  const destination =
-    getDestination(intent);
+function getRecommendationCategory(
+  capability: RecommendationCapability
+): RecommendationCategory {
+  switch (capability) {
+    case "product_search":
+    case "vehicle_parts":
+    case "vehicle_accessories":
+    case "vehicle_search":
+      return "product";
 
-  if (!destination) {
-    throw createMissingDestinationError(
-      question
-    );
+    case "tickets":
+    case "events":
+    case "experiences":
+    case "activities":
+      return "experience";
+
+    case "restaurants":
+    case "local_services":
+    case "places":
+      return "service";
+
+    case "hotel_discovery":
+    case "hotel_availability":
+    case "package_holiday":
+    case "flights":
+    case "flight_and_hotel":
+    case "travel_ideas":
+    case "weekend_plan":
+    case "sports_travel":
+      return "holiday";
   }
-
-  return destination;
 }
 
-function createAggregatorSummary(
-  baseSummary: string,
-  result: AggregatorExecutionResult
-): string {
-  const failureCount =
-    result.providerFailures.length;
+function getRecommendationSource(
+  capability: RecommendationCapability
+): Exclude<
+  BeaconResponseSource,
+  "general"
+> {
+  switch (capability) {
+    case "product_search":
+    case "vehicle_parts":
+    case "vehicle_accessories":
+    case "vehicle_search":
+      return "shopping";
 
-  if (
-    failureCount === 0 ||
-    result.recommendations.length ===
-      0
-  ) {
-    return baseSummary;
+    case "flights":
+      return "flight";
+
+    case "tickets":
+    case "events":
+    case "experiences":
+      return "entertainment";
+
+    case "hotel_discovery":
+    case "hotel_availability":
+    case "package_holiday":
+    case "flight_and_hotel":
+    case "travel_ideas":
+    case "restaurants":
+    case "activities":
+    case "local_services":
+    case "places":
+    case "weekend_plan":
+    case "sports_travel":
+      return "hotel";
   }
-
-  const unavailableMessage =
-    failureCount === 1
-      ? "One source was temporarily unavailable."
-      : `${failureCount} sources were temporarily unavailable.`;
-
-  return `${baseSummary} ${unavailableMessage}`;
 }
 
-function ensureAggregatorProducedResults(
-  result: AggregatorExecutionResult,
-  verticalLabel: string
-): void {
-  if (
-    result.recommendations.length >
-    0
-  ) {
-    return;
-  }
-
-  const providerMessage =
-    result.providerFailures
-      .map(
-        (failure) =>
-          failure.message
-      )
-      .find(Boolean);
-
-  throw createProviderUnavailableError(
-    providerMessage ??
-      `Beacon could not find suitable ${verticalLabel} results for this request.`
-  );
-}
-
-async function executeRecommendationAggregator(
+function createFallbackIntent(
   query: string,
-  intent: SearchIntent,
-  configuration:
-    AggregatorResponseConfiguration
-): Promise<BeaconResponse> {
-  const providers =
-    getAggregatorProvidersForVertical(
-      configuration.vertical
-    );
+  capability: RecommendationCapability
+): SearchIntent {
+  return {
+    rawQuery:
+      query.trim(),
 
-  if (
-    providers.length === 0
-  ) {
-    throw createProviderUnavailableError(
-      `Beacon does not currently have an available ${configuration.vertical} provider.`
-    );
-  }
-
-  const result =
-    await executeAggregator({
-      query,
-
-      intent,
-
-      vertical:
-        configuration.vertical,
-
-      providers,
-
-      affiliateCampaign:
-        configuration.affiliateCampaign,
-
-      options: {
-        providerLimit: 30,
-        finalLimit: 5,
-        minimumScore: 35,
-        minimumTrustScore: 25,
-        timeoutMs: 15_000,
-      },
-    });
-
-  ensureAggregatorProducedResults(
-    result,
-    configuration.vertical
-  );
-
-  return createRecommendationResponse({
-    query,
-
-    source:
-      configuration.source,
-
-    dataProvider:
-      configuration.dataProvider,
-
-    liveData: true,
-
-    intent,
-
-    summary:
-      `${result.recommendations.length} strong options selected from live provider results.`,
-
-    aiSummary:
-      createAggregatorSummary(
-        configuration.aiSummary,
-        result
+    category:
+      getRecommendationCategory(
+        capability
       ),
 
-    recommendations:
-      result.recommendations,
-  });
+    keywords: [],
+
+    preferences: [],
+
+    exclusions: [],
+  };
 }
 
-function isAutomotiveCapability(
-  capability: BeaconCapability
-): boolean {
-  return (
-    capability ===
-      "vehicle_parts" ||
-    capability ===
-      "vehicle_accessories" ||
-    capability ===
-      "vehicle_search"
+function ensureRecommendationIntent(
+  intent: SearchIntent,
+  capability: RecommendationCapability
+): SearchIntent {
+  return {
+    ...intent,
+
+    rawQuery:
+      intent.rawQuery.trim(),
+
+    category:
+      getRecommendationCategory(
+        capability
+      ),
+
+    keywords:
+      Array.isArray(
+        intent.keywords
+      )
+        ? intent.keywords
+        : [],
+
+    preferences:
+      Array.isArray(
+        intent.preferences
+      )
+        ? intent.preferences
+        : [],
+
+    exclusions:
+      Array.isArray(
+        intent.exclusions
+      )
+        ? intent.exclusions
+        : [],
+  };
+}
+
+function mapGuidedRecommendationError(
+  error: GuidedRecommendationError
+): GeneralAnswerError {
+  return new GeneralAnswerError(
+    error.message,
+    error.code
   );
 }
 
-export async function handleShoppingRecommendation(
-  query: string,
-  intent: SearchIntent,
-  capability: BeaconCapability
+export async function handleGeneralAnswer(
+  query: string
 ): Promise<BeaconResponse> {
-  const automotive =
-    isAutomotiveCapability(
+  try {
+    const result =
+      await answerGeneralRequest(
+        query
+      );
+
+    return createGeneralAnswerResponse({
+      query,
+
+      answer:
+        result.answer,
+
+      usedWebSearch:
+        result.usedWebSearch,
+    });
+  } catch (error) {
+    if (
+      error instanceof
+      GeneralAnswerError
+    ) {
+      throw mapGeneralAnswerError(
+        error
+      );
+    }
+
+    throw error;
+  }
+}
+
+export function createGuidedDiscoveryPrompt(
+  query: string,
+  capability: BeaconCapability
+): string {
+  const cleanedQuery =
+    query.trim();
+
+  if (
+    capability ===
+    "general_answer"
+  ) {
+    return cleanedQuery;
+  }
+
+  return [
+    cleanedQuery,
+    `Beacon capability: ${capability}.`,
+    "Return separate structured recommendation cards.",
+    "Do not return an essay, numbered prose list or markdown table.",
+  ].join(" ");
+}
+
+export async function handleGuidedDiscovery(
+  query: string,
+  capability: BeaconCapability,
+  intent?: SearchIntent
+): Promise<BeaconResponse> {
+  if (
+    !isRecommendationCapability(
+      capability
+    )
+  ) {
+    return handleGeneralAnswer(
+      query
+    );
+  }
+
+  const resolvedIntent =
+    ensureRecommendationIntent(
+      intent ??
+        createFallbackIntent(
+          query,
+          capability
+        ),
       capability
     );
 
-  const aiSummary =
-    automotive
-      ? [
-          "Beacon searched live shopping and automotive sources.",
-          "It checked the supplied vehicle information, removed conflicting or unsuitable listings and selected the strongest matches.",
-          "Confirm final vehicle compatibility with the retailer before purchasing.",
-        ].join(" ")
-      : [
-          "Beacon searched live shopping providers for concrete product listings.",
-          "It removed weak or duplicate matches and compared relevance, value, quality and trust.",
-        ].join(" ");
-
-  return executeRecommendationAggregator(
-    query,
-    {
-      ...intent,
-      category: "product",
-    },
-    {
-      vertical:
-        "shopping",
-
-      source:
-        "shopping",
-
-      dataProvider:
-        "serpapi-google-shopping",
-
-      affiliateCampaign:
-        automotive
-          ? "beacon-automotive"
-          : "beacon-shopping",
-
-      aiSummary,
-    }
-  );
-}
-
-export async function handleHotelDiscoveryRecommendation(
-  query: string,
-  intent: SearchIntent
-): Promise<BeaconResponse> {
-  ensureDestination(intent);
-
   try {
-    return await executeRecommendationAggregator(
+    const result =
+      await generateGuidedRecommendations(
+        query,
+        capability,
+        resolvedIntent
+      );
+
+    return createRecommendationResponse({
       query,
-      {
-        ...intent,
-        category: "holiday",
-      },
-      {
-        vertical:
-          "travel",
-
-        source:
-          "hotel",
-
-        dataProvider:
-          "serpapi-google-maps",
-
-        affiliateCampaign:
-          "beacon-hotel-discovery",
-
-        aiSummary:
-          [
-            "Beacon searched live accommodation discovery sources and selected real hotel listings.",
-            "Results were compared using destination, suitability, ratings, reviews, amenities and location.",
-          ].join(" "),
-      }
-    );
-  } catch (error) {
-    if (
-      !isProviderUnavailableError(
-        error
-      )
-    ) {
-      throw error;
-    }
-
-    return handleGuidedDiscovery(
-      query,
-      "hotel_discovery",
-      intent
-    );
-  }
-}
-
-export async function handleHotelAvailabilityRecommendation(
-  query: string,
-  intent: SearchIntent
-): Promise<BeaconResponse> {
-  ensureDestination(intent);
-
-  return executeRecommendationAggregator(
-    query,
-    {
-      ...intent,
-      category: "holiday",
-    },
-    {
-      vertical:
-        "travel",
 
       source:
-        "hotel",
+        getRecommendationSource(
+          capability
+        ),
 
       dataProvider:
-        "serpapi-google-hotels",
+        result.usedWebSearch
+          ? "openai-web-search"
+          : "openai",
 
-      affiliateCampaign:
-        "beacon-hotel-availability",
+      liveData:
+        result.usedWebSearch,
+
+      intent:
+        resolvedIntent,
+
+      summary:
+        result.summary,
 
       aiSummary:
-        [
-          "Beacon searched live accommodation providers using the dates supplied.",
-          "It compared availability, prices, ratings, reviews, amenities and location before selecting the strongest hotel listings.",
-        ].join(" "),
-    }
-  );
-}
+        result.summary,
 
-export async function handleFlightRecommendation(
-  query: string,
-  intent: SearchIntent
-): Promise<BeaconResponse> {
-  ensureDestination(
-    intent,
-    "Where would you like to fly to?"
-  );
-
-  const providers =
-    getAggregatorProvidersForVertical(
-      "flights"
-    );
-
-  if (
-    providers.length === 0
-  ) {
-    return handleGuidedDiscovery(
-      query,
-      "flights",
-      intent
-    );
-  }
-
-  try {
-    return await executeRecommendationAggregator(
-      query,
-      {
-        ...intent,
-        category: "holiday",
-      },
-      {
-        vertical:
-          "flights",
-
-        source:
-          "flight",
-
-        dataProvider:
-          "serpapi-google-flights",
-
-        affiliateCampaign:
-          "beacon-flights",
-
-        aiSummary:
-          [
-            "Beacon searched live flight providers.",
-            "It compared routes using relevance, timings, value and source reliability before selecting the strongest options.",
-          ].join(" "),
-      }
-    );
+      recommendations:
+        result.recommendations,
+    });
   } catch (error) {
     if (
-      !isProviderUnavailableError(
-        error
-      )
+      error instanceof
+      GuidedRecommendationError
     ) {
-      throw error;
+      throw mapGeneralAnswerError(
+        mapGuidedRecommendationError(
+          error
+        )
+      );
     }
 
-    return handleGuidedDiscovery(
-      query,
-      "flights",
-      intent
-    );
+    throw error;
   }
 }
 
-export async function handleCombinedTravelRecommendation(
+export async function handleCapabilityResponse(
   query: string,
-  intent: SearchIntent,
-  capability:
-    CombinedTravelCapability
-): Promise<BeaconResponse> {
-  ensureDestination(intent);
-
-  return handleGuidedDiscovery(
-    query,
-    capability,
-    {
-      ...intent,
-      category: "holiday",
-    }
-  );
-}
-
-export async function handleEntertainmentRecommendation(
-  query: string,
-  intent: SearchIntent,
-  capability:
-    EntertainmentCapability
-): Promise<BeaconResponse> {
-  const providers =
-    getAggregatorProvidersForVertical(
-      "entertainment"
-    );
-
-  if (
-    providers.length === 0
-  ) {
-    return handleGuidedDiscovery(
-      query,
-      capability,
-      {
-        ...intent,
-        category: "experience",
-      }
-    );
-  }
-
-  try {
-    return await executeRecommendationAggregator(
-      query,
-      {
-        ...intent,
-        category: "experience",
-      },
-      {
-        vertical:
-          "entertainment",
-
-        source:
-          "entertainment",
-
-        dataProvider:
-          "mixed",
-
-        affiliateCampaign:
-          "beacon-entertainment",
-
-        aiSummary:
-          [
-            "Beacon searched live entertainment, event, ticket and experience sources.",
-            "It compared relevance, suitability, value and source trust before selecting the strongest options.",
-          ].join(" "),
-      }
-    );
-  } catch (error) {
-    if (
-      !isProviderUnavailableError(
-        error
-      )
-    ) {
-      throw error;
-    }
-
-    return handleGuidedDiscovery(
-      query,
-      capability,
-      {
-        ...intent,
-        category: "experience",
-      }
-    );
-  }
-}
-
-export async function handleLocalDiscoveryRecommendation(
-  query: string,
-  capability:
-    LocalDiscoveryCapability,
+  capability: BeaconCapability,
   intent?: SearchIntent
 ): Promise<BeaconResponse> {
+  if (
+    capability ===
+    "general_answer"
+  ) {
+    return handleGeneralAnswer(
+      query
+    );
+  }
+
   return handleGuidedDiscovery(
     query,
     capability,

@@ -62,6 +62,13 @@ export type BeaconResponse =
 export type BeaconApiSuccessResponse = {
   success: true;
   data: BeaconResponse;
+  publicPath?: string;
+  account?: {
+    freeDailyLimit: number;
+    creditCharged: boolean;
+    purchasedCreditsRemaining: number;
+    beaconPlusActive: boolean;
+  };
 };
 
 export type BeaconApiErrorCode =
@@ -71,6 +78,7 @@ export type BeaconApiErrorCode =
   | "validation_failed"
   | "missing_destination"
   | "provider_unavailable"
+  | "authentication_required"
   | "authentication_failed"
   | "billing_required"
   | "rate_limited"

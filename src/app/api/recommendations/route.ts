@@ -25,12 +25,17 @@ import {
   executeBeaconRequest,
 } from "@/services/orchestrator/BeaconEngine";
 
+import {
+  publishSearchPage,
+} from "@/lib/search/SearchPageRepository";
+
 import type {
   BeaconResponse,
 } from "@/services/response/BeaconResponse";
 
 type RecommendationRequestBody = {
   query?: unknown;
+  displayQuery?: unknown;
 };
 
 type AuthenticatedAccount = {
@@ -597,6 +602,11 @@ export async function POST(
         body.query
       );
 
+    const displayQuery =
+      readQuery(
+        body.displayQuery
+      ) || query;
+
     if (!query) {
       return createErrorResponse(
         "missing_query",
@@ -639,12 +649,43 @@ export async function POST(
       creditReservation.charged
     );
 
+    let publicPath: string | undefined;
+
+    if (
+      result.responseType ===
+        "recommendations" &&
+      result.recommendations.length > 0
+    ) {
+      try {
+        const publishedPage =
+          await publishSearchPage({
+            displayQuery,
+            response: result,
+            generatedByUserId:
+              authenticatedAccount.id,
+          });
+
+        publicPath = publishedPage.path;
+      } catch (publicationError) {
+        console.error(
+          "Beacon completed the search but could not publish its public page:",
+          publicationError
+        );
+      }
+    }
+
     return NextResponse.json(
       {
         success: true,
 
         data:
           result,
+
+        ...(publicPath
+          ? {
+              publicPath,
+            }
+          : {}),
 
         account: {
           freeDailyLimit:

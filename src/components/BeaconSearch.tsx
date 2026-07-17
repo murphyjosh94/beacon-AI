@@ -1,6 +1,10 @@
 "use client";
 
 import {
+  useRouter,
+} from "next/navigation";
+
+import {
   FormEvent,
   useState,
 } from "react";
@@ -264,6 +268,7 @@ function getPreferredVehicle(
 }
 
 export default function BeaconSearch() {
+  const router = useRouter();
   const [query, setQuery] =
     useState("");
 
@@ -374,6 +379,7 @@ export default function BeaconSearch() {
             body:
               JSON.stringify({
                 query: researchQuery,
+                displayQuery,
               }),
           }
         );
@@ -388,6 +394,15 @@ export default function BeaconSearch() {
         throw new Error(
           readApiError(data)
         );
+      }
+
+      if (
+        data.publicPath &&
+        data.data.responseType ===
+          "recommendations"
+      ) {
+        router.push(data.publicPath);
+        return;
       }
 
       setResult(data.data);
