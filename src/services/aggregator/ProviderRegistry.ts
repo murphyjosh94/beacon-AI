@@ -9,6 +9,10 @@ import {
 } from "@/services/aggregator/providers/SerpApiHotelsAggregatorProvider";
 
 import {
+  serpApiFlightsAggregatorProvider,
+} from "./providers/SerpApiFlightsAggregatorProvider";
+
+import {
   awinPartnerAggregatorProvider,
 } from "@/services/aggregator/providers/AwinPartnerAggregatorProvider";
 
@@ -18,20 +22,24 @@ import type {
   AggregatorVertical,
 } from "@/services/aggregator/AggregatorTypes";
 
-const REGISTERED_PROVIDERS: readonly AggregatorProvider[] = [
-  awinPartnerAggregatorProvider,
-  serpApiHotelsAggregatorProvider,
-  serpApiShoppingAggregatorProvider,
-];
+const REGISTERED_PROVIDERS:
+  readonly AggregatorProvider[] = [
+    awinPartnerAggregatorProvider,
+    serpApiFlightsAggregatorProvider,
+    serpApiHotelsAggregatorProvider,
+    serpApiShoppingAggregatorProvider,
+  ];
 
 function cloneProviderList(
-  providers: readonly AggregatorProvider[]
+  providers:
+    readonly AggregatorProvider[]
 ): AggregatorProvider[] {
   return [...providers];
 }
 
 function sortProvidersByPriority(
-  providers: AggregatorProvider[]
+  providers:
+    AggregatorProvider[]
 ): AggregatorProvider[] {
   return providers.sort(
     (left, right) => {
@@ -39,11 +47,16 @@ function sortProvidersByPriority(
         right.priority -
         left.priority;
 
-      if (priorityDifference !== 0) {
+      if (
+        priorityDifference !==
+        0
+      ) {
         return priorityDifference;
       }
 
-      return String(left.id).localeCompare(
+      return String(
+        left.id
+      ).localeCompare(
         String(right.id),
         "en-GB"
       );
@@ -52,8 +65,10 @@ function sortProvidersByPriority(
 }
 
 function providerSupportsVertical(
-  provider: AggregatorProvider,
-  vertical: AggregatorVertical
+  provider:
+    AggregatorProvider,
+  vertical:
+    AggregatorVertical
 ): boolean {
   return provider.verticals.includes(
     vertical
@@ -61,14 +76,20 @@ function providerSupportsVertical(
 }
 
 function validateProviderRegistry(
-  providers: readonly AggregatorProvider[]
+  providers:
+    readonly AggregatorProvider[]
 ): void {
   const providerIds =
     new Set<string>();
 
-  for (const provider of providers) {
+  for (
+    const provider of
+      providers
+  ) {
     const providerId =
-      String(provider.id).trim();
+      String(
+        provider.id
+      ).trim();
 
     if (!providerId) {
       throw new Error(
@@ -76,17 +97,26 @@ function validateProviderRegistry(
       );
     }
 
-    if (providerIds.has(providerId)) {
+    if (
+      providerIds.has(
+        providerId
+      )
+    ) {
       throw new Error(
         `Duplicate aggregator provider ID detected: ${providerId}.`
       );
     }
 
-    providerIds.add(providerId);
+    providerIds.add(
+      providerId
+    );
 
     if (
-      !Array.isArray(provider.verticals) ||
-      provider.verticals.length === 0
+      !Array.isArray(
+        provider.verticals
+      ) ||
+      provider.verticals
+        .length === 0
     ) {
       throw new Error(
         `${providerId} must support at least one aggregator vertical.`
@@ -104,7 +134,8 @@ function validateProviderRegistry(
     }
 
     if (
-      typeof provider.isAvailable !==
+      typeof provider
+        .isAvailable !==
       "function"
     ) {
       throw new Error(
@@ -127,7 +158,8 @@ validateProviderRegistry(
   REGISTERED_PROVIDERS
 );
 
-export function getAggregatorProviders(): AggregatorProvider[] {
+export function getAggregatorProviders():
+  AggregatorProvider[] {
   return sortProvidersByPriority(
     cloneProviderList(
       REGISTERED_PROVIDERS
@@ -136,41 +168,52 @@ export function getAggregatorProviders(): AggregatorProvider[] {
 }
 
 export function getAggregatorProvidersForVertical(
-  vertical: AggregatorVertical
+  vertical:
+    AggregatorVertical
 ): AggregatorProvider[] {
   return sortProvidersByPriority(
     cloneProviderList(
       REGISTERED_PROVIDERS
-    ).filter((provider) =>
-      providerSupportsVertical(
-        provider,
-        vertical
-      )
+    ).filter(
+      (provider) =>
+        providerSupportsVertical(
+          provider,
+          vertical
+        )
     )
   );
 }
 
 export function getAggregatorProviderById(
-  providerId: AggregatorProviderId
+  providerId:
+    AggregatorProviderId
 ): AggregatorProvider | null {
   const normalisedProviderId =
-    String(providerId).trim();
+    String(
+      providerId
+    ).trim();
 
-  if (!normalisedProviderId) {
+  if (
+    !normalisedProviderId
+  ) {
     return null;
   }
 
   return (
     REGISTERED_PROVIDERS.find(
       (provider) =>
-        String(provider.id) ===
+        String(
+          provider.id
+        ) ===
         normalisedProviderId
-    ) ?? null
+    ) ??
+    null
   );
 }
 
 export function hasAggregatorProvider(
-  providerId: AggregatorProviderId
+  providerId:
+    AggregatorProviderId
 ): boolean {
   return (
     getAggregatorProviderById(
@@ -180,8 +223,11 @@ export function hasAggregatorProvider(
 }
 
 export async function getAvailableAggregatorProviders(
-  vertical?: AggregatorVertical
-): Promise<AggregatorProvider[]> {
+  vertical?:
+    AggregatorVertical
+): Promise<
+  AggregatorProvider[]
+> {
   const candidates =
     vertical
       ? getAggregatorProvidersForVertical(
@@ -192,18 +238,24 @@ export async function getAvailableAggregatorProviders(
   const availabilityResults =
     await Promise.all(
       candidates.map(
-        async (provider) => {
+        async (
+          provider
+        ) => {
           try {
             return {
               provider,
-              available: Boolean(
-                await provider.isAvailable()
-              ),
+
+              available:
+                Boolean(
+                  await provider
+                    .isAvailable()
+                ),
             };
           } catch {
             return {
               provider,
-              available: false,
+              available:
+                false,
             };
           }
         }
@@ -224,8 +276,11 @@ export async function getAvailableAggregatorProviders(
 }
 
 export async function getUnavailableAggregatorProviders(
-  vertical?: AggregatorVertical
-): Promise<AggregatorProvider[]> {
+  vertical?:
+    AggregatorVertical
+): Promise<
+  AggregatorProvider[]
+> {
   const candidates =
     vertical
       ? getAggregatorProvidersForVertical(
@@ -236,18 +291,24 @@ export async function getUnavailableAggregatorProviders(
   const availabilityResults =
     await Promise.all(
       candidates.map(
-        async (provider) => {
+        async (
+          provider
+        ) => {
           try {
             return {
               provider,
-              available: Boolean(
-                await provider.isAvailable()
-              ),
+
+              available:
+                Boolean(
+                  await provider
+                    .isAvailable()
+                ),
             };
           } catch {
             return {
               provider,
-              available: false,
+              available:
+                false,
             };
           }
         }
@@ -267,21 +328,29 @@ export async function getUnavailableAggregatorProviders(
   );
 }
 
-export function getProviderRegistrySummary(): Array<{
-  id: AggregatorProviderId;
-  verticals: AggregatorVertical[];
-  priority: number;
-}> {
-  return getAggregatorProviders().map(
-    (provider) => ({
-      id: provider.id,
+export function getProviderRegistrySummary():
+  Array<{
+    id:
+      AggregatorProviderId;
 
-      verticals: [
-        ...provider.verticals,
-      ],
+    verticals:
+      AggregatorVertical[];
 
-      priority:
-        provider.priority,
-    })
-  );
+    priority:
+      number;
+  }> {
+  return getAggregatorProviders()
+    .map(
+      (provider) => ({
+        id:
+          provider.id,
+
+        verticals: [
+          ...provider.verticals,
+        ],
+
+        priority:
+          provider.priority,
+      })
+    );
 }

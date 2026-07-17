@@ -49,9 +49,11 @@ type AggregatorResponseConfiguration = {
     "general"
   >;
 
-  dataProvider: BeaconDataProvider;
+  dataProvider:
+    BeaconDataProvider;
 
-  affiliateCampaign: string;
+  affiliateCampaign:
+    string;
 
   aiSummary: string;
 };
@@ -108,12 +110,10 @@ function createAggregatorSummary(
   const failureCount =
     result.providerFailures.length;
 
-  if (failureCount === 0) {
-    return baseSummary;
-  }
-
   if (
-    result.recommendations.length === 0
+    failureCount === 0 ||
+    result.recommendations.length ===
+      0
   ) {
     return baseSummary;
   }
@@ -131,7 +131,8 @@ function ensureAggregatorProducedResults(
   verticalLabel: string
 ): void {
   if (
-    result.recommendations.length > 0
+    result.recommendations.length >
+    0
   ) {
     return;
   }
@@ -185,13 +186,9 @@ async function executeRecommendationAggregator(
 
       options: {
         providerLimit: 30,
-
         finalLimit: 5,
-
         minimumScore: 35,
-
         minimumTrustScore: 25,
-
         timeoutMs: 15_000,
       },
     });
@@ -255,19 +252,18 @@ export async function handleShoppingRecommendation(
     automotive
       ? [
           "Beacon searched live shopping and automotive sources.",
-          "It checked the supplied vehicle information, removed conflicting or unsuitable listings, compared the remaining products and selected the strongest matches.",
-          "Users should still confirm final vehicle compatibility with the retailer before purchasing.",
+          "It checked the supplied vehicle information, removed conflicting or unsuitable listings and selected the strongest matches.",
+          "Confirm final vehicle compatibility with the retailer before purchasing.",
         ].join(" ")
       : [
           "Beacon searched live shopping providers for concrete product listings.",
-          "It removed weak or duplicate matches, compared relevance, value, quality and trust, and applied eligible partner links.",
+          "It removed weak or duplicate matches and compared relevance, value, quality and trust.",
         ].join(" ");
 
   return executeRecommendationAggregator(
     query,
     {
       ...intent,
-
       category: "product",
     },
     {
@@ -296,34 +292,48 @@ export async function handleHotelDiscoveryRecommendation(
 ): Promise<BeaconResponse> {
   ensureDestination(intent);
 
-  return executeRecommendationAggregator(
-    query,
-    {
-      ...intent,
+  try {
+    return await executeRecommendationAggregator(
+      query,
+      {
+        ...intent,
+        category: "holiday",
+      },
+      {
+        vertical:
+          "travel",
 
-      category: "holiday",
-    },
-    {
-      vertical:
-        "travel",
+        source:
+          "hotel",
 
-      source:
-        "hotel",
+        dataProvider:
+          "serpapi-google-maps",
 
-      dataProvider:
-        "serpapi-google-maps",
+        affiliateCampaign:
+          "beacon-hotel-discovery",
 
-      affiliateCampaign:
-        "beacon-hotel-discovery",
-
-      aiSummary:
-        [
-          "Beacon searched live accommodation discovery sources and selected real hotel listings.",
-          "Results were compared using destination, suitability, ratings, reviews, amenities and location.",
-          "Exact travel dates were not required.",
-        ].join(" "),
+        aiSummary:
+          [
+            "Beacon searched live accommodation discovery sources and selected real hotel listings.",
+            "Results were compared using destination, suitability, ratings, reviews, amenities and location.",
+          ].join(" "),
+      }
+    );
+  } catch (error) {
+    if (
+      !isProviderUnavailableError(
+        error
+      )
+    ) {
+      throw error;
     }
-  );
+
+    return handleGuidedDiscovery(
+      query,
+      "hotel_discovery",
+      intent
+    );
+  }
 }
 
 export async function handleHotelAvailabilityRecommendation(
@@ -336,7 +346,6 @@ export async function handleHotelAvailabilityRecommendation(
     query,
     {
       ...intent,
-
       category: "holiday",
     },
     {
@@ -380,7 +389,8 @@ export async function handleFlightRecommendation(
   ) {
     return handleGuidedDiscovery(
       query,
-      "flights"
+      "flights",
+      intent
     );
   }
 
@@ -389,7 +399,6 @@ export async function handleFlightRecommendation(
       query,
       {
         ...intent,
-
         category: "holiday",
       },
       {
@@ -423,7 +432,8 @@ export async function handleFlightRecommendation(
 
     return handleGuidedDiscovery(
       query,
-      "flights"
+      "flights",
+      intent
     );
   }
 }
@@ -436,14 +446,13 @@ export async function handleCombinedTravelRecommendation(
 ): Promise<BeaconResponse> {
   ensureDestination(intent);
 
-  /*
-   * Until a genuine package provider is registered,
-   * Beacon must not pretend separate flight and hotel
-   * listings form one live bookable package.
-   */
   return handleGuidedDiscovery(
     query,
-    capability
+    capability,
+    {
+      ...intent,
+      category: "holiday",
+    }
   );
 }
 
@@ -463,7 +472,11 @@ export async function handleEntertainmentRecommendation(
   ) {
     return handleGuidedDiscovery(
       query,
-      capability
+      capability,
+      {
+        ...intent,
+        category: "experience",
+      }
     );
   }
 
@@ -472,9 +485,7 @@ export async function handleEntertainmentRecommendation(
       query,
       {
         ...intent,
-
-        category:
-          "experience",
+        category: "experience",
       },
       {
         vertical:
@@ -507,7 +518,11 @@ export async function handleEntertainmentRecommendation(
 
     return handleGuidedDiscovery(
       query,
-      capability
+      capability,
+      {
+        ...intent,
+        category: "experience",
+      }
     );
   }
 }
@@ -515,10 +530,12 @@ export async function handleEntertainmentRecommendation(
 export async function handleLocalDiscoveryRecommendation(
   query: string,
   capability:
-    LocalDiscoveryCapability
+    LocalDiscoveryCapability,
+  intent?: SearchIntent
 ): Promise<BeaconResponse> {
   return handleGuidedDiscovery(
     query,
-    capability
+    capability,
+    intent
   );
 }

@@ -6,11 +6,18 @@ import {
 } from "@/services/openai/GeneralAnswerProvider";
 
 import {
+  generateGuidedRecommendations,
+  GuidedRecommendationError,
+} from "@/services/openai/GuidedRecommendationProvider";
+
+import {
   createGeneralAnswerResponse,
+  createRecommendationResponse,
 } from "@/services/response/BeaconResponse";
 
 import type {
   BeaconResponse,
+  BeaconResponseSource,
 } from "@/services/response/BeaconResponse";
 
 import {
@@ -20,6 +27,36 @@ import {
 import type {
   BeaconCapability,
 } from "@/services/intelligence/IntentEngine";
+
+import type {
+  SearchIntent,
+} from "@/lib/recommendations/RecommendationTypes";
+
+function mapCapabilitySource(
+  capability: BeaconCapability
+): Exclude<
+  BeaconResponseSource,
+  "general"
+> {
+  switch (capability) {
+    case "flights":
+      return "flight";
+
+    case "tickets":
+    case "events":
+    case "experiences":
+      return "entertainment";
+
+    case "product_search":
+    case "vehicle_parts":
+    case "vehicle_accessories":
+    case "vehicle_search":
+      return "shopping";
+
+    default:
+      return "hotel";
+  }
+}
 
 export async function handleGeneralAnswer(
   query: string
@@ -53,109 +90,113 @@ export async function handleGeneralAnswer(
   }
 }
 
-function buildSharedInstructions(
-  query: string
-): string {
-  return [
-    `The user asked: "${query}".`,
-    "Answer the request immediately.",
-    "Never refuse because optional details are missing.",
-    "Use current web research whenever live information is beneficial.",
-    "State reasonable assumptions briefly.",
-    "Give concrete recommendations.",
-    "Finish with one optional refinement question after providing value.",
-  ].join(" ");
-}
-
 export function createGuidedDiscoveryPrompt(
   query: string,
   capability: BeaconCapability
 ): string {
-  const shared =
-    buildSharedInstructions(
-      query
-    );
+  return [
+    query.trim(),
+    `Beacon capability: ${capability}.`,
+    "Return distinct structured recommendation cards rather than a prose essay.",
+  ].join(" ");
+}
 
-  switch (capability) {
-    case "weekend_plan":
-      return [
-        shared,
-        "Create a complete weekend itinerary.",
-        "Include accommodation, food, attractions, evening ideas and one premium option.",
-      ].join(" ");
+function createFallbackIntent(
+  query: string,
+  capability: BeaconCapability
+): SearchIntent {
+  const category =
+    capability === "product_search" ||
+    capability === "vehicle_parts" ||
+    capability === "vehicle_accessories" ||
+    capability === "vehicle_search"
+      ? "product"
+      : capability === "tickets" ||
+          capability === "events" ||
+          capability === "experiences" ||
+          capability === "activities"
+        ? "experience"
+        : capability === "restaurants" ||
+            capability === "local_services" ||
+            capability === "places"
+          ? "service"
+          : "holiday";
 
-    case "travel_ideas":
-      return [
-        shared,
-        "Recommend five destinations.",
-        "Explain who each destination suits.",
-      ].join(" ");
+  return {
+    rawQuery:
+      query.trim(),
 
-    case "hotel_discovery":
-      return [
-        shared,
-        "Recommend hotels without requiring exact travel dates.",
-      ].join(" ");
+    category,
 
-    case "package_holiday":
-      return [
-        shared,
-        "Recommend package holiday options and explain likely price ranges.",
-      ].join(" ");
+    keywords: [],
 
-    case "flight_and_hotel":
-      return [
-        shared,
-        "Recommend flight and hotel combinations.",
-      ].join(" ");
+    preferences: [],
 
-    case "flights":
-      return [
-        shared,
-        "Recommend suitable airlines, routes and booking strategies.",
-      ].join(" ");
-
-    case "restaurants":
-      return [
-        shared,
-        "Recommend five restaurants including cuisine, atmosphere and price.",
-      ].join(" ");
-
-    case "activities":
-    case "places":
-      return [
-        shared,
-        "Recommend five attractions or activities.",
-      ].join(" ");
-
-    case "local_services":
-      return [
-        shared,
-        "Recommend suitable local service providers and explain how to compare them.",
-      ].join(" ");
-
-    case "tickets":
-    case "events":
-    case "experiences":
-    case "sports_travel":
-      return [
-        shared,
-        "Recommend five current entertainment or experience options.",
-      ].join(" ");
-
-    default:
-      return shared;
-  }
+    exclusions: [],
+  };
 }
 
 export async function handleGuidedDiscovery(
   query: string,
-  capability: BeaconCapability
+  capability: BeaconCapability,
+  intent?: SearchIntent
 ): Promise<BeaconResponse> {
-  return handleGeneralAnswer(
-    createGuidedDiscoveryPrompt(
+  const resolvedIntent =
+    intent ??
+    createFallbackIntent(
       query,
       capability
-    )
-  );
+    );
+
+  try {
+    const result =
+      await generateGuidedRecommendations(
+        query,
+        capability,
+        resolvedIntent
+      );
+
+    return createRecommendationResponse({
+      query,
+
+      source:
+        mapCapabilitySource(
+          capability
+        ),
+
+      dataProvider:
+        result.usedWebSearch
+          ? "openai-web-search"
+          : "openai",
+
+      liveData:
+        result.usedWebSearch,
+
+      intent:
+        resolvedIntent,
+
+      summary:
+        result.summary,
+
+      aiSummary:
+        result.summary,
+
+      recommendations:
+        result.recommendations,
+    });
+  } catch (error) {
+    if (
+      error instanceof
+      GuidedRecommendationError
+    ) {
+      throw mapGeneralAnswerError(
+        new GeneralAnswerError(
+          error.message,
+          error.code
+        )
+      );
+    }
+
+    throw error;
+  }
 }
