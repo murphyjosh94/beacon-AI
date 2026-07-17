@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   and,
+  desc,
   eq,
   sql,
 } from "drizzle-orm";
@@ -74,12 +75,15 @@ export async function publishSearchPage(input: {
   );
 
   const slug = slugifySearch(query);
+
   const path = buildSearchPath(
     category,
     slug
   );
 
-  const title = createSearchPageTitle(query);
+  const title =
+    createSearchPageTitle(query);
+
   const description =
     createSearchPageDescription(query);
 
@@ -97,10 +101,12 @@ export async function publishSearchPage(input: {
       responseData: input.response,
       responseType:
         input.response.responseType,
-      source: input.response.source,
+      source:
+        input.response.source,
       dataProvider:
         input.response.dataProvider,
-      liveData: input.response.liveData,
+      liveData:
+        input.response.liveData,
       resultCount:
         input.response.recommendations.length,
       generatedByUserId:
@@ -123,10 +129,12 @@ export async function publishSearchPage(input: {
         responseData: input.response,
         responseType:
           input.response.responseType,
-        source: input.response.source,
+        source:
+          input.response.source,
         dataProvider:
           input.response.dataProvider,
-        liveData: input.response.liveData,
+        liveData:
+          input.response.liveData,
         resultCount:
           input.response.recommendations.length,
         generatedByUserId:
@@ -159,16 +167,64 @@ export async function getSearchPage(
     .from(searchPage)
     .where(
       and(
-        eq(searchPage.category, category),
-        eq(searchPage.slug, slug),
-        eq(searchPage.isIndexable, true)
+        eq(
+          searchPage.category,
+          category
+        ),
+        eq(
+          searchPage.slug,
+          slug
+        ),
+        eq(
+          searchPage.isIndexable,
+          true
+        )
       )
     )
     .limit(1);
 
   const row = rows[0];
 
-  return row ? toRecord(row) : null;
+  return row
+    ? toRecord(row)
+    : null;
+}
+
+export async function getSearchPagesByCategory(
+  category: PublicSearchCategory,
+  limit = 25
+): Promise<PublicSearchPageRecord[]> {
+  const safeLimit = Math.min(
+    Math.max(
+      Math.trunc(limit),
+      1
+    ),
+    100
+  );
+
+  const rows = await database
+    .select()
+    .from(searchPage)
+    .where(
+      and(
+        eq(
+          searchPage.category,
+          category
+        ),
+        eq(
+          searchPage.isIndexable,
+          true
+        )
+      )
+    )
+    .orderBy(
+      desc(
+        searchPage.updatedAt
+      )
+    )
+    .limit(safeLimit);
+
+  return rows.map(toRecord);
 }
 
 export async function incrementSearchPageViews(
@@ -179,7 +235,13 @@ export async function incrementSearchPageViews(
     .set({
       viewCount:
         sql`${searchPage.viewCount} + 1`,
-      lastViewedAt: new Date(),
+      lastViewedAt:
+        new Date(),
     })
-    .where(eq(searchPage.id, id));
+    .where(
+      eq(
+        searchPage.id,
+        id
+      )
+    );
 }

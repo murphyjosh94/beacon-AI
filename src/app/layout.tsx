@@ -27,6 +27,15 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
+function serialiseJsonLd(
+  value: unknown
+): string {
+  return JSON.stringify(value).replace(
+    /</g,
+    "\\u003c"
+  );
+}
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
 
@@ -65,10 +74,6 @@ export const metadata: Metadata = {
   referrer:
     "origin-when-cross-origin",
 
-  alternates: {
-    canonical: "/",
-  },
-
   icons: {
     icon: [
       {
@@ -105,6 +110,9 @@ export const metadata: Metadata = {
         url: absoluteUrl(
           siteConfig.socialImage
         ),
+
+        width: 1200,
+        height: 630,
 
         alt:
           "Beacon AI logo",
@@ -189,12 +197,60 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const organisationJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": `${siteConfig.url}/#organization`,
+    name: siteConfig.officialName,
+    alternateName: siteConfig.name,
+    url: siteConfig.url,
+    logo: {
+      "@type": "ImageObject",
+      url: absoluteUrl(
+        siteConfig.socialImage
+      ),
+    },
+  };
+
+  const websiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": `${siteConfig.url}/#website`,
+    url: siteConfig.url,
+    name: siteConfig.name,
+    publisher: {
+      "@id": `${siteConfig.url}/#organization`,
+    },
+    inLanguage:
+      siteConfig.language,
+  };
+
   return (
     <html
       lang={siteConfig.language}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html:
+              serialiseJsonLd(
+                organisationJsonLd
+              ),
+          }}
+        />
+
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html:
+              serialiseJsonLd(
+                websiteJsonLd
+              ),
+          }}
+        />
+
         {children}
       </body>
     </html>

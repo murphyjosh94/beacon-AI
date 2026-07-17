@@ -18,17 +18,38 @@ export const siteConfig = {
   themeColor: "#0f172a",
 
   keywords: [
-    "Beacon AI",
-    "AI recommendations",
-    "AI shopping assistant",
-    "product recommendations",
-    "travel recommendations",
-    "hotel recommendations",
-    "holiday recommendations",
-    "personalised recommendations",
-    "product comparison",
-    "AI travel planner",
-  ],
+  "Beacon AI",
+  "Beacon-AI",
+
+  "AI recommendations",
+  "AI recommendation engine",
+  "AI shopping assistant",
+  "AI travel assistant",
+  "AI holiday planner",
+
+  "product recommendations",
+  "shopping recommendations",
+  "best products",
+  "product comparison",
+
+  "hotel recommendations",
+  "hotel comparison",
+  "holiday recommendations",
+  "travel recommendations",
+  "flight recommendations",
+
+  "vehicle parts finder",
+  "car parts recommendations",
+  "vehicle compatibility",
+
+  "local experiences",
+  "entertainment recommendations",
+  "things to do",
+
+  "personalised recommendations",
+  "consumer recommendations",
+  "independent product research",
+],
 
   publicRoutes: [
     "/",

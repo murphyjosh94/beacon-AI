@@ -12,18 +12,25 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
+
         allow: "/",
 
-        disallow: siteConfig.privateRoutes.map(
-          (route) => `${route}/`
-        ),
+        disallow: [
+          ...siteConfig.privateRoutes.map(
+            (route) => `${route}/`
+          ),
+
+          "/api/",
+          "/admin/",
+          "/dashboard/",
+          "/account/",
+          "/my-beacon/",
+        ],
       },
     ],
 
-    sitemap:
-      absoluteUrl("/sitemap.xml"),
+    sitemap: absoluteUrl("/sitemap.xml"),
 
-    host:
-      siteConfig.url,
+    host: siteConfig.url,
   };
 }
