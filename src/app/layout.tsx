@@ -2,47 +2,41 @@ import type {
   Metadata,
   Viewport,
 } from "next";
+import { Inter } from "next/font/google";
+import { Suspense } from "react";
 
-import {
-  Geist,
-  Geist_Mono,
-} from "next/font/google";
+import "./globals.css";
 
+import AnalyticsProvider from "@/components/AnalyticsProvider";
+import CookieConsent from "@/components/CookieConsent";
+import PageViewTracker from "@/components/PageViewTracker";
+import JsonLd from "@/components/seo/JsonLd";
 import {
   absoluteUrl,
   siteConfig,
 } from "@/lib/seo/SiteConfig";
 
-import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-  display: "swap",
+const inter = Inter({
+  subsets: [
+    "latin",
+  ],
+  display:
+    "swap",
+  variable:
+    "--font-inter",
 });
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-function serialiseJsonLd(
-  value: unknown
-): string {
-  return JSON.stringify(value).replace(
-    /</g,
-    "\\u003c"
-  );
-}
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteConfig.url),
+  metadataBase:
+    new URL(
+      siteConfig.url
+    ),
 
   title: {
     default:
-      "Beacon AI | Personalised Shopping and Travel Recommendations",
-    template: "%s | Beacon AI",
+      siteConfig.name,
+    template:
+      `%s | ${siteConfig.name}`,
   },
 
   description:
@@ -51,207 +45,215 @@ export const metadata: Metadata = {
   applicationName:
     siteConfig.name,
 
+  generator:
+    "Next.js",
+
   keywords: [
-    ...siteConfig.keywords,
+    "AI",
+    "Beacon AI",
+    "Product recommendations",
+    "Travel",
+    "Entertainment",
+    "Vehicle comparison",
+    "AI assistant",
   ],
 
   authors: [
     {
-      name: siteConfig.officialName,
-      url: siteConfig.url,
+      name:
+        siteConfig.name,
     },
   ],
 
   creator:
-    siteConfig.officialName,
+    siteConfig.name,
 
   publisher:
-    siteConfig.officialName,
+    siteConfig.name,
 
-  category:
-    "technology",
-
-  referrer:
-    "origin-when-cross-origin",
-
-  icons: {
-    icon: [
-      {
-        url: siteConfig.logo,
-        type: "image/svg+xml",
-      },
-    ],
-
-    shortcut:
-      siteConfig.logo,
-
-    apple: [
-      {
-        url: siteConfig.socialImage,
-        type: "image/png",
-      },
-    ],
+  alternates: {
+    canonical:
+      "/",
   },
 
   openGraph: {
-    type: "website",
-    locale: siteConfig.locale,
-    url: siteConfig.url,
-    siteName: siteConfig.name,
-
+    type:
+      "website",
+    locale:
+      "en_GB",
+    url:
+      siteConfig.url,
+    siteName:
+      siteConfig.name,
     title:
-      "Beacon AI | Personalised Shopping and Travel Recommendations",
-
+      siteConfig.name,
     description:
-      siteConfig.shortDescription,
-
-    images: [
-      {
-        url: absoluteUrl(
-          siteConfig.socialImage
-        ),
-
-        width: 1200,
-        height: 630,
-
-        alt:
-          "Beacon AI logo",
-
-        type:
-          "image/png",
-      },
-    ],
+      siteConfig.description,
   },
 
   twitter: {
     card:
       "summary_large_image",
-
     title:
-      "Beacon AI | Personalised Recommendations",
-
+      siteConfig.name,
     description:
-      siteConfig.shortDescription,
-
-    images: [
-      absoluteUrl(
-        siteConfig.socialImage
-      ),
-    ],
+      siteConfig.description,
   },
 
   robots: {
-    index: true,
-    follow: true,
+    index:
+      true,
+    follow:
+      true,
 
     googleBot: {
-      index: true,
-      follow: true,
-      noimageindex: false,
-
+      index:
+        true,
+      follow:
+        true,
       "max-image-preview":
         "large",
-
-      "max-snippet":
-        -1,
-
       "max-video-preview":
+        -1,
+      "max-snippet":
         -1,
     },
   },
 
-  formatDetection: {
-    email: false,
-    address: false,
-    telephone: false,
-  },
-
-  appleWebApp: {
-    capable: true,
-    title: siteConfig.name,
-    statusBarStyle: "default",
-  },
-
-  other: {
-    "impact-site-verification":
-      "7b474d9c-e6d8-448c-b333-b24afe8fcd54",
+  icons: {
+    icon:
+      "/favicon.ico",
+    shortcut:
+      "/favicon.ico",
+    apple:
+      "/apple-touch-icon.png",
   },
 };
 
 export const viewport: Viewport = {
-  width:
-    "device-width",
-
-  initialScale:
-    1,
-
   themeColor:
-    siteConfig.themeColor,
-
+    "#0f172a",
   colorScheme:
     "light",
+  width:
+    "device-width",
+  initialScale:
+    1,
+};
+
+const websiteSchema = {
+  "@context":
+    "https://schema.org",
+
+  "@type":
+    "WebSite",
+
+  "@id":
+    absoluteUrl(
+      "/#website"
+    ),
+
+  url:
+    siteConfig.url,
+
+  name:
+    siteConfig.name,
+
+  description:
+    siteConfig.description,
+
+  inLanguage:
+    siteConfig.language,
+
+  publisher: {
+    "@id":
+      absoluteUrl(
+        "/#organization"
+      ),
+  },
+
+  potentialAction: {
+    "@type":
+      "SearchAction",
+
+    target:
+      `${siteConfig.url}/search?q={search_term_string}`,
+
+    "query-input":
+      "required name=search_term_string",
+  },
+};
+
+const organizationSchema = {
+  "@context":
+    "https://schema.org",
+
+  "@type":
+    "Organization",
+
+  "@id":
+    absoluteUrl(
+      "/#organization"
+    ),
+
+  name:
+    siteConfig.name,
+
+  url:
+    siteConfig.url,
+
+  logo:
+    absoluteUrl(
+      "/icon-512.png"
+    ),
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children:
+    React.ReactNode;
 }>) {
-  const organisationJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    "@id": `${siteConfig.url}/#organization`,
-    name: siteConfig.officialName,
-    alternateName: siteConfig.name,
-    url: siteConfig.url,
-    logo: {
-      "@type": "ImageObject",
-      url: absoluteUrl(
-        siteConfig.socialImage
-      ),
-    },
-  };
-
-  const websiteJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "@id": `${siteConfig.url}/#website`,
-    url: siteConfig.url,
-    name: siteConfig.name,
-    publisher: {
-      "@id": `${siteConfig.url}/#organization`,
-    },
-    inLanguage:
-      siteConfig.language,
-  };
-
   return (
     <html
-      lang={siteConfig.language}
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      lang="en-GB"
+      suppressHydrationWarning
     >
-      <body className="flex min-h-full flex-col">
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html:
-              serialiseJsonLd(
-                organisationJsonLd
-              ),
-          }}
+      <head>
+        <JsonLd
+          data={
+            websiteSchema
+          }
         />
 
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html:
-              serialiseJsonLd(
-                websiteJsonLd
-              ),
-          }}
+        <JsonLd
+          data={
+            organizationSchema
+          }
         />
 
-        {children}
+        <meta
+          name="format-detection"
+          content="telephone=no,address=no,email=no"
+        />
+      </head>
+
+      <body
+        className={`${inter.variable} min-h-screen bg-slate-50 font-sans antialiased`}
+      >
+        <AnalyticsProvider>
+          {children}
+
+          <Suspense
+            fallback={
+              null
+            }
+          >
+            <PageViewTracker />
+          </Suspense>
+        </AnalyticsProvider>
+
+        <CookieConsent />
       </body>
     </html>
   );

@@ -2,6 +2,8 @@ import type {
   Metadata,
 } from "next";
 
+import Link from "next/link";
+
 import AmazonSubscriptionBanner from "@/components/AmazonSubscriptionBanner";
 import BeaconFooter from "@/components/BeaconFooter";
 import BeaconHero from "@/components/BeaconHero";
@@ -18,14 +20,16 @@ export const metadata: Metadata = {
     "AI Shopping, Travel and Entertainment Recommendations",
 
   description:
-    "Find five personalised recommendations for products, holidays, hotels, entertainment and useful services with Beacon AI.",
+    "Find five personalised recommendations for products, holidays, hotels, flights, entertainment, vehicles and useful services with Beacon AI.",
 
   alternates: {
-    canonical: "/",
+    canonical:
+      "/",
   },
 
   openGraph: {
-    type: "website",
+    type:
+      "website",
 
     url:
       siteConfig.url,
@@ -43,6 +47,12 @@ export const metadata: Metadata = {
             siteConfig.socialImage
           ),
 
+        width:
+          1200,
+
+        height:
+          630,
+
         alt:
           "Beacon AI personalised recommendation platform",
       },
@@ -57,7 +67,7 @@ export const metadata: Metadata = {
       "Beacon AI | Find Better Choices with AI",
 
     description:
-      "Five personalised recommendations for shopping, travel, entertainment and more.",
+      "Five personalised recommendations for shopping, travel, entertainment, vehicles and more.",
 
     images: [
       absoluteUrl(
@@ -69,9 +79,14 @@ export const metadata: Metadata = {
 
 const categories = [
   {
-    id: "shopping",
-    eyebrow: "Beacon Shopping",
-    title: "Find the right product",
+    id:
+      "shopping",
+
+    eyebrow:
+      "Beacon Shopping",
+
+    title:
+      "Find the right product",
 
     description:
       "Tell Beacon what matters to you and receive five carefully selected products that match your budget, needs and preferences.",
@@ -84,9 +99,14 @@ const categories = [
   },
 
   {
-    id: "getaways",
-    eyebrow: "Beacon Getaways",
-    title: "Plan the right break",
+    id:
+      "getaways",
+
+    eyebrow:
+      "Beacon Getaways",
+
+    title:
+      "Plan the right break",
 
     description:
       "From UK staycations to holidays abroad, Beacon helps narrow hundreds of options into five clear recommendations.",
@@ -99,9 +119,14 @@ const categories = [
   },
 
   {
-    id: "entertainment",
-    eyebrow: "Beacon Entertainment",
-    title: "Discover something memorable",
+    id:
+      "entertainment",
+
+    eyebrow:
+      "Beacon Entertainment",
+
+    title:
+      "Discover something memorable",
 
     description:
       "Find events, attractions and experiences matched to your location, interests, dates and budget.",
@@ -111,6 +136,110 @@ const categories = [
       "West End show and hotel package",
       "Birthday experience for two",
     ],
+  },
+];
+
+const searchCategories = [
+  {
+    href:
+      "/search/products",
+
+    eyebrow:
+      "Shopping",
+
+    title:
+      "Product recommendations",
+
+    description:
+      "Compare products selected around your budget, priorities and practical requirements.",
+
+    icon:
+      "🛍️",
+  },
+
+  {
+    href:
+      "/search/hotels",
+
+    eyebrow:
+      "Travel",
+
+    title:
+      "Hotels and holidays",
+
+    description:
+      "Explore hotel, getaway and holiday recommendations for different destinations and budgets.",
+
+    icon:
+      "🏨",
+  },
+
+  {
+    href:
+      "/search/flights",
+
+    eyebrow:
+      "Flights",
+
+    title:
+      "Flight recommendations",
+
+    description:
+      "Browse focused flight searches based on routes, dates, budgets and travel preferences.",
+
+    icon:
+      "✈️",
+  },
+
+  {
+    href:
+      "/search/entertainment",
+
+    eyebrow:
+      "Experiences",
+
+    title:
+      "Entertainment and activities",
+
+    description:
+      "Discover events, attractions and memorable experiences matched to different interests.",
+
+    icon:
+      "🎟️",
+  },
+
+  {
+    href:
+      "/search/vehicles",
+
+    eyebrow:
+      "Automotive",
+
+    title:
+      "Vehicles and car parts",
+
+    description:
+      "Explore vehicle recommendations and compatible parts for specific makes, models and engines.",
+
+    icon:
+      "🚘",
+  },
+
+  {
+    href:
+      "/search/services",
+
+    eyebrow:
+      "Services",
+
+    title:
+      "Useful service recommendations",
+
+    description:
+      "Find suitable providers and practical services researched around your individual needs.",
+
+    icon:
+      "🧭",
   },
 ];
 
@@ -181,6 +310,81 @@ const websiteSchema = {
   },
 };
 
+const homePageSchema = {
+  "@context":
+    "https://schema.org",
+
+  "@type":
+    "WebPage",
+
+  "@id":
+    absoluteUrl(
+      "/#webpage"
+    ),
+
+  url:
+    siteConfig.url,
+
+  name:
+    "Beacon AI personalised recommendations",
+
+  description:
+    siteConfig.description,
+
+  inLanguage:
+    siteConfig.language,
+
+  isPartOf: {
+    "@id":
+      absoluteUrl(
+        "/#website"
+      ),
+  },
+
+  about: {
+    "@id":
+      absoluteUrl(
+        "/#organization"
+      ),
+  },
+};
+
+const categoryListSchema = {
+  "@context":
+    "https://schema.org",
+
+  "@type":
+    "ItemList",
+
+  name:
+    "Beacon AI recommendation categories",
+
+  numberOfItems:
+    searchCategories.length,
+
+  itemListElement:
+    searchCategories.map(
+      (
+        category,
+        index
+      ) => ({
+        "@type":
+          "ListItem",
+
+        position:
+          index + 1,
+
+        name:
+          category.title,
+
+        url:
+          absoluteUrl(
+            category.href
+          ),
+      })
+    ),
+};
+
 export default function Home() {
   return (
     <>
@@ -188,6 +392,8 @@ export default function Home() {
         data={[
           organizationSchema,
           websiteSchema,
+          homePageSchema,
+          categoryListSchema,
         ]}
       />
 
@@ -223,7 +429,9 @@ export default function Home() {
 
             <div className="mt-14 grid gap-8 lg:grid-cols-3">
               {categories.map(
-                (category) => (
+                (
+                  category
+                ) => (
                   <article
                     key={
                       category.id
@@ -279,6 +487,109 @@ export default function Home() {
         </section>
 
         <section
+          className="border-y border-slate-200 bg-white px-6 py-20"
+          aria-labelledby="browse-recommendations"
+        >
+          <div className="mx-auto max-w-7xl">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+              <div className="max-w-3xl">
+                <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-blue-900">
+                  Browse Beacon Research
+                </p>
+
+                <h2
+                  id="browse-recommendations"
+                  className="mt-4 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl"
+                >
+                  Explore personalised recommendation categories
+                </h2>
+
+                <p className="mt-5 text-lg leading-8 text-slate-600">
+                  Browse public Beacon searches across shopping, travel,
+                  entertainment, vehicles and everyday services.
+                </p>
+              </div>
+
+              <Link
+                href="/search/recommendations"
+                className="inline-flex w-fit rounded-2xl border border-blue-900 px-6 py-3 font-extrabold text-blue-900 transition hover:bg-blue-900 hover:text-white"
+              >
+                View all recommendations
+              </Link>
+            </div>
+
+            <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {searchCategories.map(
+                (
+                  category
+                ) => (
+                  <article
+                    key={
+                      category.href
+                    }
+                    className="group flex h-full flex-col rounded-[2rem] border border-slate-200 bg-slate-50 p-7 transition hover:-translate-y-1 hover:border-blue-200 hover:bg-white hover:shadow-xl"
+                  >
+                    <div className="flex items-start justify-between gap-5">
+                      <div>
+                        <p className="text-sm font-extrabold uppercase tracking-[0.22em] text-blue-900">
+                          {
+                            category.eyebrow
+                          }
+                        </p>
+
+                        <h3 className="mt-3 text-2xl font-black tracking-tight text-slate-950">
+                          <Link
+                            href={
+                              category.href
+                            }
+                            className="transition group-hover:text-blue-800"
+                          >
+                            {
+                              category.title
+                            }
+                          </Link>
+                        </h3>
+                      </div>
+
+                      <span
+                        aria-hidden="true"
+                        className="text-4xl"
+                      >
+                        {
+                          category.icon
+                        }
+                      </span>
+                    </div>
+
+                    <p className="mt-4 flex-1 leading-7 text-slate-600">
+                      {
+                        category.description
+                      }
+                    </p>
+
+                    <Link
+                      href={
+                        category.href
+                      }
+                      className="mt-6 inline-flex w-fit items-center font-extrabold text-blue-900 transition group-hover:text-blue-700"
+                    >
+                      Explore category
+
+                      <span
+                        aria-hidden="true"
+                        className="ml-2 transition group-hover:translate-x-1"
+                      >
+                        →
+                      </span>
+                    </Link>
+                  </article>
+                )
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section
           className="bg-blue-950 px-6 py-20 text-white"
           aria-labelledby="beacon-difference"
         >
@@ -312,7 +623,9 @@ export default function Home() {
                 "Saved preferences",
                 "Price and holiday alerts",
               ].map(
-                (item) => (
+                (
+                  item
+                ) => (
                   <div
                     key={
                       item
@@ -349,12 +662,12 @@ export default function Home() {
               better options appear.
             </p>
 
-            <a
+            <Link
               href="/membership"
               className="mt-8 inline-flex rounded-2xl bg-blue-900 px-8 py-4 text-lg font-extrabold text-white shadow-xl transition hover:-translate-y-0.5 hover:bg-blue-800"
             >
               Explore Beacon+
-            </a>
+            </Link>
           </div>
         </section>
 
