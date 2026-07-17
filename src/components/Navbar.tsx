@@ -1,5 +1,11 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+
+import {
+  authClient,
+} from "@/lib/auth/AuthClient";
 
 const navigation = [
   {
@@ -7,24 +13,36 @@ const navigation = [
     href: "/",
   },
   {
-    label: "Shopping",
-    href: "/#shopping",
-  },
-  {
-    label: "Getaways",
-    href: "/#getaways",
-  },
-  {
-    label: "Entertainment",
-    href: "/#entertainment",
+    label: "My Beacon",
+    href: "/my-beacon",
   },
   {
     label: "Membership",
     href: "/membership",
   },
+  {
+    label: "Pricing",
+    href: "/pricing",
+  },
 ];
 
 export default function Navbar() {
+  const {
+    data: session,
+    isPending,
+  } =
+    authClient.useSession();
+
+  const accountHref =
+    session?.user
+      ? "/dashboard"
+      : "/signin";
+
+  const accountLabel =
+    session?.user
+      ? "Dashboard"
+      : "Sign In";
+
   return (
     <>
       <div className="bg-slate-950 px-4 py-2 text-center text-xs font-semibold leading-5 text-white sm:px-6 sm:text-sm">
@@ -64,23 +82,32 @@ export default function Navbar() {
             aria-label="Main navigation"
             className="hidden items-center gap-1 lg:flex"
           >
-            {navigation.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="rounded-xl px-4 py-3 font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-950"
-              >
-                {item.label}
-              </Link>
-            ))}
+            {navigation.map(
+              (item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="rounded-xl px-4 py-3 font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-950"
+                >
+                  {item.label}
+                </Link>
+              )
+            )}
           </nav>
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <Link
-              href="/signin"
-              className="hidden rounded-xl px-4 py-3 font-extrabold text-blue-950 transition hover:bg-blue-50 sm:inline-flex"
+              href={accountHref}
+              aria-disabled={isPending}
+              className={`hidden rounded-xl px-4 py-3 font-extrabold text-blue-950 transition hover:bg-blue-50 sm:inline-flex ${
+                isPending
+                  ? "pointer-events-none opacity-50"
+                  : ""
+              }`}
             >
-              Sign In
+              {isPending
+                ? "Loading..."
+                : accountLabel}
             </Link>
 
             <Link
@@ -88,7 +115,7 @@ export default function Navbar() {
               className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl bg-blue-900 px-3 py-2 text-sm font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-800 sm:px-5 sm:py-3 sm:text-base"
             >
               <span className="sm:hidden">
-                Join+
+                Beacon+
               </span>
 
               <span className="hidden sm:inline">
@@ -100,17 +127,28 @@ export default function Navbar() {
 
         <nav
           aria-label="Mobile navigation"
-          className="flex gap-1 overflow-x-auto border-t border-slate-100 px-3 py-2 lg:hidden"
+          className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-3 py-2 lg:hidden"
         >
-          {navigation.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="shrink-0 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-950"
-            >
-              {item.label}
-            </Link>
-          ))}
+          {navigation.map(
+            (item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="shrink-0 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-950"
+              >
+                {item.label}
+              </Link>
+            )
+          )}
+
+          <Link
+            href={accountHref}
+            className="shrink-0 rounded-lg px-3 py-2 text-sm font-extrabold text-blue-900 transition hover:bg-blue-50"
+          >
+            {isPending
+              ? "Account"
+              : accountLabel}
+          </Link>
         </nav>
       </header>
     </>

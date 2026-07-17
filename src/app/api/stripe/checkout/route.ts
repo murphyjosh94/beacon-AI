@@ -29,6 +29,7 @@ function createErrorResponse(
   return NextResponse.json(
     {
       success: false,
+
       error: {
         code,
         message,
@@ -43,7 +44,8 @@ function createErrorResponse(
 async function getAuthenticatedAccount() {
   const session =
     await auth.api.getSession({
-      headers: await headers(),
+      headers:
+        await headers(),
     });
 
   if (!session?.user) {
@@ -72,16 +74,21 @@ async function getAuthenticatedAccount() {
   };
 }
 
-async function getOrCreateStripeCustomer(input: {
-  userId: string;
-  email: string;
-  name: string;
-  existingCustomerId: string | null;
-}): Promise<string> {
+async function getOrCreateStripeCustomer(
+  input: {
+    userId: string;
+    email: string;
+    name: string;
+    existingCustomerId:
+      string | null;
+  }
+): Promise<string> {
   const stripe =
     getStripeClient();
 
-  if (input.existingCustomerId) {
+  if (
+    input.existingCustomerId
+  ) {
     try {
       const existingCustomer =
         await stripe.customers.retrieve(
@@ -175,9 +182,7 @@ export async function POST(
       );
     }
 
-    const {
-      account,
-    } =
+    const { account } =
       authenticatedAccount;
 
     const stripe =
@@ -223,6 +228,10 @@ export async function POST(
             : String(
                 price.credits
               ),
+
+        billingInterval:
+          price.billingInterval ??
+          "one_time",
       };
 
     const checkoutSession =
