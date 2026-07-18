@@ -229,26 +229,38 @@ export default function CookieConsent() {
           typeof storedPreferences.marketing ===
             "boolean"
         ) {
-          setPreferences({
-            necessary: true,
-            functional:
-              storedPreferences.functional,
-            analytics:
-              storedPreferences.analytics,
-            marketing:
-              storedPreferences.marketing,
-          });
+          const functional =
+            storedPreferences.functional;
 
-          setHasDecision(true);
+          const analytics =
+            storedPreferences.analytics;
+
+          const marketing =
+            storedPreferences.marketing;
+
+          queueMicrotask(() => {
+            setPreferences({
+              necessary: true,
+              functional,
+              analytics,
+              marketing,
+            });
+
+            setHasDecision(true);
+          });
         }
       }
     } catch {
-      setPreferences(
-        defaultConsentPreferences
-      );
+      queueMicrotask(() => {
+        setPreferences(
+          defaultConsentPreferences
+        );
+      });
     }
 
-    setHasLoaded(true);
+    queueMicrotask(() => {
+      setHasLoaded(true);
+    });
   }, []);
 
   useEffect(() => {

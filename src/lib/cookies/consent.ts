@@ -480,19 +480,21 @@ export function useCookieConsent() {
       const currentConsent =
         readConsent();
 
-      setConsent(
-        currentConsent
-      );
-
       applyConsentToDocument(
         currentConsent
           ?.preferences ??
           defaultConsentPreferences
       );
 
-      setIsLoaded(
-        true
-      );
+      queueMicrotask(() => {
+        setConsent(
+          currentConsent
+        );
+
+        setIsLoaded(
+          true
+        );
+      });
 
       return subscribeToConsent(
         (

@@ -1,39 +1,75 @@
-import { headers } from "next/headers";
-import { NextResponse } from "next/server";
-
-import { eq } from "drizzle-orm";
-
-import { auth } from "@/lib/auth/Auth";
-import { database } from "@/lib/database/Database";
-import { user } from "@/lib/database/schema";
+import "server-only";
 
 import {
-  getBeaconPriceConfiguration,
-  getSiteUrl,
-  getStripeClient,
-  isBeaconPurchaseType,
-} from "@/lib/stripe/StripeClient";
+  NextRequest,
+  NextResponse,
+} from "next/server";
 
-type CheckoutRequestBody = {
-  purchaseType?: unknown;
-};
+import { auth } from "@/lib/auth/Auth";
+import { stripe } from "@/lib/stripe";
+
+import {
+  BEACON_PLUS_BILLING_INTERVALS,
+  CREDIT_PACK_IDS,
+  STRIPE_PURCHASE_TYPES,
+  createCreditTopUpMetadata,
+  createSubscriptionMetadata,
+  getBeaconPlusPriceId,
+  getCreditPackPriceId,
+  isBeaconPlusBillingInterval,
+  isCreditPackId,
+  type BeaconPlusBillingInterval,
+  type CreditPackId,
+} from "@/lib/stripe/products";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function createErrorResponse(
-  code: string,
+type CheckoutRequestBody = {
+  purchaseType?: unknown;
+  billingInterval?: unknown;
+  creditPackId?: unknown;
+};
+
+type CheckoutErrorResponse = {
+  error: string;
+};
+
+type CheckoutSuccessResponse = {
+  checkoutUrl: string;
+};
+
+function getApplicationUrl(): string {
+  const configuredUrl =
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    process.env.BETTER_AUTH_URL?.trim();
+
+  if (!configuredUrl) {
+    throw new Error(
+      "NEXT_PUBLIC_APP_URL or BETTER_AUTH_URL must be configured."
+    );
+  }
+
+  try {
+    const url = new URL(
+      configuredUrl
+    );
+
+    return url.origin;
+  } catch {
+    throw new Error(
+      "The configured application URL is invalid."
+    );
+  }
+}
+
+function jsonError(
   message: string,
   status: number
-) {
+): NextResponse<CheckoutErrorResponse> {
   return NextResponse.json(
     {
-      success: false,
-
-      error: {
-        code,
-        message,
-      },
+      error: message,
     },
     {
       status,
@@ -41,282 +77,265 @@ function createErrorResponse(
   );
 }
 
-async function getAuthenticatedAccount() {
-  const session =
-    await auth.api.getSession({
-      headers:
-        await headers(),
-    });
+async function readRequestBody(
+  request: NextRequest
+): Promise<CheckoutRequestBody | null> {
+  try {
+    const body =
+      (await request.json()) as unknown;
 
-  if (!session?.user) {
+    if (
+      typeof body !== "object" ||
+      body === null ||
+      Array.isArray(body)
+    ) {
+      return null;
+    }
+
+    return body as CheckoutRequestBody;
+  } catch {
     return null;
   }
-
-  const [account] =
-    await database
-      .select()
-      .from(user)
-      .where(
-        eq(
-          user.id,
-          session.user.id
-        )
-      )
-      .limit(1);
-
-  if (!account) {
-    return null;
-  }
-
-  return {
-    session,
-    account,
-  };
 }
 
-async function getOrCreateStripeCustomer(
-  input: {
-    userId: string;
-    email: string;
-    name: string;
-    existingCustomerId:
-      string | null;
-  }
-): Promise<string> {
-  const stripe =
-    getStripeClient();
-
+function getSubscriptionInterval(
+  body: CheckoutRequestBody
+): BeaconPlusBillingInterval | null {
   if (
-    input.existingCustomerId
+    !isBeaconPlusBillingInterval(
+      body.billingInterval
+    )
   ) {
-    try {
-      const existingCustomer =
-        await stripe.customers.retrieve(
-          input.existingCustomerId
-        );
-
-      if (
-        !existingCustomer.deleted
-      ) {
-        return existingCustomer.id;
-      }
-    } catch (error) {
-      console.warn(
-        "Beacon could not retrieve the stored Stripe customer:",
-        error
-      );
-    }
+    return null;
   }
 
-  const customer =
-    await stripe.customers.create({
-      email:
-        input.email,
+  return body.billingInterval;
+}
 
-      name:
-        input.name,
+function getCreditPackId(
+  body: CheckoutRequestBody
+): CreditPackId | null {
+  if (
+    !isCreditPackId(
+      body.creditPackId
+    )
+  ) {
+    return null;
+  }
 
-      metadata: {
-        beaconUserId:
-          input.userId,
-      },
-    });
-
-  await database
-    .update(user)
-    .set({
-      stripeCustomerId:
-        customer.id,
-
-      updatedAt:
-        new Date(),
-    })
-    .where(
-      eq(
-        user.id,
-        input.userId
-      )
-    );
-
-  return customer.id;
+  return body.creditPackId;
 }
 
 export async function POST(
-  request: Request
-) {
+  request: NextRequest
+): Promise<
+  NextResponse<
+    | CheckoutSuccessResponse
+    | CheckoutErrorResponse
+  >
+> {
   try {
-    let body:
-      CheckoutRequestBody;
-
-    try {
-      body =
-        (await request.json()) as CheckoutRequestBody;
-    } catch {
-      return createErrorResponse(
-        "invalid_request",
-        "Beacon could not read this checkout request.",
-        400
-      );
-    }
+    const session =
+      await auth.api.getSession({
+        headers:
+          request.headers,
+      });
 
     if (
-      !isBeaconPurchaseType(
-        body.purchaseType
-      )
+      !session?.user?.id ||
+      !session.user.email
     ) {
-      return createErrorResponse(
-        "invalid_purchase_type",
-        "Please choose a valid Beacon purchase option.",
-        400
-      );
-    }
-
-    const authenticatedAccount =
-      await getAuthenticatedAccount();
-
-    if (!authenticatedAccount) {
-      return createErrorResponse(
-        "authentication_required",
-        "Please sign in before purchasing Beacon credits or Beacon+.",
+      return jsonError(
+        "You must be signed in before starting checkout.",
         401
       );
     }
 
-    const { account } =
-      authenticatedAccount;
-
-    const stripe =
-      getStripeClient();
-
-    const siteUrl =
-      getSiteUrl();
-
-    const price =
-      getBeaconPriceConfiguration(
-        body.purchaseType
+    const body =
+      await readRequestBody(
+        request
       );
 
-    const stripeCustomerId =
-      await getOrCreateStripeCustomer({
-        userId:
-          account.id,
-
-        email:
-          account.email,
-
-        name:
-          account.name,
-
-        existingCustomerId:
-          account.stripeCustomerId,
-      });
-
-    const metadata:
-      Record<string, string> = {
-        beaconUserId:
-          account.id,
-
-        purchaseType:
-          body.purchaseType,
-
-        purchaseLabel:
-          price.label,
-
-        credits:
-          price.credits === null
-            ? "unlimited"
-            : String(
-                price.credits
-              ),
-
-        billingInterval:
-          price.billingInterval ??
-          "one_time",
-      };
-
-    const checkoutSession =
-      await stripe.checkout.sessions.create({
-        mode:
-          price.mode,
-
-        customer:
-          stripeCustomerId,
-
-        client_reference_id:
-          account.id,
-
-        line_items: [
-          {
-            price:
-              price.priceId,
-
-            quantity: 1,
-          },
-        ],
-
-        success_url:
-          `${siteUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-
-        cancel_url:
-          `${siteUrl}/pricing?cancelled=true`,
-
-        metadata,
-
-        allow_promotion_codes:
-          true,
-
-        billing_address_collection:
-          "auto",
-
-        ...(price.mode ===
-        "payment"
-          ? {
-              payment_intent_data: {
-                metadata,
-              },
-            }
-          : {
-              subscription_data: {
-                metadata,
-              },
-            }),
-      });
-
-    if (!checkoutSession.url) {
-      return createErrorResponse(
-        "checkout_unavailable",
-        "Stripe did not return a checkout page. Please try again.",
-        502
+    if (!body) {
+      return jsonError(
+        "The checkout request is invalid.",
+        400
       );
     }
 
-    return NextResponse.json(
-      {
-        success: true,
+    const applicationUrl =
+      getApplicationUrl();
 
-        data: {
-          checkoutUrl:
-            checkoutSession.url,
+    const successUrl =
+      `${applicationUrl}/account/billing/success` +
+      "?session_id={CHECKOUT_SESSION_ID}";
 
-          sessionId:
-            checkoutSession.id,
-        },
-      },
-      {
-        status: 200,
+    const cancelUrl =
+      `${applicationUrl}/pricing?checkout=cancelled`;
+
+    if (
+      body.purchaseType ===
+      STRIPE_PURCHASE_TYPES.SUBSCRIPTION
+    ) {
+      const billingInterval =
+        getSubscriptionInterval(
+          body
+        );
+
+      if (!billingInterval) {
+        return jsonError(
+          "Select either monthly or annual billing.",
+          400
+        );
       }
+
+      const metadata =
+        createSubscriptionMetadata(
+          billingInterval,
+          session.user.id
+        );
+
+      const checkoutSession =
+        await stripe.checkout.sessions.create({
+          mode: "subscription",
+
+          customer_email:
+            session.user.email,
+
+          client_reference_id:
+            session.user.id,
+
+          line_items: [
+            {
+              price:
+                getBeaconPlusPriceId(
+                  billingInterval
+                ),
+
+              quantity: 1,
+            },
+          ],
+
+          metadata,
+
+          subscription_data: {
+            metadata,
+          },
+
+          allow_promotion_codes: true,
+
+          billing_address_collection:
+            "auto",
+
+          success_url:
+            successUrl,
+
+          cancel_url:
+            cancelUrl,
+        });
+
+      if (!checkoutSession.url) {
+        return jsonError(
+          "Stripe did not return a checkout URL.",
+          502
+        );
+      }
+
+      return NextResponse.json({
+        checkoutUrl:
+          checkoutSession.url,
+      });
+    }
+
+    if (
+      body.purchaseType ===
+      STRIPE_PURCHASE_TYPES.CREDIT_TOP_UP
+    ) {
+      const creditPackId =
+        getCreditPackId(
+          body
+        );
+
+      if (!creditPackId) {
+        return jsonError(
+          "Select a valid credit pack.",
+          400
+        );
+      }
+
+      const metadata =
+        createCreditTopUpMetadata(
+          creditPackId,
+          session.user.id
+        );
+
+      const checkoutSession =
+        await stripe.checkout.sessions.create({
+          mode: "payment",
+
+          customer_email:
+            session.user.email,
+
+          customer_creation:
+            "always",
+
+          client_reference_id:
+            session.user.id,
+
+          line_items: [
+            {
+              price:
+                getCreditPackPriceId(
+                  creditPackId
+                ),
+
+              quantity: 1,
+            },
+          ],
+
+          metadata,
+
+          payment_intent_data: {
+            metadata,
+          },
+
+          allow_promotion_codes: true,
+
+          billing_address_collection:
+            "auto",
+
+          success_url:
+            successUrl,
+
+          cancel_url:
+            cancelUrl,
+        });
+
+      if (!checkoutSession.url) {
+        return jsonError(
+          "Stripe did not return a checkout URL.",
+          502
+        );
+      }
+
+      return NextResponse.json({
+        checkoutUrl:
+          checkoutSession.url,
+      });
+    }
+
+    return jsonError(
+      "Select a valid checkout purchase type.",
+      400
     );
   } catch (error) {
     console.error(
-      "Beacon Stripe checkout failed:",
+      "Stripe checkout session creation failed:",
       error
     );
 
-    return createErrorResponse(
-      "checkout_failed",
-      error instanceof Error
-        ? error.message
-        : "Beacon could not start Stripe Checkout.",
+    return jsonError(
+      "Beacon could not start checkout. Please try again.",
       500
     );
   }

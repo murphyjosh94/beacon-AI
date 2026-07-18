@@ -194,7 +194,9 @@ export default function MyBeaconPage() {
     }, []);
 
   useEffect(() => {
-    void loadVehicleGarage();
+    queueMicrotask(() => {
+      void loadVehicleGarage();
+    });
   }, [loadVehicleGarage]);
 
   return (

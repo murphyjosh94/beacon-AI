@@ -1,33 +1,27 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
-import {
-  and,
-  count,
-  eq,
-  gt,
-  gte,
-  lt,
-  sql,
-} from "drizzle-orm";
-
 import { auth } from "@/lib/auth/Auth";
-import { database } from "@/lib/database/Database";
 
 import {
-  creditLedger,
-  searchHistory,
-  user,
-} from "@/lib/database/schema";
+  CreditUsageError,
+  isCreditUsageError,
+} from "@/lib/credits/useCredits";
+
+import {
+  executeSearch,
+  isSearchExecutionError,
+  SearchExecutionError,
+} from "@/lib/search/executeSearch";
+
+import {
+  publishSearchPage,
+} from "@/lib/search/SearchPageRepository";
 
 import {
   BeaconEngineError,
   executeBeaconRequest,
 } from "@/services/orchestrator/BeaconEngine";
-
-import {
-  publishSearchPage,
-} from "@/lib/search/SearchPageRepository";
 
 import type {
   BeaconResponse,
@@ -38,28 +32,21 @@ type RecommendationRequestBody = {
   displayQuery?: unknown;
 };
 
-type AuthenticatedAccount = {
-  id: string;
-  purchasedCredits: number;
-  beaconPlusActive: boolean;
-};
+export const runtime =
+  "nodejs";
 
-type SearchChargeReservation = {
-  charged: boolean;
-  balanceAfter?: number;
-};
-
-const FREE_DAILY_SEARCH_LIMIT = 5;
-
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const dynamic =
+  "force-dynamic";
 
 function readQuery(
   value: unknown
 ): string {
-  return typeof value === "string"
-    ? value.trim()
-    : "";
+  return (
+    typeof value ===
+      "string"
+      ? value.trim()
+      : ""
+  );
 }
 
 function createErrorResponse(
@@ -70,7 +57,8 @@ function createErrorResponse(
 ) {
   return NextResponse.json(
     {
-      success: false,
+      success:
+        false,
 
       error: {
         code,
@@ -89,362 +77,6 @@ function createErrorResponse(
   );
 }
 
-function getUtcDayRange(): {
-  start: Date;
-  end: Date;
-} {
-  const now =
-    new Date();
-
-  const start =
-    new Date(
-      Date.UTC(
-        now.getUTCFullYear(),
-        now.getUTCMonth(),
-        now.getUTCDate()
-      )
-    );
-
-  const end =
-    new Date(start);
-
-  end.setUTCDate(
-    end.getUTCDate() + 1
-  );
-
-  return {
-    start,
-    end,
-  };
-}
-
-async function getAuthenticatedAccount(): Promise<
-  AuthenticatedAccount | null
-> {
-  const session =
-    await auth.api.getSession({
-      headers:
-        await headers(),
-    });
-
-  if (!session?.user) {
-    return null;
-  }
-
-  const accountRows =
-    await database
-      .select({
-        id:
-          user.id,
-
-        purchasedCredits:
-          user.purchasedCredits,
-
-        beaconPlusActive:
-          user.beaconPlusActive,
-      })
-      .from(user)
-      .where(
-        eq(
-          user.id,
-          session.user.id
-        )
-      )
-      .limit(1);
-
-  return (
-    accountRows[0] ??
-    null
-  );
-}
-
-async function countCompletedSearchesToday(
-  userId: string
-): Promise<number> {
-  const {
-    start,
-    end,
-  } =
-    getUtcDayRange();
-
-  const rows =
-    await database
-      .select({
-        total:
-          count(),
-      })
-      .from(
-        searchHistory
-      )
-      .where(
-        and(
-          eq(
-            searchHistory.userId,
-            userId
-          ),
-
-          eq(
-            searchHistory.status,
-            "completed"
-          ),
-
-          gte(
-            searchHistory.createdAt,
-            start
-          ),
-
-          lt(
-            searchHistory.createdAt,
-            end
-          )
-        )
-      );
-
-  return Number(
-    rows[0]?.total ??
-      0
-  );
-}
-
-async function createStartedSearch(
-  userId: string,
-  query: string
-): Promise<string> {
-  const rows =
-    await database
-      .insert(
-        searchHistory
-      )
-      .values({
-        userId,
-
-        query,
-
-        status:
-          "started",
-
-        resultCount: 0,
-
-        creditCharged:
-          false,
-      })
-      .returning({
-        id:
-          searchHistory.id,
-      });
-
-  const searchId =
-    rows[0]?.id;
-
-  if (!searchId) {
-    throw new Error(
-      "Beacon could not create the search-history record."
-    );
-  }
-
-  return searchId;
-}
-
-async function reservePurchasedCredit(
-  account: AuthenticatedAccount,
-  searchHistoryId: string
-): Promise<SearchChargeReservation> {
-  if (
-    account.beaconPlusActive
-  ) {
-    return {
-      charged: false,
-    };
-  }
-
-  const completedToday =
-    await countCompletedSearchesToday(
-      account.id
-    );
-
-  if (
-    completedToday <
-    FREE_DAILY_SEARCH_LIMIT
-  ) {
-    return {
-      charged: false,
-    };
-  }
-
-  const updatedAccounts =
-    await database
-      .update(user)
-      .set({
-        purchasedCredits:
-          sql`${user.purchasedCredits} - 1`,
-
-        updatedAt:
-          new Date(),
-      })
-      .where(
-        and(
-          eq(
-            user.id,
-            account.id
-          ),
-
-          gt(
-            user.purchasedCredits,
-            0
-          )
-        )
-      )
-      .returning({
-        purchasedCredits:
-          user.purchasedCredits,
-      });
-
-  const updatedAccount =
-    updatedAccounts[0];
-
-  if (!updatedAccount) {
-    throw new BeaconEngineError(
-      "You have used today's five free searches. Please add search credits or join Beacon+ to continue.",
-      {
-        code:
-          "billing_required",
-
-        status: 402,
-      }
-    );
-  }
-
-  try {
-    await database
-      .insert(
-        creditLedger
-      )
-      .values({
-        userId:
-          account.id,
-
-        type:
-          "search",
-
-        amount: -1,
-
-        balanceAfter:
-          updatedAccount
-            .purchasedCredits,
-
-        description:
-          "One purchased credit reserved for a Beacon search.",
-
-        searchHistoryId,
-
-        metadata: {
-          source:
-            "beacon_search",
-
-          freeDailyLimit:
-            FREE_DAILY_SEARCH_LIMIT,
-        },
-      });
-  } catch (error) {
-    await database
-      .update(user)
-      .set({
-        purchasedCredits:
-          sql`${user.purchasedCredits} + 1`,
-
-        updatedAt:
-          new Date(),
-      })
-      .where(
-        eq(
-          user.id,
-          account.id
-        )
-      );
-
-    throw error;
-  }
-
-  return {
-    charged: true,
-
-    balanceAfter:
-      updatedAccount
-        .purchasedCredits,
-  };
-}
-
-async function refundReservedCredit(
-  userId: string,
-  searchHistoryId: string
-): Promise<void> {
-  const updatedAccounts =
-    await database
-      .update(user)
-      .set({
-        purchasedCredits:
-          sql`${user.purchasedCredits} + 1`,
-
-        updatedAt:
-          new Date(),
-      })
-      .where(
-        eq(
-          user.id,
-          userId
-        )
-      )
-      .returning({
-        purchasedCredits:
-          user.purchasedCredits,
-      });
-
-  const updatedAccount =
-    updatedAccounts[0];
-
-  if (!updatedAccount) {
-    console.error(
-      `Beacon could not refund the reserved credit for search ${searchHistoryId}.`
-    );
-
-    return;
-  }
-
-  try {
-    await database
-      .insert(
-        creditLedger
-      )
-      .values({
-        userId,
-
-        type:
-          "refund",
-
-        amount: 1,
-
-        balanceAfter:
-          updatedAccount
-            .purchasedCredits,
-
-        description:
-          "Reserved search credit returned because the Beacon search failed.",
-
-        searchHistoryId,
-
-        metadata: {
-          source:
-            "failed_beacon_search",
-        },
-      });
-  } catch (error) {
-    console.error(
-      `Beacon restored the account balance but could not record the refund ledger for search ${searchHistoryId}:`,
-      error
-    );
-  }
-}
-
 function getResultCount(
   result: BeaconResponse
 ): number {
@@ -453,7 +85,8 @@ function getResultCount(
     "recommendations"
   ) {
     return (
-      result.recommendations
+      result
+        .recommendations
         .length
     );
   }
@@ -469,7 +102,8 @@ function getResultCategory(
     "recommendations"
   ) {
     return (
-      result.intent.category ??
+      result.intent
+        .category ??
       null
     );
   }
@@ -477,196 +111,191 @@ function getResultCategory(
   return "general";
 }
 
-async function markSearchCompleted(
-  searchHistoryId: string,
-  result: BeaconResponse,
-  creditCharged: boolean
-): Promise<void> {
-  await database
-    .update(
-      searchHistory
-    )
-    .set({
-      status:
-        "completed",
+function findBeaconEngineError(
+  error: unknown
+): BeaconEngineError | null {
+  if (
+    error instanceof
+      BeaconEngineError
+  ) {
+    return error;
+  }
 
-      category:
-        getResultCategory(
-          result
-        ),
+  if (
+    error instanceof
+      SearchExecutionError &&
+    error.cause instanceof
+      BeaconEngineError
+  ) {
+    return error.cause;
+  }
 
-      responseType:
-        result.responseType,
-
-      resultCount:
-        getResultCount(
-          result
-        ),
-
-      creditCharged,
-
-      responseData:
-        result,
-
-      errorCode:
-        null,
-
-      errorMessage:
-        null,
-
-      completedAt:
-        new Date(),
-    })
-    .where(
-      eq(
-        searchHistory.id,
-        searchHistoryId
-      )
-    );
+  return null;
 }
 
-async function markSearchFailed(
-  searchHistoryId: string,
-  error: unknown
-): Promise<void> {
-  const errorCode =
-    error instanceof
-    BeaconEngineError
-      ? error.code
-      : "internal_error";
-
-  const errorMessage =
-    error instanceof Error
-      ? error.message
-      : "Beacon could not complete this request.";
-
-  await database
-    .update(
-      searchHistory
-    )
-    .set({
-      status:
-        "failed",
-
-      creditCharged:
+function createCreditErrorResponse(
+  error: CreditUsageError
+) {
+  return NextResponse.json(
+    {
+      success:
         false,
 
-      errorCode,
+      error: {
+        code:
+          error.code,
 
-      errorMessage,
+        message:
+          error.message,
+      },
 
-      completedAt:
-        new Date(),
-    })
-    .where(
-      eq(
-        searchHistory.id,
-        searchHistoryId
-      )
-    );
+      account: {
+        requiredCredits:
+          error.requiredCredits,
+
+        availableCredits:
+          error.availableCredits,
+
+        dailyAllowanceRemaining:
+          error
+            .dailyAllowanceRemaining,
+
+        purchasedCreditsRemaining:
+          error
+            .purchasedCreditsRemaining,
+      },
+    },
+    {
+      status:
+        error.status,
+    }
+  );
 }
 
 export async function POST(
   request: Request
 ) {
-  let searchHistoryId:
-    | string
-    | null = null;
-
-  let authenticatedAccount:
-    | AuthenticatedAccount
-    | null = null;
-
-  let creditReservation:
-    SearchChargeReservation = {
-      charged: false,
-    };
+  let body:
+    RecommendationRequestBody;
 
   try {
-    let body:
-      RecommendationRequestBody;
+    body =
+      (await request.json()) as RecommendationRequestBody;
+  } catch {
+    return createErrorResponse(
+      "invalid_request",
+      "Beacon could not read this request.",
+      400
+    );
+  }
 
-    try {
-      body =
-        (await request.json()) as RecommendationRequestBody;
-    } catch {
-      return createErrorResponse(
-        "invalid_request",
-        "Beacon could not read this request.",
-        400
-      );
-    }
-
-    const query =
-      readQuery(
-        body.query
-      );
-
-    const displayQuery =
-      readQuery(
-        body.displayQuery
-      ) || query;
-
-    if (!query) {
-      return createErrorResponse(
-        "missing_query",
-        "Please enter something for Beacon to help with.",
-        400
-      );
-    }
-
-    authenticatedAccount =
-      await getAuthenticatedAccount();
-
-    if (!authenticatedAccount) {
-      return createErrorResponse(
-        "authentication_required",
-        "Please sign in or create a free Beacon account before starting a search.",
-        401
-      );
-    }
-
-    searchHistoryId =
-      await createStartedSearch(
-        authenticatedAccount.id,
-        query
-      );
-
-    creditReservation =
-      await reservePurchasedCredit(
-        authenticatedAccount,
-        searchHistoryId
-      );
-
-    const result =
-      await executeBeaconRequest(
-        query
-      );
-
-    await markSearchCompleted(
-      searchHistoryId,
-      result,
-      creditReservation.charged
+  const query =
+    readQuery(
+      body.query
     );
 
-    let publicPath: string | undefined;
+  const displayQuery =
+    readQuery(
+      body.displayQuery
+    ) || query;
+
+  if (!query) {
+    return createErrorResponse(
+      "missing_query",
+      "Please enter something for Beacon to help with.",
+      400
+    );
+  }
+
+  const session =
+    await auth.api.getSession({
+      headers:
+        await headers(),
+    });
+
+  if (!session?.user?.id) {
+    return createErrorResponse(
+      "authentication_required",
+      "Please sign in or create a free Beacon account before starting a search.",
+      401
+    );
+  }
+
+  try {
+    const execution =
+      await executeSearch<
+        BeaconResponse
+      >({
+        userId:
+          session.user.id,
+
+        query,
+
+        creditCost:
+          1,
+
+        creditDescription:
+          `Beacon search: ${displayQuery}`,
+
+        creditMetadata: {
+          source:
+            "beacon_recommendation_route",
+
+          displayQuery,
+        },
+
+        provider:
+          async ({
+            query:
+              providerQuery,
+          }) => {
+            return executeBeaconRequest(
+              providerQuery
+            );
+          },
+
+        serializeResult:
+          (
+            result
+          ) => result,
+
+        getResultCount,
+      });
+
+    const result =
+      execution.result;
+
+    let publicPath:
+      string | undefined;
 
     if (
       result.responseType ===
         "recommendations" &&
-      result.recommendations.length > 0
+      result.recommendations
+        .length > 0
     ) {
       try {
         const publishedPage =
           await publishSearchPage({
             displayQuery,
-            response: result,
+
+            response:
+              result,
+
             generatedByUserId:
-              authenticatedAccount.id,
+              session.user.id,
           });
 
-        publicPath = publishedPage.path;
-      } catch (publicationError) {
+        publicPath =
+          publishedPage.path;
+      } catch (
+        publicationError
+      ) {
+        /*
+         * Publishing an SEO page is secondary to returning
+         * the completed Beacon response. A publication
+         * failure must not fail or refund the search.
+         */
         console.error(
           "Beacon completed the search but could not publish its public page:",
           publicationError
@@ -674,12 +303,20 @@ export async function POST(
       }
     }
 
+    const credits =
+      execution.credits;
+
     return NextResponse.json(
       {
-        success: true,
+        success:
+          true,
 
         data:
           result,
+
+        searchHistoryId:
+          execution
+            .searchHistoryId,
 
         ...(publicPath
           ? {
@@ -688,65 +325,112 @@ export async function POST(
           : {}),
 
         account: {
-          freeDailyLimit:
-            FREE_DAILY_SEARCH_LIMIT,
+          allowanceTier:
+            credits
+              .allowanceTier,
 
-          creditCharged:
-            creditReservation.charged,
+          dailyAllowanceLimit:
+            credits
+              .dailyAllowanceLimit,
+
+          dailyAllowanceUsed:
+            credits
+              .dailyAllowanceUsed,
+
+          dailyAllowanceRemaining:
+            credits
+              .dailyAllowanceRemaining,
+
+          purchasedCreditsUsed:
+            credits
+              .purchasedCreditsUsed,
 
           purchasedCreditsRemaining:
-            creditReservation
-              .balanceAfter ??
-            authenticatedAccount
-              .purchasedCredits,
+            credits
+              .purchasedCreditsRemaining,
+
+          creditSource:
+            credits.source,
+
+          creditCharged:
+            credits
+              .purchasedCreditsUsed >
+            0,
 
           beaconPlusActive:
-            authenticatedAccount
+            credits
               .beaconPlusActive,
+        },
+
+        search: {
+          category:
+            getResultCategory(
+              result
+            ),
+
+          responseType:
+            result.responseType,
+
+          resultCount:
+            getResultCount(
+              result
+            ),
         },
       },
       {
-        status: 200,
+        status:
+          200,
       }
     );
   } catch (error) {
     if (
-      searchHistoryId &&
-      authenticatedAccount
+      isCreditUsageError(
+        error
+      )
     ) {
-      if (
-        creditReservation.charged
-      ) {
-        await refundReservedCredit(
-          authenticatedAccount.id,
-          searchHistoryId
-        );
-      }
+      return createCreditErrorResponse(
+        error
+      );
+    }
 
-      try {
-        await markSearchFailed(
-          searchHistoryId,
-          error
-        );
-      } catch (
-        historyError
-      ) {
-        console.error(
-          "Beacon could not update the failed search-history record:",
-          historyError
-        );
-      }
+    const beaconError =
+      findBeaconEngineError(
+        error
+      );
+
+    if (beaconError) {
+      return createErrorResponse(
+        beaconError.code,
+        beaconError.message,
+        beaconError.status,
+        beaconError.issues
+      );
     }
 
     if (
-      error instanceof
-      BeaconEngineError
+      isSearchExecutionError(
+        error
+      )
     ) {
+      console.error(
+        "Beacon search execution failed:",
+        {
+          code:
+            error.code,
+
+          searchHistoryId:
+            error
+              .searchHistoryId,
+
+          cause:
+            error.cause,
+        }
+      );
+
       return createErrorResponse(
         error.code,
         error.message,
-        error.status,
-        error.issues
+        error.status
       );
     }
 

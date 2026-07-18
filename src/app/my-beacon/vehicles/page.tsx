@@ -275,7 +275,9 @@ export default function MyVehiclesPage() {
     }, []);
 
   useEffect(() => {
-    void loadVehicles();
+    queueMicrotask(() => {
+      void loadVehicles();
+    });
   }, [loadVehicles]);
 
   useEffect(() => {

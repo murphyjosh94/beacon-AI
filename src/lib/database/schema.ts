@@ -19,6 +19,15 @@ import {
  * Better Auth core tables
  */
 
+export const userRole =
+  pgEnum(
+    "user_role",
+    [
+      "user",
+      "admin",
+    ]
+  );
+
 export const user = pgTable(
   "user",
   {
@@ -41,6 +50,15 @@ export const user = pgTable(
       )
         .notNull()
         .default(false),
+
+    role:
+      userRole(
+        "role"
+      )
+        .notNull()
+        .default(
+          "user"
+        ),
 
     image:
       text("image"),

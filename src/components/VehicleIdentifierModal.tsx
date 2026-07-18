@@ -291,13 +291,15 @@ export default function VehicleIdentifierModal({
       return;
     }
 
-    setForm(
-      createFormState(
-        initialVehicle
-      )
-    );
+    queueMicrotask(() => {
+      setForm(
+        createFormState(
+          initialVehicle
+        )
+      );
 
-    setError(null);
+      setError(null);
+    });
   }, [
     open,
     initialVehicle,

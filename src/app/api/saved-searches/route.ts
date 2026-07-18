@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import {
   and,
+  count,
   desc,
   eq,
 } from "drizzle-orm";
@@ -18,6 +19,15 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const MAXIMUM_NAME_LENGTH = 100;
+const MAXIMUM_QUERY_LENGTH = 2_000;
+const MAXIMUM_CATEGORY_LENGTH = 80;
+const MAXIMUM_SAVED_SEARCHES = 100;
+const MAXIMUM_SEARCH_PARAMETERS_BYTES =
+  20_000;
+const MAXIMUM_SAVED_SEARCH_ID_LENGTH =
+  255;
+
 type SavedSearchRequestBody = {
   name?: unknown;
   query?: unknown;
@@ -29,16 +39,53 @@ type AuthenticatedAccount = {
   id: string;
 };
 
-const MAXIMUM_NAME_LENGTH = 100;
-const MAXIMUM_QUERY_LENGTH = 2_000;
-const MAXIMUM_SAVED_SEARCHES = 100;
+type JsonObject = Record<
+  string,
+  unknown
+>;
+
+class SavedSearchValidationError extends Error {
+  readonly code: string;
+  readonly status: number;
+
+  constructor(
+    code: string,
+    message: string,
+    status: number
+  ) {
+    super(message);
+
+    this.name =
+      "SavedSearchValidationError";
+
+    this.code = code;
+    this.status = status;
+  }
+}
+
+function createJsonResponse(
+  body: unknown,
+  status: number
+) {
+  return NextResponse.json(
+    body,
+    {
+      status,
+
+      headers: {
+        "Cache-Control":
+          "no-store, max-age=0",
+      },
+    }
+  );
+}
 
 function createErrorResponse(
   code: string,
   message: string,
   status: number
 ) {
-  return NextResponse.json(
+  return createJsonResponse(
     {
       success: false,
 
@@ -47,24 +94,34 @@ function createErrorResponse(
         message,
       },
     },
-    {
-      status,
-    }
+    status
   );
+}
+
+function normaliseWhitespace(
+  value: string
+): string {
+  return value
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function readRequiredString(
   value: unknown,
   maximumLength: number
 ): string {
-  if (typeof value !== "string") {
+  if (
+    typeof value !== "string"
+  ) {
     return "";
   }
 
-  return value
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, maximumLength);
+  return normaliseWhitespace(
+    value
+  ).slice(
+    0,
+    maximumLength
+  );
 }
 
 function readOptionalString(
@@ -80,21 +137,115 @@ function readOptionalString(
   return cleaned || undefined;
 }
 
-function readSearchParameters(
+function isPlainObject(
   value: unknown
-): Record<string, unknown> {
+): value is JsonObject {
   if (
     typeof value !== "object" ||
     value === null ||
     Array.isArray(value)
   ) {
+    return false;
+  }
+
+  const prototype =
+    Object.getPrototypeOf(
+      value
+    );
+
+  return (
+    prototype ===
+      Object.prototype ||
+    prototype === null
+  );
+}
+
+function readSearchParameters(
+  value: unknown
+): JsonObject {
+  if (
+    value === undefined ||
+    value === null
+  ) {
     return {};
   }
 
-  return value as Record<
-    string,
-    unknown
-  >;
+  if (!isPlainObject(value)) {
+    throw new SavedSearchValidationError(
+      "invalid_search_parameters",
+      "Search parameters must be a JSON object.",
+      400
+    );
+  }
+
+  let serialised: string;
+
+  try {
+    serialised =
+      JSON.stringify(value);
+  } catch {
+    throw new SavedSearchValidationError(
+      "invalid_search_parameters",
+      "Search parameters must contain valid JSON values.",
+      400
+    );
+  }
+
+  const size =
+    Buffer.byteLength(
+      serialised,
+      "utf8"
+    );
+
+  if (
+    size >
+    MAXIMUM_SEARCH_PARAMETERS_BYTES
+  ) {
+    throw new SavedSearchValidationError(
+      "search_parameters_too_large",
+      "The saved-search parameters are too large.",
+      413
+    );
+  }
+
+  return JSON.parse(
+    serialised
+  ) as JsonObject;
+}
+
+async function readRequestBody(
+  request: Request
+): Promise<SavedSearchRequestBody> {
+  const contentType =
+    request.headers.get(
+      "content-type"
+    );
+
+  if (
+    !contentType
+      ?.toLowerCase()
+      .includes(
+        "application/json"
+      )
+  ) {
+    throw new SavedSearchValidationError(
+      "invalid_content_type",
+      "This endpoint requires a JSON request body.",
+      415
+    );
+  }
+
+  try {
+    return (
+      await request.json()
+    ) as SavedSearchRequestBody;
+  } catch {
+    throw new SavedSearchValidationError(
+      "invalid_request",
+      "Beacon could not read this saved-search request.",
+      400
+    );
+  }
 }
 
 async function getAuthenticatedAccount(): Promise<
@@ -106,7 +257,9 @@ async function getAuthenticatedAccount(): Promise<
         await headers(),
     });
 
-  if (!session?.user) {
+  if (
+    !session?.user?.id
+  ) {
     return null;
   }
 
@@ -125,7 +278,26 @@ async function getAuthenticatedAccount(): Promise<
       )
       .limit(1);
 
-  return accounts[0] ?? null;
+  return (
+    accounts[0] ?? null
+  );
+}
+
+function handleKnownError(
+  error: unknown
+): NextResponse | null {
+  if (
+    error instanceof
+    SavedSearchValidationError
+  ) {
+    return createErrorResponse(
+      error.code,
+      error.message,
+      error.status
+    );
+  }
+
+  return null;
 }
 
 export async function GET() {
@@ -181,7 +353,7 @@ export async function GET() {
           MAXIMUM_SAVED_SEARCHES
         );
 
-    return NextResponse.json(
+    return createJsonResponse(
       {
         success: true,
 
@@ -191,11 +363,12 @@ export async function GET() {
 
           total:
             searches.length,
+
+          limit:
+            MAXIMUM_SAVED_SEARCHES,
         },
       },
-      {
-        status: 200,
-      }
+      200
     );
   } catch (error) {
     console.error(
@@ -226,19 +399,10 @@ export async function POST(
       );
     }
 
-    let body:
-      SavedSearchRequestBody;
-
-    try {
-      body =
-        (await request.json()) as SavedSearchRequestBody;
-    } catch {
-      return createErrorResponse(
-        "invalid_request",
-        "Beacon could not read this saved-search request.",
-        400
+    const body =
+      await readRequestBody(
+        request
       );
-    }
 
     const query =
       readRequiredString(
@@ -263,7 +427,7 @@ export async function POST(
     const category =
       readOptionalString(
         body.category,
-        80
+        MAXIMUM_CATEGORY_LENGTH
       );
 
     const name =
@@ -278,181 +442,218 @@ export async function POST(
         body.searchParameters
       );
 
-    const existingSearches =
-      await database
-        .select({
-          id:
-            savedSearch.id,
-        })
-        .from(savedSearch)
-        .where(
-          and(
-            eq(
-              savedSearch.userId,
-              account.id
-            ),
+    const result =
+      await database.transaction(
+        async (transaction) => {
+          const existingRows =
+            await transaction
+              .select({
+                id:
+                  savedSearch.id,
+              })
+              .from(savedSearch)
+              .where(
+                and(
+                  eq(
+                    savedSearch.userId,
+                    account.id
+                  ),
 
-            eq(
-              savedSearch.query,
-              query
-            )
-          )
-        )
-        .limit(1);
-
-    const existing =
-      existingSearches[0];
-
-    if (existing) {
-      const updated =
-        await database
-          .update(savedSearch)
-          .set({
-            name,
-            category:
-              category ?? null,
-
-            searchParameters,
-
-            updatedAt:
-              new Date(),
-          })
-          .where(
-            and(
-              eq(
-                savedSearch.id,
-                existing.id
-              ),
-
-              eq(
-                savedSearch.userId,
-                account.id
+                  eq(
+                    savedSearch.query,
+                    query
+                  )
+                )
               )
-            )
-          )
-          .returning({
-            id:
-              savedSearch.id,
+              .limit(1);
 
-            name:
-              savedSearch.name,
+          const existing =
+            existingRows[0];
 
-            query:
-              savedSearch.query,
+          if (existing) {
+            const updated =
+              await transaction
+                .update(
+                  savedSearch
+                )
+                .set({
+                  name,
 
-            category:
-              savedSearch.category,
+                  category:
+                    category ??
+                    null,
 
-            searchParameters:
-              savedSearch.searchParameters,
+                  searchParameters,
 
-            createdAt:
-              savedSearch.createdAt,
+                  updatedAt:
+                    new Date(),
+                })
+                .where(
+                  and(
+                    eq(
+                      savedSearch.id,
+                      existing.id
+                    ),
 
-            updatedAt:
-              savedSearch.updatedAt,
-          });
+                    eq(
+                      savedSearch.userId,
+                      account.id
+                    )
+                  )
+                )
+                .returning({
+                  id:
+                    savedSearch.id,
 
-      return NextResponse.json(
-        {
-          success: true,
+                  name:
+                    savedSearch.name,
 
-          data: {
+                  query:
+                    savedSearch.query,
+
+                  category:
+                    savedSearch.category,
+
+                  searchParameters:
+                    savedSearch.searchParameters,
+
+                  createdAt:
+                    savedSearch.createdAt,
+
+                  updatedAt:
+                    savedSearch.updatedAt,
+                });
+
+            const saved =
+              updated[0];
+
+            if (!saved) {
+              throw new Error(
+                "The saved search disappeared while it was being updated."
+              );
+            }
+
+            return {
+              savedSearch:
+                saved,
+
+              created:
+                false,
+            };
+          }
+
+          const countRows =
+            await transaction
+              .select({
+                total:
+                  count(),
+              })
+              .from(savedSearch)
+              .where(
+                eq(
+                  savedSearch.userId,
+                  account.id
+                )
+              );
+
+          const currentTotal =
+            Number(
+              countRows[0]
+                ?.total ?? 0
+            );
+
+          if (
+            currentTotal >=
+            MAXIMUM_SAVED_SEARCHES
+          ) {
+            throw new SavedSearchValidationError(
+              "saved_search_limit_reached",
+              `You have reached the limit of ${MAXIMUM_SAVED_SEARCHES} saved searches. Remove one before saving another.`,
+              409
+            );
+          }
+
+          const created =
+            await transaction
+              .insert(
+                savedSearch
+              )
+              .values({
+                userId:
+                  account.id,
+
+                name,
+
+                query,
+
+                category:
+                  category ??
+                  null,
+
+                searchParameters,
+              })
+              .returning({
+                id:
+                  savedSearch.id,
+
+                name:
+                  savedSearch.name,
+
+                query:
+                  savedSearch.query,
+
+                category:
+                  savedSearch.category,
+
+                searchParameters:
+                  savedSearch.searchParameters,
+
+                createdAt:
+                  savedSearch.createdAt,
+
+                updatedAt:
+                  savedSearch.updatedAt,
+              });
+
+          const saved =
+            created[0];
+
+          if (!saved) {
+            throw new Error(
+              "The saved search was not returned after creation."
+            );
+          }
+
+          return {
             savedSearch:
-              updated[0],
+              saved,
 
-            created: false,
-          },
-        },
-        {
-          status: 200,
+            created:
+              true,
+          };
         }
       );
-    }
 
-    const currentSearches =
-      await database
-        .select({
-          id:
-            savedSearch.id,
-        })
-        .from(savedSearch)
-        .where(
-          eq(
-            savedSearch.userId,
-            account.id
-          )
-        )
-        .limit(
-          MAXIMUM_SAVED_SEARCHES
-        );
-
-    if (
-      currentSearches.length >=
-      MAXIMUM_SAVED_SEARCHES
-    ) {
-      return createErrorResponse(
-        "saved_search_limit_reached",
-        "You have reached the limit of 100 saved searches. Remove one before saving another.",
-        409
-      );
-    }
-
-    const created =
-      await database
-        .insert(savedSearch)
-        .values({
-          userId:
-            account.id,
-
-          name,
-
-          query,
-
-          category:
-            category ?? null,
-
-          searchParameters,
-        })
-        .returning({
-          id:
-            savedSearch.id,
-
-          name:
-            savedSearch.name,
-
-          query:
-            savedSearch.query,
-
-          category:
-            savedSearch.category,
-
-          searchParameters:
-            savedSearch.searchParameters,
-
-          createdAt:
-            savedSearch.createdAt,
-
-          updatedAt:
-            savedSearch.updatedAt,
-        });
-
-    return NextResponse.json(
+    return createJsonResponse(
       {
         success: true,
 
-        data: {
-          savedSearch:
-            created[0],
-
-          created: true,
-        },
+        data: result,
       },
-      {
-        status: 201,
-      }
+      result.created
+        ? 201
+        : 200
     );
   } catch (error) {
+    const knownResponse =
+      handleKnownError(
+        error
+      );
+
+    if (knownResponse) {
+      return knownResponse;
+    }
+
     console.error(
       "Beacon could not save the search:",
       error
@@ -487,9 +688,12 @@ export async function DELETE(
       );
 
     const savedSearchId =
-      requestUrl.searchParams
-        .get("id")
-        ?.trim();
+      readRequiredString(
+        requestUrl.searchParams.get(
+          "id"
+        ),
+        MAXIMUM_SAVED_SEARCH_ID_LENGTH
+      );
 
     if (!savedSearchId) {
       return createErrorResponse(
@@ -530,7 +734,7 @@ export async function DELETE(
       );
     }
 
-    return NextResponse.json(
+    return createJsonResponse(
       {
         success: true,
 
@@ -540,9 +744,7 @@ export async function DELETE(
           savedSearchId,
         },
       },
-      {
-        status: 200,
-      }
+      200
     );
   } catch (error) {
     console.error(

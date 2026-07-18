@@ -15,6 +15,13 @@
       "when": 1784316912534,
       "tag": "0001_cynical_iron_lad",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784395719317,
+      "tag": "0002_legal_gressill",
+      "breakpoints": true
     }
   ]
 }

@@ -1,21 +1,25 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 import {
+  and,
   count,
   desc,
   eq,
+  gte,
+  lt,
 } from "drizzle-orm";
 
-import Navbar from "@/components/Navbar";
 import BeaconFooter from "@/components/BeaconFooter";
+import Navbar from "@/components/Navbar";
 import DashboardSignOutButton from "@/components/dashboard/DashboardSignOutButton";
 
 import { auth } from "@/lib/auth/Auth";
 import { database } from "@/lib/database/Database";
 
 import {
+  creditLedger,
   savedSearch,
   searchHistory,
   user,
@@ -23,6 +27,153 @@ import {
 
 export const dynamic =
   "force-dynamic";
+
+const DEFAULT_FREE_DAILY_CREDITS =
+  5;
+
+const DEFAULT_BEACON_PLUS_DAILY_CREDITS =
+  100;
+
+type LedgerMetadata = {
+  allowanceCreditsUsed?: unknown;
+};
+
+function readPositiveInteger(
+  value: string | undefined,
+  fallback: number
+): number {
+  if (!value) {
+    return fallback;
+  }
+
+  const parsed =
+    Number.parseInt(
+      value,
+      10
+    );
+
+  if (
+    !Number.isFinite(parsed) ||
+    parsed < 0
+  ) {
+    return fallback;
+  }
+
+  return parsed;
+}
+
+function getDailyAllowanceLimit(
+  beaconPlusActive: boolean
+): number {
+  if (beaconPlusActive) {
+    return readPositiveInteger(
+      process.env
+        .BEACON_PLUS_DAILY_CREDITS,
+      DEFAULT_BEACON_PLUS_DAILY_CREDITS
+    );
+  }
+
+  return readPositiveInteger(
+    process.env
+      .BEACON_FREE_DAILY_CREDITS,
+    DEFAULT_FREE_DAILY_CREDITS
+  );
+}
+
+function getUtcDayRange(): {
+  start: Date;
+  end: Date;
+} {
+  const now =
+    new Date();
+
+  const start =
+    new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate()
+      )
+    );
+
+  const end =
+    new Date(start);
+
+  end.setUTCDate(
+    end.getUTCDate() + 1
+  );
+
+  return {
+    start,
+    end,
+  };
+}
+
+function readAllowanceCreditsUsed(
+  metadata: unknown,
+  fallbackAmount: number
+): number {
+  if (
+    metadata &&
+    typeof metadata === "object" &&
+    "allowanceCreditsUsed" in
+      metadata
+  ) {
+    const value =
+      (
+        metadata as LedgerMetadata
+      ).allowanceCreditsUsed;
+
+    if (
+      typeof value === "number" &&
+      Number.isFinite(value)
+    ) {
+      return value;
+    }
+  }
+
+  /*
+   * Older daily-free ledger entries may not contain
+   * allowanceCreditsUsed. Their negative amount still
+   * indicates how many allowance credits were consumed.
+   */
+  if (fallbackAmount < 0) {
+    return Math.abs(
+      fallbackAmount
+    );
+  }
+
+  return 0;
+}
+
+function calculateDailyAllowanceUsed(
+  rows: Array<{
+    amount: number;
+    metadata: unknown;
+  }>
+): number {
+  const total =
+    rows.reduce(
+      (
+        runningTotal,
+        entry
+      ) => {
+        return (
+          runningTotal +
+          readAllowanceCreditsUsed(
+            entry.metadata,
+            entry.amount
+          )
+        );
+      },
+      0
+    );
+
+  return Math.max(
+    0,
+    total
+  );
+}
 
 function formatDate(
   value: Date | null
@@ -73,14 +224,20 @@ function getSearchStatusStyle(
     | "failed"
 ): string {
   if (status === "completed") {
-    return "bg-emerald-100 text-emerald-800";
+    return (
+      "bg-emerald-100 text-emerald-800"
+    );
   }
 
   if (status === "failed") {
-    return "bg-red-100 text-red-800";
+    return (
+      "bg-red-100 text-red-800"
+    );
   }
 
-  return "bg-amber-100 text-amber-800";
+  return (
+    "bg-amber-100 text-amber-800"
+  );
 }
 
 function getSearchStatusLabel(
@@ -100,6 +257,14 @@ function getSearchStatusLabel(
   return "Processing";
 }
 
+function pluraliseSearches(
+  value: number
+): string {
+  return value === 1
+    ? "search"
+    : "searches";
+}
+
 export default async function DashboardPage() {
   const requestHeaders =
     await headers();
@@ -110,11 +275,19 @@ export default async function DashboardPage() {
         requestHeaders,
     });
 
-  if (!session?.user) {
+  if (!session?.user?.id) {
     redirect(
       "/signin?next=/dashboard"
     );
   }
+
+  const {
+    start:
+      utcDayStart,
+    end:
+      utcDayEnd,
+  } =
+    getUtcDayRange();
 
   const [
     accountRows,
@@ -122,112 +295,147 @@ export default async function DashboardPage() {
     savedSearches,
     searchCountRows,
     savedCountRows,
-  ] = await Promise.all([
-    database
-      .select()
-      .from(user)
-      .where(
-        eq(
-          user.id,
-          session.user.id
+    dailyAllowanceRows,
+  ] =
+    await Promise.all([
+      database
+        .select()
+        .from(user)
+        .where(
+          eq(
+            user.id,
+            session.user.id
+          )
         )
-      )
-      .limit(1),
+        .limit(1),
 
-    database
-      .select({
-        id:
-          searchHistory.id,
+      database
+        .select({
+          id:
+            searchHistory.id,
 
-        query:
-          searchHistory.query,
+          query:
+            searchHistory.query,
 
-        category:
-          searchHistory.category,
+          category:
+            searchHistory.category,
 
-        status:
-          searchHistory.status,
+          status:
+            searchHistory.status,
 
-        resultCount:
-          searchHistory.resultCount,
+          resultCount:
+            searchHistory.resultCount,
 
-        creditCharged:
-          searchHistory.creditCharged,
+          creditCharged:
+            searchHistory.creditCharged,
 
-        createdAt:
-          searchHistory.createdAt,
-      })
-      .from(searchHistory)
-      .where(
-        eq(
-          searchHistory.userId,
-          session.user.id
+          createdAt:
+            searchHistory.createdAt,
+        })
+        .from(searchHistory)
+        .where(
+          eq(
+            searchHistory.userId,
+            session.user.id
+          )
         )
-      )
-      .orderBy(
-        desc(
-          searchHistory.createdAt
+        .orderBy(
+          desc(
+            searchHistory.createdAt
+          )
         )
-      )
-      .limit(5),
+        .limit(5),
 
-    database
-      .select({
-        id:
-          savedSearch.id,
+      database
+        .select({
+          id:
+            savedSearch.id,
 
-        name:
-          savedSearch.name,
+          name:
+            savedSearch.name,
 
-        query:
-          savedSearch.query,
+          query:
+            savedSearch.query,
 
-        category:
-          savedSearch.category,
+          category:
+            savedSearch.category,
 
-        createdAt:
-          savedSearch.createdAt,
-      })
-      .from(savedSearch)
-      .where(
-        eq(
-          savedSearch.userId,
-          session.user.id
+          createdAt:
+            savedSearch.createdAt,
+        })
+        .from(savedSearch)
+        .where(
+          eq(
+            savedSearch.userId,
+            session.user.id
+          )
         )
-      )
-      .orderBy(
-        desc(
-          savedSearch.createdAt
+        .orderBy(
+          desc(
+            savedSearch.createdAt
+          )
         )
-      )
-      .limit(5),
+        .limit(5),
 
-    database
-      .select({
-        total:
-          count(),
-      })
-      .from(searchHistory)
-      .where(
-        eq(
-          searchHistory.userId,
-          session.user.id
-        )
-      ),
+      database
+        .select({
+          total:
+            count(),
+        })
+        .from(searchHistory)
+        .where(
+          eq(
+            searchHistory.userId,
+            session.user.id
+          )
+        ),
 
-    database
-      .select({
-        total:
-          count(),
-      })
-      .from(savedSearch)
-      .where(
-        eq(
-          savedSearch.userId,
-          session.user.id
-        )
-      ),
-  ]);
+      database
+        .select({
+          total:
+            count(),
+        })
+        .from(savedSearch)
+        .where(
+          eq(
+            savedSearch.userId,
+            session.user.id
+          )
+        ),
+
+      database
+        .select({
+          amount:
+            creditLedger.amount,
+
+          metadata:
+            creditLedger.metadata,
+        })
+        .from(creditLedger)
+        .where(
+          and(
+            eq(
+              creditLedger.userId,
+              session.user.id
+            ),
+
+            eq(
+              creditLedger.type,
+              "daily_free"
+            ),
+
+            gte(
+              creditLedger.createdAt,
+              utcDayStart
+            ),
+
+            lt(
+              creditLedger.createdAt,
+              utcDayEnd
+            )
+          )
+        ),
+    ]);
 
   const account =
     accountRows[0];
@@ -261,6 +469,33 @@ export default async function DashboardPage() {
       account.name
     );
 
+  const dailyAllowanceLimit =
+    getDailyAllowanceLimit(
+      isBeaconPlus
+    );
+
+  const dailyAllowanceUsed =
+    Math.min(
+      dailyAllowanceLimit,
+      calculateDailyAllowanceUsed(
+        dailyAllowanceRows
+      )
+    );
+
+  const dailyAllowanceRemaining =
+    Math.max(
+      0,
+      dailyAllowanceLimit -
+        dailyAllowanceUsed
+    );
+
+  const allowanceDetail =
+    dailyAllowanceRemaining === 0
+      ? "Today’s allowance has been used. Purchased credits are used next."
+      : `${dailyAllowanceRemaining} ${pluraliseSearches(
+          dailyAllowanceRemaining
+        )} remaining today`;
+
   return (
     <main className="min-h-screen bg-slate-100">
       <Navbar />
@@ -285,6 +520,7 @@ export default async function DashboardPage() {
 
             <p className="mt-4 max-w-2xl text-lg leading-8 text-blue-100">
               Manage your searches,
+              daily allowance, purchased
               credits, saved results and
               Beacon+ membership from one
               place.
@@ -312,8 +548,8 @@ export default async function DashboardPage() {
               value={membershipLabel}
               detail={
                 isBeaconPlus
-                  ? "Unlimited searches, subject to fair use"
-                  : "Upgrade for the full Beacon experience"
+                  ? `${dailyAllowanceLimit} personalised searches available each day`
+                  : "Upgrade for a larger daily search allowance"
               }
               accentClass={
                 isBeaconPlus
@@ -323,11 +559,20 @@ export default async function DashboardPage() {
             />
 
             <DashboardMetric
+              label="Today’s Allowance"
+              value={`${dailyAllowanceRemaining} / ${dailyAllowanceLimit}`}
+              detail={
+                allowanceDetail
+              }
+              accentClass="from-cyan-700 to-blue-800"
+            />
+
+            <DashboardMetric
               label="Purchased Credits"
               value={String(
                 account.purchasedCredits
               )}
-              detail="Credits available after your free allowance"
+              detail="Used only after today’s allowance has been consumed"
               accentClass="from-blue-700 to-blue-900"
             />
 
@@ -336,17 +581,8 @@ export default async function DashboardPage() {
               value={String(
                 searchCount
               )}
-              detail="Searches recorded on this account"
-              accentClass="from-indigo-600 to-indigo-800"
-            />
-
-            <DashboardMetric
-              label="Saved Searches"
-              value={String(
-                savedCount
-              )}
-              detail="Saved searches ready to revisit"
-              accentClass="from-violet-600 to-violet-800"
+              detail={`${savedCount} saved ${savedCount === 1 ? "search" : "searches"} on this account`}
+              accentClass="from-indigo-600 to-violet-800"
             />
           </div>
 
@@ -426,7 +662,10 @@ export default async function DashboardPage() {
                                     {
                                       search.resultCount
                                     }{" "}
-                                    results
+                                    {search.resultCount ===
+                                    1
+                                      ? "result"
+                                      : "results"}
                                   </span>
                                 </>
                               )}
@@ -444,11 +683,16 @@ export default async function DashboardPage() {
                               )}
                             </span>
 
-                            {search.creditCharged && (
+                            {search.creditCharged ? (
                               <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-extrabold text-blue-800">
-                                1 credit
+                                Purchased credit
                               </span>
-                            )}
+                            ) : search.status ===
+                              "completed" ? (
+                              <span className="rounded-full bg-cyan-100 px-3 py-1 text-xs font-extrabold text-cyan-800">
+                                Daily allowance
+                              </span>
+                            ) : null}
                           </div>
                         </div>
                       </article>
@@ -458,7 +702,7 @@ export default async function DashboardPage() {
               ) : (
                 <DashboardEmptyState
                   title="No searches yet"
-                  description="Your completed Beacon searches will appear here once search history is connected."
+                  description="Your Beacon searches will appear here after you complete your first request."
                   actionHref="/"
                   actionLabel="Start Searching"
                 />
@@ -479,8 +723,8 @@ export default async function DashboardPage() {
 
                     <p className="mt-2 text-sm leading-6 text-blue-100">
                       {isBeaconPlus
-                        ? "Your Beacon+ membership is active."
-                        : "Unlock unlimited research and member tools."}
+                        ? `Your Beacon+ membership includes ${dailyAllowanceLimit} personalised searches each day.`
+                        : `Your free account includes ${dailyAllowanceLimit} personalised searches each day.`}
                     </p>
                   </div>
 
@@ -491,9 +735,51 @@ export default async function DashboardPage() {
                   </div>
                 </div>
 
+                <div className="mt-6 rounded-2xl border border-white/15 bg-white/10 p-4">
+                  <div className="flex items-center justify-between gap-4 text-sm">
+                    <span className="font-semibold text-blue-100">
+                      Available today
+                    </span>
+
+                    <span className="font-black text-white">
+                      {
+                        dailyAllowanceRemaining
+                      }{" "}
+                      of{" "}
+                      {
+                        dailyAllowanceLimit
+                      }
+                    </span>
+                  </div>
+
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/15">
+                    <div
+                      className="h-full rounded-full bg-white transition-all"
+                      style={{
+                        width: `${
+                          dailyAllowanceLimit >
+                          0
+                            ? Math.min(
+                                100,
+                                Math.max(
+                                  0,
+                                  (
+                                    dailyAllowanceRemaining /
+                                    dailyAllowanceLimit
+                                  ) *
+                                    100
+                                )
+                              )
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  </div>
+                </div>
+
                 {isBeaconPlus &&
                   account.beaconPlusCurrentPeriodEnd && (
-                    <p className="mt-6 rounded-2xl border border-white/15 bg-white/10 p-4 text-sm font-semibold text-blue-50">
+                    <p className="mt-4 rounded-2xl border border-white/15 bg-white/10 p-4 text-sm font-semibold text-blue-50">
                       Current period ends{" "}
                       {formatDate(
                         account.beaconPlusCurrentPeriodEnd
@@ -566,6 +852,18 @@ export default async function DashboardPage() {
                         : "Not connected"}
                     </dd>
                   </div>
+
+                  <div className="flex items-center justify-between gap-4">
+                    <dt className="font-semibold text-slate-500">
+                      Purchased credits
+                    </dt>
+
+                    <dd className="font-extrabold text-slate-800">
+                      {
+                        account.purchasedCredits
+                      }
+                    </dd>
+                  </div>
                 </dl>
               </section>
             </aside>
@@ -590,11 +888,13 @@ export default async function DashboardPage() {
 
             {savedSearches.length >
             0 ? (
-              <div className="grid gap-4 p-6 sm:grid-cols-2 xl:grid-cols-3 sm:p-8">
+              <div className="grid gap-4 p-6 sm:grid-cols-2 sm:p-8 xl:grid-cols-3">
                 {savedSearches.map(
                   (saved) => (
                     <article
-                      key={saved.id}
+                      key={
+                        saved.id
+                      }
                       className="flex min-h-48 flex-col rounded-2xl border border-slate-200 bg-slate-50 p-5 transition hover:-translate-y-0.5 hover:border-blue-300 hover:bg-white hover:shadow-md"
                     >
                       <div className="flex items-start justify-between gap-4">
@@ -633,7 +933,7 @@ export default async function DashboardPage() {
             ) : (
               <DashboardEmptyState
                 title="Nothing saved yet"
-                description="Saved products, hotels and searches will appear here once the save controls are connected."
+                description="Save a useful Beacon search and it will appear here for quick access."
                 actionHref="/"
                 actionLabel="Explore Beacon"
               />
@@ -654,30 +954,30 @@ export default async function DashboardPage() {
             <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
               <QuickAction
                 title="Start a Search"
-                description="Ask Beacon to compare products, hotels or experiences."
+                description="Ask Beacon to compare products, hotels, vehicles, services or experiences."
                 href="/"
                 label="Search Now"
               />
 
               <QuickAction
                 title="Buy Credits"
-                description="Add more searches to your account with a one-time payment."
+                description="Add purchased credits for searches beyond your daily allowance."
                 href="/pricing"
                 label="View Pricing"
               />
 
               <QuickAction
                 title="Manage Beacon+"
-                description="Upgrade or review your Beacon membership."
+                description="Upgrade or review your Beacon+ membership and billing."
                 href="/pricing"
                 label="Membership"
               />
 
               <QuickAction
-                title="Account Settings"
-                description="Profile, security and billing controls are coming next."
-                href="/dashboard"
-                label="Current Account"
+                title="Saved Searches"
+                description="Revisit the requests you have saved to your Beacon account."
+                href="#saved-searches"
+                label="View Saved"
               />
             </div>
           </section>

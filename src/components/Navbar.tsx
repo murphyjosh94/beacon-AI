@@ -24,7 +24,22 @@ const navigation = [
     label: "Pricing",
     href: "/pricing",
   },
-];
+] as const;
+
+function readUserRole(
+  user: unknown
+): string | null {
+  if (
+    !user ||
+    typeof user !== "object" ||
+    !("role" in user) ||
+    typeof user.role !== "string"
+  ) {
+    return null;
+  }
+
+  return user.role;
+}
 
 export default function Navbar() {
   const {
@@ -33,20 +48,62 @@ export default function Navbar() {
   } =
     authClient.useSession();
 
+  const isSignedIn =
+    Boolean(
+      session?.user
+    );
+
+  const isAdmin =
+    readUserRole(
+      session?.user
+    ) === "admin";
+
   const accountHref =
-    session?.user
-      ? "/dashboard"
-      : "/signin";
+    isAdmin
+      ? "/admin"
+      : isSignedIn
+        ? "/dashboard"
+        : "/signin";
 
   const accountLabel =
-    session?.user
-      ? "Dashboard"
-      : "Sign In";
+    isAdmin
+      ? "Admin"
+      : isSignedIn
+        ? "Dashboard"
+        : "Sign In";
+
+  const primaryHref =
+    isAdmin
+      ? "/admin"
+      : isSignedIn
+        ? "/dashboard"
+        : "/membership";
+
+  const primaryLabel =
+    isAdmin
+      ? "Admin Console"
+      : isSignedIn
+        ? "My Account"
+        : "Join Beacon+";
 
   return (
     <>
       <div className="bg-slate-950 px-4 py-2 text-center text-xs font-semibold leading-5 text-white sm:px-6 sm:text-sm">
-        Trusted guidance • Personal recommendations • Smarter choices
+        Trusted guidance
+        <span
+          aria-hidden="true"
+          className="mx-2 text-blue-300"
+        >
+          •
+        </span>
+        Personal recommendations
+        <span
+          aria-hidden="true"
+          className="mx-2 text-blue-300"
+        >
+          •
+        </span>
+        Smarter choices
       </div>
 
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl">
@@ -87,19 +144,28 @@ export default function Navbar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="rounded-xl px-4 py-3 font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-950"
+                  className="rounded-xl px-4 py-3 font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2"
                 >
                   {item.label}
                 </Link>
               )
             )}
+
+            {isAdmin ? (
+              <Link
+                href="/admin"
+                className="rounded-xl px-4 py-3 font-extrabold text-amber-700 transition hover:bg-amber-50 hover:text-amber-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+              >
+                Admin
+              </Link>
+            ) : null}
           </nav>
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <Link
               href={accountHref}
               aria-disabled={isPending}
-              className={`hidden rounded-xl px-4 py-3 font-extrabold text-blue-950 transition hover:bg-blue-50 sm:inline-flex ${
+              className={`hidden rounded-xl px-4 py-3 font-extrabold text-blue-950 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 sm:inline-flex ${
                 isPending
                   ? "pointer-events-none opacity-50"
                   : ""
@@ -111,15 +177,32 @@ export default function Navbar() {
             </Link>
 
             <Link
-              href="/membership"
-              className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl bg-blue-900 px-3 py-2 text-sm font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-800 sm:px-5 sm:py-3 sm:text-base"
+              href={primaryHref}
+              aria-disabled={isPending}
+              className={`inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl px-3 py-2 text-sm font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 sm:px-5 sm:py-3 sm:text-base ${
+                isAdmin
+                  ? "bg-amber-600 hover:bg-amber-500 focus-visible:ring-amber-600"
+                  : "bg-blue-900 hover:bg-blue-800 focus-visible:ring-blue-700"
+              } ${
+                isPending
+                  ? "pointer-events-none opacity-50"
+                  : ""
+              }`}
             >
               <span className="sm:hidden">
-                Beacon+
+                {isPending
+                  ? "Account"
+                  : isAdmin
+                    ? "Admin"
+                    : isSignedIn
+                      ? "Dashboard"
+                      : "Beacon+"}
               </span>
 
               <span className="hidden sm:inline">
-                Join Beacon+
+                {isPending
+                  ? "Loading..."
+                  : primaryLabel}
               </span>
             </Link>
           </div>
@@ -134,16 +217,30 @@ export default function Navbar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="shrink-0 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-950"
+                className="shrink-0 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
               >
                 {item.label}
               </Link>
             )
           )}
 
+          {isAdmin ? (
+            <Link
+              href="/admin"
+              className="shrink-0 rounded-lg px-3 py-2 text-sm font-extrabold text-amber-700 transition hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
+            >
+              Admin
+            </Link>
+          ) : null}
+
           <Link
             href={accountHref}
-            className="shrink-0 rounded-lg px-3 py-2 text-sm font-extrabold text-blue-900 transition hover:bg-blue-50"
+            aria-disabled={isPending}
+            className={`shrink-0 rounded-lg px-3 py-2 text-sm font-extrabold text-blue-900 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
+              isPending
+                ? "pointer-events-none opacity-50"
+                : ""
+            }`}
           >
             {isPending
               ? "Account"

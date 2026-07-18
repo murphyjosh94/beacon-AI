@@ -1,240 +1,133 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import {
+  useState,
+} from "react";
 
-import BeaconFooter from "@/components/BeaconFooter";
 import Navbar from "@/components/Navbar";
+import BeaconFooter from "@/components/BeaconFooter";
 
-type PurchaseType =
-  | "credits_5"
-  | "credits_15"
-  | "credits_25"
-  | "beacon_plus_monthly"
-  | "beacon_plus_annual";
-
-type BeaconPlusBilling =
+type BillingInterval =
   | "monthly"
   | "annual";
 
-type CreditPlan = {
-  purchaseType:
-    Exclude<
-      PurchaseType,
-      | "beacon_plus_monthly"
-      | "beacon_plus_annual"
-    >;
-  name: string;
-  price: string;
-  billingLabel: string;
-  searches: string;
-  description: string;
-  features: string[];
-  badge?: string;
-  featured?: boolean;
-  buttonLabel: string;
-};
+type CheckoutRequest =
+  | {
+      purchaseType:
+        "subscription";
+      billingInterval:
+        BillingInterval;
+    }
+  | {
+      purchaseType:
+        "credit_top_up";
+      creditPackId:
+        "credits_small"
+        | "credits_medium"
+        | "credits_large";
+    };
 
-type CheckoutSuccessResponse = {
-  success: true;
-
-  data: {
-    checkoutUrl: string;
-    sessionId: string;
+type CheckoutResponse = {
+  checkoutUrl?: string;
+  success?: boolean;
+  error?: {
+    code?: string;
+    message?: string;
   };
 };
 
-type CheckoutErrorResponse = {
-  success: false;
+type ActiveCheckout =
+  | BillingInterval
+  | "credits_small"
+  | "credits_medium"
+  | "credits_large"
+  | null;
 
-  error: {
-    code: string;
-    message: string;
-  };
-};
-
-type CheckoutResponse =
-  | CheckoutSuccessResponse
-  | CheckoutErrorResponse;
-
-const creditPlans:
-  CreditPlan[] = [
-    {
-      purchaseType:
-        "credits_5",
-      name: "Starter",
-      price: "£5",
-      billingLabel:
-        "one-time payment",
-      searches: "5 searches",
-      description:
-        "A simple credit pack for occasional Beacon research.",
-      features: [
-        "Five full Beacon searches",
-        "Live shopping and hotel results",
-        "Beacon Scores and explanations",
-        "Credits do not renew automatically",
-      ],
-      buttonLabel:
-        "Buy 5 Searches",
-    },
-    {
-      purchaseType:
-        "credits_15",
-      name: "Popular",
-      price: "£10",
-      billingLabel:
-        "one-time payment",
-      searches: "15 searches",
-      description:
-        "More searches for regular shopping, travel and research.",
-      features: [
-        "Fifteen full Beacon searches",
-        "Five bonus searches included",
-        "Live product and hotel data",
-        "Credits do not renew automatically",
-      ],
-      badge:
-        "Most Popular",
-      featured: true,
-      buttonLabel:
-        "Buy 15 Searches",
-    },
-    {
-      purchaseType:
-        "credits_25",
-      name: "Best Value",
-      price: "£15",
-      billingLabel:
-        "one-time payment",
-      searches: "25 searches",
-      description:
-        "The strongest one-off value for frequent Beacon users.",
-      features: [
-        "Twenty-five full Beacon searches",
-        "Ten bonus searches included",
-        "Live recommendations and comparisons",
-        "Credits do not renew automatically",
-      ],
-      badge:
-        "Best Value",
-      buttonLabel:
-        "Buy 25 Searches",
-    },
-  ];
-
-const beaconPlusOptions = {
-  monthly: {
-    purchaseType:
-      "beacon_plus_monthly" as const,
-    price: "£20",
-    billingLabel:
-      "per month",
-    equivalentLabel:
-      "Billed monthly",
-    savingLabel: null,
-    buttonLabel:
-      "Join Beacon+ Monthly",
+const creditPacks = [
+  {
+    id:
+      "credits_small" as const,
+    name:
+      "Small credit pack",
+    description:
+      "A useful top-up for occasional extra Beacon activity.",
+    creditsLabel:
+      "Small top-up",
   },
-
-  annual: {
-    purchaseType:
-      "beacon_plus_annual" as const,
-    price: "£219.99",
-    billingLabel:
-      "per year",
-    equivalentLabel:
-      "Equivalent to £18.33 per month",
-    savingLabel:
-      "Save £20.01 each year",
-    buttonLabel:
-      "Join Beacon+ Annual",
+  {
+    id:
+      "credits_medium" as const,
+    name:
+      "Medium credit pack",
+    description:
+      "A larger balance for regular use across Beacon tools.",
+    creditsLabel:
+      "Popular top-up",
   },
-};
-
-const beaconPlusFeatures = [
-  "Unlimited searches, subject to fair use",
-  "Live shopping and travel research",
-  "Saved preferences and search history",
-  "Future price and holiday alerts",
-  "Cancel through your account",
+  {
+    id:
+      "credits_large" as const,
+    name:
+      "Large credit pack",
+    description:
+      "The largest one-off credit option for frequent Beacon use.",
+    creditsLabel:
+      "Maximum top-up",
+  },
 ];
 
-function getCheckoutErrorMessage(
-  data: unknown
+function readCheckoutError(
+  response: CheckoutResponse
 ): string {
-  if (
-    typeof data === "object" &&
-    data !== null &&
-    "error" in data
-  ) {
-    const error =
-      data.error;
-
-    if (
-      typeof error ===
-        "object" &&
-      error !== null &&
-      "message" in error &&
-      typeof error.message ===
-        "string"
-    ) {
-      return error.message;
-    }
-
-    if (
-      typeof error ===
-      "string"
-    ) {
-      return error;
-    }
-  }
-
-  return "Beacon could not start checkout. Please try again.";
+  return (
+    response.error?.message ||
+    "Checkout could not be started. Please try again."
+  );
 }
 
 export default function PricingPage() {
   const [
-    beaconPlusBilling,
-    setBeaconPlusBilling,
+    activeCheckout,
+    setActiveCheckout,
   ] =
-    useState<BeaconPlusBilling>(
-      "monthly"
-    );
-
-  const [
-    loadingPlan,
-    setLoadingPlan,
-  ] =
-    useState<PurchaseType | null>(
+    useState<ActiveCheckout>(
       null
     );
 
-  const [error, setError] =
-    useState("");
-
-  const beaconPlusOption =
-    beaconPlusOptions[
-      beaconPlusBilling
-    ];
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] =
+    useState<string | null>(
+      null
+    );
 
   async function startCheckout(
-    purchaseType: PurchaseType
-  ) {
-    if (loadingPlan) {
+    requestBody:
+      CheckoutRequest,
+    checkoutId:
+      ActiveCheckout
+  ): Promise<void> {
+    if (activeCheckout) {
       return;
     }
 
-    setLoadingPlan(
-      purchaseType
+    setActiveCheckout(
+      checkoutId
     );
-    setError("");
+
+    setErrorMessage(
+      null
+    );
 
     try {
       const response =
         await fetch(
           "/api/stripe/checkout",
           {
-            method: "POST",
+            method:
+              "POST",
 
             headers: {
               "Content-Type":
@@ -242,9 +135,9 @@ export default function PricingPage() {
             },
 
             body:
-              JSON.stringify({
-                purchaseType,
-              }),
+              JSON.stringify(
+                requestBody
+              ),
           }
         );
 
@@ -252,377 +145,533 @@ export default function PricingPage() {
         (await response.json()) as CheckoutResponse;
 
       if (
+        response.status === 401
+      ) {
+        const nextUrl =
+          encodeURIComponent(
+            "/pricing"
+          );
+
+        window.location.assign(
+          `/signin?next=${nextUrl}`
+        );
+
+        return;
+      }
+
+      if (
         !response.ok ||
-        !data.success
+        !data.checkoutUrl
       ) {
         throw new Error(
-          getCheckoutErrorMessage(
+          readCheckoutError(
             data
           )
         );
       }
 
-      if (
-        !data.data.checkoutUrl
-      ) {
-        throw new Error(
-          "Stripe did not return a checkout page."
-        );
-      }
-
       window.location.assign(
-        data.data.checkoutUrl
+        data.checkoutUrl
       );
-    } catch (caughtError) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Beacon could not start checkout."
+    } catch (error) {
+      console.error(
+        "Beacon could not start Stripe Checkout:",
+        error
       );
 
-      setLoadingPlan(null);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Checkout could not be started. Please try again."
+      );
+
+      setActiveCheckout(
+        null
+      );
     }
+  }
+
+  function startSubscription(
+    billingInterval:
+      BillingInterval
+  ): void {
+    void startCheckout(
+      {
+        purchaseType:
+          "subscription",
+
+        billingInterval,
+      },
+      billingInterval
+    );
+  }
+
+  function startCreditPurchase(
+    creditPackId:
+      | "credits_small"
+      | "credits_medium"
+      | "credits_large"
+  ): void {
+    void startCheckout(
+      {
+        purchaseType:
+          "credit_top_up",
+
+        creditPackId,
+      },
+      creditPackId
+    );
   }
 
   return (
     <main className="min-h-screen bg-slate-50">
       <Navbar />
 
-      <section className="relative overflow-hidden bg-slate-950 px-6 py-20 text-white">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-950 via-slate-950 to-slate-900" />
+      <section className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 px-6 py-16 text-white sm:py-24">
+        <div className="absolute inset-0 opacity-30">
+          <div className="absolute -left-24 top-12 h-72 w-72 rounded-full bg-blue-500 blur-3xl" />
+
+          <div className="absolute -right-24 bottom-0 h-72 w-72 rounded-full bg-cyan-400 blur-3xl" />
+        </div>
 
         <div className="relative mx-auto max-w-5xl text-center">
-          <p className="text-sm font-extrabold uppercase tracking-[0.32em] text-blue-200">
-            Beacon Pricing
+          <p className="text-sm font-extrabold uppercase tracking-[0.28em] text-blue-200">
+            Beacon pricing
           </p>
 
-          <h1 className="mt-5 text-4xl font-black tracking-tight sm:text-6xl">
-            Search your way.
+          <h1 className="mx-auto mt-5 max-w-4xl text-4xl font-black tracking-tight sm:text-6xl">
+            Choose the Beacon
+            experience that works
+            for you.
           </h1>
 
           <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-blue-100">
-            Buy searches when you need them or join
-            Beacon+ monthly or annually for unlimited
-            research, subject to fair use.
+            Use Beacon&apos;s
+            core experience, upgrade
+            to Beacon+ or purchase
+            extra credits whenever
+            you need them.
           </p>
 
-          <div className="mx-auto mt-8 max-w-2xl rounded-2xl border border-white/15 bg-white/10 p-5 text-left backdrop-blur">
-            <p className="font-extrabold">
-              Five free personalised searches each day
-            </p>
+          <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <a
+              href="#beacon-plus"
+              className="inline-flex w-full items-center justify-center rounded-2xl bg-white px-6 py-4 font-extrabold text-blue-950 shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-50 sm:w-auto"
+            >
+              View Beacon+ plans
+            </a>
 
-            <p className="mt-2 text-sm leading-6 text-blue-100">
-              Paid credits give you additional searches
-              after your free daily allowance has been
-              used.
-            </p>
+            <a
+              href="#credit-packs"
+              className="inline-flex w-full items-center justify-center rounded-2xl border border-white/30 bg-white/10 px-6 py-4 font-extrabold text-white transition hover:bg-white/20 sm:w-auto"
+            >
+              View credit packs
+            </a>
           </div>
         </div>
       </section>
 
-      <section className="px-6 py-16">
-        <div className="mx-auto max-w-7xl">
-          {error && (
+      <section className="px-6 py-12 sm:py-16">
+        <div className="mx-auto max-w-6xl">
+          {errorMessage && (
             <div
               role="alert"
-              className="mx-auto mb-8 max-w-3xl rounded-2xl border border-red-200 bg-red-50 p-5 text-center font-semibold text-red-800"
+              className="mb-8 rounded-2xl border border-red-200 bg-red-50 p-5 font-semibold text-red-800"
             >
-              {error}
+              {errorMessage}
             </div>
           )}
 
-          <div className="grid gap-7 md:grid-cols-2 xl:grid-cols-4">
-            {creditPlans.map(
-              (plan) => {
-                const isLoading =
-                  loadingPlan ===
-                  plan.purchaseType;
+          <section
+            id="beacon-plus"
+            className="scroll-mt-24"
+          >
+            <div className="text-center">
+              <p className="text-sm font-extrabold uppercase tracking-[0.22em] text-blue-800">
+                Beacon+ membership
+              </p>
 
-                const anotherPlanIsLoading =
-                  loadingPlan !==
-                    null &&
-                  !isLoading;
+              <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">
+                More Beacon. More
+                possibilities.
+              </h2>
 
-                return (
+              <p className="mx-auto mt-5 max-w-3xl leading-7 text-slate-600">
+                Select flexible
+                monthly billing or
+                choose the annual
+                option for long-term
+                access.
+              </p>
+            </div>
+
+            <div className="mt-10 grid gap-6 lg:grid-cols-3">
+              <article className="flex flex-col rounded-[2rem] border border-slate-200 bg-white p-7 shadow-sm">
+                <div>
+                  <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-slate-500">
+                    Core access
+                  </p>
+
+                  <h3 className="mt-3 text-3xl font-black text-slate-950">
+                    Beacon
+                  </h3>
+
+                  <p className="mt-4 text-4xl font-black tracking-tight text-slate-950">
+                    Free
+                  </p>
+
+                  <p className="mt-4 leading-7 text-slate-600">
+                    Start using
+                    Beacon&apos;s
+                    essential tools
+                    without a recurring
+                    subscription.
+                  </p>
+                </div>
+
+                <ul className="mt-7 flex-1 space-y-4 text-slate-700">
+                  <li className="flex gap-3">
+                    <span
+                      aria-hidden="true"
+                      className="mt-1 font-black text-emerald-600"
+                    >
+                      ✓
+                    </span>
+
+                    <span>
+                      Access to
+                      Beacon&apos;s
+                      core experience
+                    </span>
+                  </li>
+
+                  <li className="flex gap-3">
+                    <span
+                      aria-hidden="true"
+                      className="mt-1 font-black text-emerald-600"
+                    >
+                      ✓
+                    </span>
+
+                    <span>
+                      Secure Beacon
+                      account
+                    </span>
+                  </li>
+
+                  <li className="flex gap-3">
+                    <span
+                      aria-hidden="true"
+                      className="mt-1 font-black text-emerald-600"
+                    >
+                      ✓
+                    </span>
+
+                    <span>
+                      Optional credit
+                      top-ups
+                    </span>
+                  </li>
+                </ul>
+
+                <Link
+                  href="/signup"
+                  className="mt-8 inline-flex w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-4 font-extrabold text-slate-950 transition hover:bg-slate-100"
+                >
+                  Create free account
+                </Link>
+              </article>
+
+              <article className="flex flex-col rounded-[2rem] border border-blue-200 bg-white p-7 shadow-sm">
+                <div>
+                  <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-blue-800">
+                    Flexible billing
+                  </p>
+
+                  <h3 className="mt-3 text-3xl font-black text-slate-950">
+                    Beacon+ Monthly
+                  </h3>
+
+                  <p className="mt-4 text-lg font-bold text-slate-500">
+                    Billed every month
+                  </p>
+
+                  <p className="mt-4 leading-7 text-slate-600">
+                    Full Beacon+
+                    access with the
+                    freedom of monthly
+                    billing.
+                  </p>
+                </div>
+
+                <ul className="mt-7 flex-1 space-y-4 text-slate-700">
+                  <li className="flex gap-3">
+                    <span
+                      aria-hidden="true"
+                      className="mt-1 font-black text-blue-700"
+                    >
+                      ✓
+                    </span>
+
+                    <span>
+                      Premium Beacon
+                      features
+                    </span>
+                  </li>
+
+                  <li className="flex gap-3">
+                    <span
+                      aria-hidden="true"
+                      className="mt-1 font-black text-blue-700"
+                    >
+                      ✓
+                    </span>
+
+                    <span>
+                      Enhanced usage
+                      allowances
+                    </span>
+                  </li>
+
+                  <li className="flex gap-3">
+                    <span
+                      aria-hidden="true"
+                      className="mt-1 font-black text-blue-700"
+                    >
+                      ✓
+                    </span>
+
+                    <span>
+                      Manage or cancel
+                      through Stripe
+                    </span>
+                  </li>
+                </ul>
+
+                <button
+                  type="button"
+                  disabled={
+                    activeCheckout !==
+                    null
+                  }
+                  onClick={() =>
+                    startSubscription(
+                      "monthly"
+                    )
+                  }
+                  className="mt-8 inline-flex w-full items-center justify-center rounded-2xl bg-blue-900 px-5 py-4 font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {activeCheckout ===
+                  "monthly"
+                    ? "Opening checkout…"
+                    : "Choose monthly"}
+                </button>
+              </article>
+
+              <article className="relative flex flex-col rounded-[2rem] border-2 border-blue-800 bg-white p-7 shadow-xl">
+                <span className="absolute right-6 top-6 rounded-full bg-blue-100 px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-blue-900">
+                  Best value
+                </span>
+
+                <div>
+                  <p className="pr-28 text-sm font-extrabold uppercase tracking-[0.2em] text-blue-800">
+                    Annual billing
+                  </p>
+
+                  <h3 className="mt-3 text-3xl font-black text-slate-950">
+                    Beacon+ Annual
+                  </h3>
+
+                  <p className="mt-4 text-lg font-bold text-slate-500">
+                    Billed once a year
+                  </p>
+
+                  <p className="mt-4 leading-7 text-slate-600">
+                    Full Beacon+
+                    access with one
+                    convenient annual
+                    payment.
+                  </p>
+                </div>
+
+                <ul className="mt-7 flex-1 space-y-4 text-slate-700">
+                  <li className="flex gap-3">
+                    <span
+                      aria-hidden="true"
+                      className="mt-1 font-black text-blue-700"
+                    >
+                      ✓
+                    </span>
+
+                    <span>
+                      Everything in
+                      monthly Beacon+
+                    </span>
+                  </li>
+
+                  <li className="flex gap-3">
+                    <span
+                      aria-hidden="true"
+                      className="mt-1 font-black text-blue-700"
+                    >
+                      ✓
+                    </span>
+
+                    <span>
+                      One annual
+                      payment
+                    </span>
+                  </li>
+
+                  <li className="flex gap-3">
+                    <span
+                      aria-hidden="true"
+                      className="mt-1 font-black text-blue-700"
+                    >
+                      ✓
+                    </span>
+
+                    <span>
+                      Manage or cancel
+                      through Stripe
+                    </span>
+                  </li>
+                </ul>
+
+                <button
+                  type="button"
+                  disabled={
+                    activeCheckout !==
+                    null
+                  }
+                  onClick={() =>
+                    startSubscription(
+                      "annual"
+                    )
+                  }
+                  className="mt-8 inline-flex w-full items-center justify-center rounded-2xl bg-blue-900 px-5 py-4 font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {activeCheckout ===
+                  "annual"
+                    ? "Opening checkout…"
+                    : "Choose annual"}
+                </button>
+              </article>
+            </div>
+          </section>
+
+          <section
+            id="credit-packs"
+            className="mt-20 scroll-mt-24"
+          >
+            <div className="text-center">
+              <p className="text-sm font-extrabold uppercase tracking-[0.22em] text-blue-800">
+                One-off purchases
+              </p>
+
+              <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">
+                Add Beacon credits
+                whenever you need
+                them.
+              </h2>
+
+              <p className="mx-auto mt-5 max-w-3xl leading-7 text-slate-600">
+                Credit packs are
+                separate one-time
+                purchases. Buying a
+                pack does not start a
+                subscription.
+              </p>
+            </div>
+
+            <div className="mt-10 grid gap-6 md:grid-cols-3">
+              {creditPacks.map(
+                (pack) => (
                   <article
                     key={
-                      plan.purchaseType
+                      pack.id
                     }
-                    className={`relative flex h-full flex-col rounded-[2rem] border p-7 shadow-xl ${
-                      plan.featured
-                        ? "border-blue-700 bg-blue-950 text-white ring-4 ring-blue-100"
-                        : "border-slate-200 bg-white text-slate-950"
-                    }`}
+                    className="flex flex-col rounded-[2rem] border border-slate-200 bg-white p-7 shadow-sm"
                   >
-                    {plan.badge && (
-                      <div
-                        className={`absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-4 py-2 text-xs font-extrabold uppercase tracking-[0.16em] shadow-lg ${
-                          plan.featured
-                            ? "bg-white text-blue-950"
-                            : "bg-blue-900 text-white"
-                        }`}
-                      >
-                        {plan.badge}
-                      </div>
-                    )}
+                    <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-blue-800">
+                      {
+                        pack.creditsLabel
+                      }
+                    </p>
 
-                    <div className="pt-3">
-                      <p
-                        className={`text-sm font-extrabold uppercase tracking-[0.22em] ${
-                          plan.featured
-                            ? "text-blue-200"
-                            : "text-blue-900"
-                        }`}
-                      >
-                        {plan.name}
-                      </p>
+                    <h3 className="mt-3 text-2xl font-black text-slate-950">
+                      {pack.name}
+                    </h3>
 
-                      <div className="mt-5">
-                        <span className="text-5xl font-black">
-                          {plan.price}
-                        </span>
-
-                        <span
-                          className={`ml-2 text-sm font-semibold ${
-                            plan.featured
-                              ? "text-blue-200"
-                              : "text-slate-500"
-                          }`}
-                        >
-                          {
-                            plan.billingLabel
-                          }
-                        </span>
-                      </div>
-
-                      <p className="mt-4 text-2xl font-black">
-                        {plan.searches}
-                      </p>
-
-                      <p
-                        className={`mt-4 min-h-20 leading-7 ${
-                          plan.featured
-                            ? "text-blue-100"
-                            : "text-slate-600"
-                        }`}
-                      >
-                        {
-                          plan.description
-                        }
-                      </p>
-                    </div>
-
-                    <ul className="mt-7 flex-1 space-y-3">
-                      {plan.features.map(
-                        (feature) => (
-                          <li
-                            key={
-                              feature
-                            }
-                            className={`flex gap-3 text-sm font-semibold leading-6 ${
-                              plan.featured
-                                ? "text-blue-50"
-                                : "text-slate-700"
-                            }`}
-                          >
-                            <span
-                              aria-hidden="true"
-                              className={
-                                plan.featured
-                                  ? "text-blue-300"
-                                  : "text-blue-800"
-                              }
-                            >
-                              ✓
-                            </span>
-
-                            <span>
-                              {feature}
-                            </span>
-                          </li>
-                        )
-                      )}
-                    </ul>
+                    <p className="mt-4 flex-1 leading-7 text-slate-600">
+                      {
+                        pack.description
+                      }
+                    </p>
 
                     <button
                       type="button"
+                      disabled={
+                        activeCheckout !==
+                        null
+                      }
                       onClick={() =>
-                        startCheckout(
-                          plan.purchaseType
+                        startCreditPurchase(
+                          pack.id
                         )
                       }
-                      disabled={
-                        isLoading ||
-                        anotherPlanIsLoading
-                      }
-                      className={`mt-8 w-full rounded-2xl px-5 py-4 font-extrabold shadow-lg transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 ${
-                        plan.featured
-                          ? "bg-white text-blue-950 hover:bg-blue-50"
-                          : "bg-blue-900 text-white hover:bg-blue-800"
-                      }`}
+                      className="mt-7 inline-flex w-full items-center justify-center rounded-2xl border border-blue-900 px-5 py-4 font-extrabold text-blue-900 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {isLoading
-                        ? "Opening Checkout..."
-                        : plan.buttonLabel}
+                      {activeCheckout ===
+                      pack.id
+                        ? "Opening checkout…"
+                        : "Buy credit pack"}
                     </button>
                   </article>
-                );
-              }
-            )}
-
-            <article className="relative flex h-full flex-col rounded-[2rem] border border-slate-200 bg-white p-7 text-slate-950 shadow-xl">
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-blue-900 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.16em] text-white shadow-lg">
-                Beacon+
-              </div>
-
-              <div className="pt-3">
-                <p className="text-sm font-extrabold uppercase tracking-[0.22em] text-blue-900">
-                  Beacon+
-                </p>
-
-                <label
-                  htmlFor="beacon-plus-billing"
-                  className="mt-5 block text-sm font-extrabold text-slate-700"
-                >
-                  Billing option
-                </label>
-
-                <select
-                  id="beacon-plus-billing"
-                  value={
-                    beaconPlusBilling
-                  }
-                  onChange={(
-                    event
-                  ) => {
-                    setBeaconPlusBilling(
-                      event.target
-                        .value as BeaconPlusBilling
-                    );
-
-                    setError("");
-                  }}
-                  disabled={
-                    loadingPlan !==
-                    null
-                  }
-                  className="mt-2 w-full rounded-xl border-2 border-slate-300 bg-white px-4 py-3 font-extrabold text-slate-950 outline-none transition focus:border-blue-700 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <option value="monthly">
-                    Monthly — £20
-                  </option>
-
-                  <option value="annual">
-                    Annual — £219.99
-                  </option>
-                </select>
-
-                <div
-                  className="mt-5"
-                  aria-live="polite"
-                >
-                  <span className="text-5xl font-black">
-                    {
-                      beaconPlusOption.price
-                    }
-                  </span>
-
-                  <span className="ml-2 text-sm font-semibold text-slate-500">
-                    {
-                      beaconPlusOption.billingLabel
-                    }
-                  </span>
-                </div>
-
-                <p className="mt-3 text-sm font-bold text-blue-900">
-                  {
-                    beaconPlusOption.equivalentLabel
-                  }
-                </p>
-
-                {beaconPlusOption.savingLabel && (
-                  <p className="mt-3 inline-flex rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide text-emerald-800">
-                    {
-                      beaconPlusOption.savingLabel
-                    }
-                  </p>
-                )}
-
-                <p className="mt-4 text-2xl font-black">
-                  Unlimited searches
-                </p>
-
-                <p className="mt-4 min-h-20 leading-7 text-slate-600">
-                  The complete Beacon experience for
-                  regular users, with your choice of
-                  monthly or annual billing.
-                </p>
-              </div>
-
-              <ul className="mt-7 flex-1 space-y-3">
-                {beaconPlusFeatures.map(
-                  (feature) => (
-                    <li
-                      key={feature}
-                      className="flex gap-3 text-sm font-semibold leading-6 text-slate-700"
-                    >
-                      <span
-                        aria-hidden="true"
-                        className="text-blue-800"
-                      >
-                        ✓
-                      </span>
-
-                      <span>
-                        {feature}
-                      </span>
-                    </li>
-                  )
-                )}
-              </ul>
-
-              <button
-                type="button"
-                onClick={() =>
-                  startCheckout(
-                    beaconPlusOption.purchaseType
-                  )
-                }
-                disabled={
-                  loadingPlan !==
-                  null
-                }
-                className="mt-8 w-full rounded-2xl bg-blue-900 px-5 py-4 font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {loadingPlan ===
-                beaconPlusOption.purchaseType
-                  ? "Opening Checkout..."
-                  : beaconPlusOption.buttonLabel}
-              </button>
-            </article>
-          </div>
-
-          <div className="mx-auto mt-12 max-w-4xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-lg">
-            <h2 className="text-2xl font-black text-slate-950">
-              Before purchasing
-            </h2>
-
-            <div className="mt-5 grid gap-5 text-sm leading-7 text-slate-600 sm:grid-cols-2">
-              <p>
-                Search credits are only added after
-                Stripe confirms successful payment
-                through Beacon&apos;s secure webhook.
-              </p>
-
-              <p>
-                Beacon+ renews at the selected monthly
-                or annual interval until cancelled.
-                Unlimited use remains subject to
-                reasonable fair-use and misuse
-                protections.
-              </p>
+                )
+              )}
             </div>
-          </div>
+          </section>
+
+          <section className="mt-20 rounded-[2rem] border border-blue-200 bg-blue-50 p-7 sm:p-10">
+            <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
+              <div>
+                <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-blue-800">
+                  Already subscribed?
+                </p>
+
+                <h2 className="mt-3 text-3xl font-black text-slate-950">
+                  Manage your Beacon
+                  billing account.
+                </h2>
+
+                <p className="mt-4 max-w-2xl leading-7 text-slate-700">
+                  View your membership
+                  status, purchased
+                  credits and Stripe
+                  billing options from
+                  your account.
+                </p>
+              </div>
+
+              <Link
+                href="/account/billing"
+                className="inline-flex w-full items-center justify-center rounded-2xl bg-slate-950 px-6 py-4 font-extrabold text-white transition hover:bg-slate-800 lg:w-auto"
+              >
+                Open billing
+              </Link>
+            </div>
+          </section>
+
+          <p className="mt-8 text-center text-sm leading-6 text-slate-500">
+            Payments are processed
+            securely by Stripe.
+            Subscription availability,
+            prices and included
+            features are determined by
+            the products configured in
+            your Stripe account.
+          </p>
         </div>
       </section>
 
