@@ -385,6 +385,48 @@ const categoryListSchema = {
     ),
 };
 
+function AppleLogo() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-10 w-10 shrink-0 fill-current"
+    >
+      <path d="M17.05 12.54c-.03-3.11 2.54-4.62 2.66-4.69a5.72 5.72 0 0 0-4.5-2.43c-1.89-.2-3.72 1.13-4.68 1.13-.98 0-2.46-1.11-4.05-1.08a5.96 5.96 0 0 0-5.02 3.06c-2.18 3.77-.55 9.31 1.53 12.36 1.04 1.49 2.25 3.15 3.84 3.09 1.55-.06 2.13-.99 4-.99 1.86 0 2.4.99 4.02.95 1.67-.03 2.72-1.49 3.72-2.99a12.3 12.3 0 0 0 1.7-3.46 5.36 5.36 0 0 1-3.22-4.95ZM13.98 3.42A5.44 5.44 0 0 0 15.22-.5a5.55 5.55 0 0 0-3.59 1.86 5.18 5.18 0 0 0-1.28 3.77 4.59 4.59 0 0 0 3.63-1.71Z" />
+    </svg>
+  );
+}
+
+function GooglePlayLogo() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-10 w-10 shrink-0"
+    >
+      <path
+        fill="#34A853"
+        d="M3.52 2.31a2.1 2.1 0 0 0-.52 1.4v16.58c0 .54.2 1.03.52 1.4l9.18-9.69L3.52 2.31Z"
+      />
+
+      <path
+        fill="#FBBC04"
+        d="m15.76 8.77-3.06 3.23 3.06 3.23 3.73-2.13c1.01-.58 1.01-1.62 0-2.2l-3.73-2.13Z"
+      />
+
+      <path
+        fill="#4285F4"
+        d="M3.52 2.31 12.7 12l3.06-3.23L5.54 2.92a2.04 2.04 0 0 0-2.02-.61Z"
+      />
+
+      <path
+        fill="#EA4335"
+        d="M3.52 21.69a2.04 2.04 0 0 0 2.02-.61l10.22-5.85L12.7 12l-9.18 9.69Z"
+      />
+    </svg>
+  );
+}
+
 export default function Home() {
   return (
     <>
@@ -403,6 +445,111 @@ export default function Home() {
         <AmazonSubscriptionBanner />
 
         <BeaconHero />
+
+        <section
+          className="px-6 pb-8 pt-4 sm:pb-12"
+          aria-labelledby="mobile-apps-coming-soon"
+        >
+          <div className="mx-auto max-w-7xl">
+            <div className="relative overflow-hidden rounded-[2rem] border border-blue-200 bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-950 px-6 py-10 text-white shadow-2xl sm:px-10 lg:px-14">
+              <div
+                aria-hidden="true"
+                className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-blue-400/20 blur-3xl"
+              />
+
+              <div
+                aria-hidden="true"
+                className="absolute -bottom-24 left-1/3 h-56 w-56 rounded-full bg-indigo-400/20 blur-3xl"
+              />
+
+              <div className="relative grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+                <div>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-extrabold uppercase tracking-[0.2em] text-blue-100 backdrop-blur">
+                    <span
+                      aria-hidden="true"
+                    >
+                      📱
+                    </span>
+
+                    Beacon on mobile
+                  </div>
+
+                  <h2
+                    id="mobile-apps-coming-soon"
+                    className="mt-5 text-3xl font-black tracking-tight sm:text-4xl lg:text-5xl"
+                  >
+                    The Beacon AI mobile apps are on the way.
+                  </h2>
+
+                  <p className="mt-5 max-w-3xl text-lg leading-8 text-blue-100">
+                    Beacon is available today on the web. We are also building
+                    dedicated mobile apps so you can take your personal AI
+                    recommendation assistant everywhere.
+                  </p>
+
+                  <p className="mt-4 max-w-3xl leading-7 text-blue-200">
+                    We are here for the long term and are continually improving
+                    Beacon with new features, faster searches and a better
+                    experience across every device.
+                  </p>
+
+                  <div className="mt-7 inline-flex items-center gap-3 rounded-2xl bg-white px-5 py-3 font-extrabold text-blue-950 shadow-lg">
+                    <span
+                      aria-hidden="true"
+                    >
+                      ✓
+                    </span>
+
+                    Available now on the web
+                  </div>
+                </div>
+
+                <div className="grid gap-4">
+                  <div className="flex min-h-28 items-center gap-5 rounded-3xl border border-white/20 bg-white p-5 text-slate-950 shadow-xl">
+                    <AppleLogo />
+
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                        Coming soon to the
+                      </p>
+
+                      <p className="mt-1 text-2xl font-black tracking-tight">
+                        App Store
+                      </p>
+                    </div>
+
+                    <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-blue-900">
+                      In development
+                    </span>
+                  </div>
+
+                  <div className="flex min-h-28 items-center gap-5 rounded-3xl border border-white/20 bg-white p-5 text-slate-950 shadow-xl">
+                    <GooglePlayLogo />
+
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                        Coming soon to
+                      </p>
+
+                      <p className="mt-1 text-2xl font-black tracking-tight">
+                        Google Play
+                      </p>
+                    </div>
+
+                    <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-blue-900">
+                      In development
+                    </span>
+                  </div>
+
+                  <p className="px-2 text-center text-sm leading-6 text-blue-200">
+                    Store availability dates will be announced when the apps
+                    are ready.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <section
           className="px-6 py-20"
