@@ -17,6 +17,7 @@
     "@better-auth/drizzle-adapter": "^1.6.23",
     "@better-auth/infra": "^0.3.6",
     "@neondatabase/serverless": "^1.1.0",
+    "@vercel/blob": "^2.6.1",
     "better-auth": "^1.6.23",
     "bufferutil": "^4.1.0",
     "drizzle-orm": "^0.45.2",
@@ -39,5 +40,11 @@
     "eslint-config-next": "16.2.10",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "allowScripts": {
+    "sharp@0.34.5": true,
+    "esbuild@0.18.20": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.1": true
   }
 }
