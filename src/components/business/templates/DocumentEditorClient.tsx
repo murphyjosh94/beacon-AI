@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import type {
-  BusinessDetails,
-  TemplateDefinition,
+import {
+  getTemplateDefinition,
+  type BusinessDetails,
+  type TemplateDefinition,
 } from "@/lib/business/templates/templateDefinitions";
 
 type Props = {
-  template: TemplateDefinition;
+  templateSlug: string;
 };
 
 const emptyBusiness: BusinessDetails = {
@@ -37,7 +38,19 @@ function storageKey(slug: string) {
   return `beacon-document-draft:${slug}`;
 }
 
-export default function DocumentEditorClient({ template }: Props) {
+function requireTemplateDefinition(slug: string): TemplateDefinition {
+  const template = getTemplateDefinition(slug);
+
+  if (!template) {
+    throw new Error(`Unknown Beacon document template: ${slug}`);
+  }
+
+  return template;
+}
+
+export default function DocumentEditorClient({ templateSlug }: Props) {
+  const template = requireTemplateDefinition(templateSlug);
+
   const [business, setBusiness] = useState<BusinessDetails>(emptyBusiness);
   const [values, setValues] = useState<Record<string, string>>({});
   const [document, setDocument] = useState("");
