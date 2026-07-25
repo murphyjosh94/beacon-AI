@@ -258,7 +258,7 @@ export default function BusinessPage() {
 
               <div className="mt-8 flex flex-col gap-4 sm:flex-row">
                 <Link
-                  href="/business/membership"
+                  href="/business/memberships"
                   className="inline-flex items-center justify-center rounded-2xl bg-amber-300 px-8 py-4 text-lg font-extrabold text-blue-950 shadow-xl transition hover:-translate-y-0.5 hover:bg-amber-200"
                 >
                   Explore memberships
@@ -531,7 +531,7 @@ export default function BusinessPage() {
                 </div>
 
                 <Link
-                  href="/business/membership"
+                  href="/business/memberships"
                   className="mt-10 inline-flex justify-center rounded-2xl bg-blue-950 px-7 py-4 font-extrabold text-white transition hover:bg-blue-900"
                 >
                   Start 14-day free trial
@@ -581,7 +581,7 @@ export default function BusinessPage() {
                   </div>
 
                   <Link
-                    href="/business/membership"
+                    href="/business/memberships"
                     className="mt-10 inline-flex w-full justify-center rounded-2xl bg-amber-300 px-7 py-4 font-extrabold text-blue-950 transition hover:bg-amber-200"
                   >
                     Start Pro free trial
@@ -644,7 +644,7 @@ export default function BusinessPage() {
 
             <div className="mt-9 flex flex-col justify-center gap-4 sm:flex-row">
               <Link
-                href="/business/membership"
+                href="/business/memberships"
                 className="inline-flex items-center justify-center rounded-2xl bg-amber-300 px-8 py-4 text-lg font-extrabold text-blue-950 transition hover:bg-amber-200"
               >
                 Explore Beacon Business
