@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const PUBLIC_SITE_PREFIX = "/_sites";
+const PUBLIC_SITE_PREFIX = "/sites";
+
 const DEVELOPMENT_HOSTS = new Set([
   "localhost",
   "127.0.0.1",
@@ -12,63 +13,87 @@ const DEFAULT_PLATFORM_HOSTS = new Set([
   "www.beacon-ai.co.uk",
 ]);
 
-function normaliseHost(value: string) {
+function normaliseHost(value: string): string {
   return value
     .trim()
     .toLowerCase()
+    .split(",")[0]
+    .trim()
     .replace(/:\d+$/, "")
     .replace(/\.$/, "");
 }
 
-function readConfiguredPlatformHosts() {
-  const configured = process.env.BEACON_PLATFORM_HOSTS ?? "";
+function readConfiguredPlatformHosts(): string[] {
+  const configuredHosts = process.env.BEACON_PLATFORM_HOSTS ?? "";
 
-  return configured
+  return configuredHosts
     .split(",")
     .map(normaliseHost)
     .filter(Boolean);
 }
 
-function getPlatformHosts() {
+function addUrlHost(hosts: Set<string>, value?: string): void {
+  const configuredValue = value?.trim();
+
+  if (!configuredValue) {
+    return;
+  }
+
+  try {
+    const url = configuredValue.includes("://")
+      ? new URL(configuredValue)
+      : new URL(`https://${configuredValue}`);
+
+    const host = normaliseHost(url.hostname);
+
+    if (host) {
+      hosts.add(host);
+    }
+  } catch {
+    // Optional environment values are ignored when malformed.
+  }
+}
+
+function getPlatformHosts(): Set<string> {
   const hosts = new Set(DEFAULT_PLATFORM_HOSTS);
 
   for (const configuredHost of readConfiguredPlatformHosts()) {
     hosts.add(configuredHost);
   }
 
-  const publicSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-
-  if (publicSiteUrl) {
-    try {
-      hosts.add(normaliseHost(new URL(publicSiteUrl).hostname));
-    } catch {
-      // Ignore an invalid optional URL here. The application can validate it
-      // separately where NEXT_PUBLIC_SITE_URL is required.
-    }
-  }
-
-  const vercelUrl = process.env.VERCEL_URL?.trim();
-
-  if (vercelUrl) {
-    hosts.add(normaliseHost(vercelUrl));
-  }
+  addUrlHost(hosts, process.env.NEXT_PUBLIC_SITE_URL);
+  addUrlHost(hosts, process.env.VERCEL_URL);
+  addUrlHost(hosts, process.env.VERCEL_PROJECT_PRODUCTION_URL);
+  addUrlHost(hosts, process.env.VERCEL_BRANCH_URL);
 
   return hosts;
 }
 
-function isDevelopmentHost(host: string) {
-  if (DEVELOPMENT_HOSTS.has(host)) {
-    return true;
-  }
-
+function isDevelopmentHost(host: string): boolean {
   return (
+    DEVELOPMENT_HOSTS.has(host) ||
     host.endsWith(".localhost") ||
     host.endsWith(".local") ||
     host.endsWith(".test")
   );
 }
 
-function isPlatformHost(host: string) {
+function isBeaconPublishedSiteHost(host: string): boolean {
+  return (
+    host === "beaconbusiness.site" ||
+    host.endsWith(".beaconbusiness.site")
+  );
+}
+
+function isPlatformHost(host: string): boolean {
+  if (!host) {
+    return false;
+  }
+
+  if (isBeaconPublishedSiteHost(host)) {
+    return false;
+  }
+
   const platformHosts = getPlatformHosts();
 
   if (platformHosts.has(host)) {
@@ -78,8 +103,8 @@ function isPlatformHost(host: string) {
   for (const platformHost of platformHosts) {
     if (
       platformHost &&
-      host.endsWith(`.${platformHost}`) &&
-      !host.endsWith(".beaconbusiness.site")
+      !isBeaconPublishedSiteHost(platformHost) &&
+      host.endsWith(`.${platformHost}`)
     ) {
       return true;
     }
@@ -88,37 +113,68 @@ function isPlatformHost(host: string) {
   return false;
 }
 
-function isInternalPath(pathname: string) {
-  return (
-    pathname === PUBLIC_SITE_PREFIX ||
-    pathname.startsWith(`${PUBLIC_SITE_PREFIX}/`) ||
-    pathname.startsWith("/api/") ||
-    pathname.startsWith("/_next/") ||
-    pathname.startsWith("/business/") ||
-    pathname.startsWith("/auth/") ||
-    pathname.startsWith("/sign-in") ||
-    pathname.startsWith("/sign-up")
-  );
+function isInternalPath(pathname: string): boolean {
+  const exactInternalPaths = new Set([
+    "/",
+    "/account",
+    "/admin",
+    "/affiliate-disclosure",
+    "/business",
+    "/cookies",
+    "/dashboard",
+    "/membership",
+    "/my-beacon",
+    "/partners",
+    "/pricing",
+    "/privacy",
+    "/refunds",
+    "/robots.txt",
+    "/signin",
+    "/signup",
+    "/sitemap.xml",
+    "/terms",
+  ]);
+
+  if (exactInternalPaths.has(pathname)) {
+    return true;
+  }
+
+  const internalPrefixes = [
+    "/_next/",
+    "/api/",
+    "/account/",
+    "/admin/",
+    "/auth/",
+    "/business/",
+    "/dashboard/",
+    "/membership/",
+    "/my-beacon/",
+    "/search/",
+    "/signin/",
+    "/signup/",
+    `${PUBLIC_SITE_PREFIX}/`,
+  ];
+
+  return internalPrefixes.some((prefix) => pathname.startsWith(prefix));
 }
 
-function isPublicFile(pathname: string) {
+function isPublicFile(pathname: string): boolean {
   return (
     pathname === "/favicon.ico" ||
     pathname === "/manifest.webmanifest" ||
     pathname === "/site.webmanifest" ||
-    pathname === "/robots.txt" ||
-    pathname === "/sitemap.xml" ||
     pathname.startsWith("/images/") ||
     pathname.startsWith("/icons/") ||
     pathname.startsWith("/fonts/") ||
-    pathname.startsWith("/assets/")
+    pathname.startsWith("/assets/") ||
+    /\.[a-zA-Z0-9]+$/.test(pathname)
   );
 }
 
 function shouldRenderPublishedWebsite(
   host: string,
   pathname: string,
-) {
+): boolean {
   if (!host || isDevelopmentHost(host)) {
     return false;
   }
@@ -168,6 +224,6 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|api|favicon.ico|.*\\.[^/]+$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.[^/]+$).*)",
   ],
 };
