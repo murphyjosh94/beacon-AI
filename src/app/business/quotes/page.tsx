@@ -11,7 +11,17 @@ import {
   useState,
 } from "react";
 
+import {
+  CUSTOMERS_STORAGE_KEY,
+  SELECTED_CUSTOMER_STORAGE_KEY,
+  parseStoredCustomers,
+  persistCustomers,
+} from "../customers/customerStorage";
+import type { CustomerRecord } from "../customers/types";
+
 type QuoteStatus = "draft" | "sent" | "accepted" | "declined" | "expired";
+type CrmQuoteStatus = CustomerRecord["quotes"][number]["status"];
+type CrmQuoteSummary = CustomerRecord["quotes"][number];
 
 type QuoteItem = {
   id: string;
@@ -32,6 +42,7 @@ type QuoteCustomer = {
 
 type QuoteRecord = {
   id: string;
+  customerId?: string;
   quoteNumber: string;
   createdAt: string;
   issueDate: string;
@@ -389,6 +400,7 @@ function createNewQuote(
   options?: {
     workDescription?: string;
     imageNames?: string[];
+    customer?: CustomerRecord | null;
   },
 ): QuoteRecord {
   const now = new Date().toISOString();
@@ -400,7 +412,16 @@ function createNewQuote(
     issueDate: todayIso(),
     expiryDate: addDaysIso(30),
     status: "draft",
-    customer: { ...emptyCustomer },
+    customerId: options?.customer?.id,
+    customer: options?.customer
+      ? {
+          name: options.customer.name,
+          company: options.customer.company,
+          email: options.customer.email,
+          phone: options.customer.phone,
+          address: options.customer.address,
+        }
+      : { ...emptyCustomer },
     items: [
       {
         id: createId("item"),
@@ -442,6 +463,259 @@ function normaliseAiItems(items: AiQuoteResponse["items"]): QuoteItem[] {
     }));
 }
 
+function customerQuoteStatus(status: QuoteStatus): CrmQuoteStatus {
+  switch (status) {
+    case "draft":
+      return "draft";
+    case "sent":
+      return "sent";
+    case "accepted":
+      return "accepted";
+    case "declined":
+      return "rejected";
+    case "expired":
+      return "expired";
+  }
+}
+
+function customerJobStatus(status: JobStatus) {
+  switch (status) {
+    case "completed":
+      return "completed" as const;
+    case "cancelled":
+      return "cancelled" as const;
+    case "in_progress":
+      return "in_progress" as const;
+    default:
+      return "booked" as const;
+  }
+}
+
+function findLinkedCustomer(
+  customers: CustomerRecord[],
+  quote: QuoteRecord,
+): CustomerRecord | null {
+  if (quote.customerId) {
+    const byId = customers.find(
+      (customer) => customer.id === quote.customerId,
+    );
+
+    if (byId) return byId;
+  }
+
+  const email = quote.customer.email.trim().toLowerCase();
+
+  if (email) {
+    const byEmail = customers.find(
+      (customer) => customer.email.trim().toLowerCase() === email,
+    );
+
+    if (byEmail) return byEmail;
+  }
+
+  const name = quote.customer.name.trim().toLowerCase();
+  const company = quote.customer.company.trim().toLowerCase();
+
+  return (
+    customers.find((customer) => {
+      const sameName =
+        name &&
+        customer.name.trim().toLowerCase() === name;
+      const sameCompany =
+        company &&
+        customer.company.trim().toLowerCase() === company;
+
+      return Boolean(sameName && (!company || sameCompany));
+    }) ?? null
+  );
+}
+
+function quoteTimelineTitle(
+  quoteNumber: string,
+  status: QuoteStatus,
+  isNew: boolean,
+) {
+  if (isNew) return `Quote ${quoteNumber} created`;
+
+  switch (status) {
+    case "sent":
+      return `Quote ${quoteNumber} sent`;
+    case "accepted":
+      return `Quote ${quoteNumber} accepted`;
+    case "declined":
+      return `Quote ${quoteNumber} declined`;
+    case "expired":
+      return `Quote ${quoteNumber} expired`;
+    default:
+      return `Quote ${quoteNumber} updated`;
+  }
+}
+
+function syncQuoteToCustomer(quote: QuoteRecord): string | undefined {
+  const customers = parseStoredCustomers(
+    window.localStorage.getItem(CUSTOMERS_STORAGE_KEY),
+  );
+  const customer = findLinkedCustomer(customers, quote);
+
+  if (!customer) {
+    return quote.customerId;
+  }
+
+  const totals = calculateQuote(quote);
+  const existingSummary = customer.quotes.find(
+    (item) => item.id === quote.id,
+  );
+  const nextStatus: CrmQuoteStatus = customerQuoteStatus(quote.status);
+  const statusChanged =
+    existingSummary !== undefined &&
+    existingSummary.status !== nextStatus;
+  const now = new Date().toISOString();
+
+  const quoteSummary: CrmQuoteSummary = {
+    id: quote.id,
+    title:
+      quote.workDescription.trim().split(/\r?\n/)[0]?.slice(0, 90) ||
+      quote.items.find((item) => item.description.trim())?.description ||
+      quote.quoteNumber,
+    total: totals.total,
+    status: nextStatus,
+    createdAt: quote.createdAt,
+    updatedAt: quote.updatedAt,
+  };
+
+  const nextQuotes: CustomerRecord["quotes"] = existingSummary
+    ? customer.quotes.map(
+        (item): CrmQuoteSummary =>
+          item.id === quote.id ? quoteSummary : item,
+      )
+    : [quoteSummary, ...customer.quotes];
+
+  const timeline: CustomerRecord["timeline"] = [...customer.timeline];
+
+  if (!existingSummary || statusChanged) {
+    timeline.unshift({
+      id: createId("timeline"),
+      type: "quote",
+      title: quoteTimelineTitle(
+        quote.quoteNumber,
+        quote.status,
+        !existingSummary,
+      ),
+      detail: `${formatCurrency(
+        totals.total,
+      )} quotation linked to this customer.`,
+      createdAt: now,
+    });
+  }
+
+  const updatedCustomer: CustomerRecord = {
+    ...customer,
+    status:
+      quote.status === "accepted" && customer.status === "lead"
+        ? "active"
+        : customer.status,
+    updatedAt: now,
+    lastContactAt:
+      quote.status === "sent" ||
+      quote.status === "accepted" ||
+      quote.status === "declined"
+        ? now
+        : customer.lastContactAt,
+    quotes: nextQuotes,
+    timeline,
+  };
+
+  const nextCustomers: CustomerRecord[] = customers.map(
+    (item): CustomerRecord =>
+      item.id === updatedCustomer.id ? updatedCustomer : item,
+  );
+
+  persistCustomers(nextCustomers);
+
+  return updatedCustomer.id;
+}
+
+function removeQuoteFromCustomer(quote: QuoteRecord) {
+  const customers = parseStoredCustomers(
+    window.localStorage.getItem(CUSTOMERS_STORAGE_KEY),
+  );
+  const customer = findLinkedCustomer(customers, quote);
+
+  if (!customer) return;
+
+  const now = new Date().toISOString();
+  const updatedCustomer: CustomerRecord = {
+    ...customer,
+    updatedAt: now,
+    quotes: customer.quotes.filter((item) => item.id !== quote.id),
+    timeline: [
+      {
+        id: createId("timeline"),
+        type: "quote",
+        title: `Quote ${quote.quoteNumber} deleted`,
+        detail: "The quotation was removed from Beacon Quotes.",
+        createdAt: now,
+      },
+      ...customer.timeline,
+    ],
+  };
+
+  persistCustomers(
+    customers.map((item) =>
+      item.id === updatedCustomer.id ? updatedCustomer : item,
+    ),
+  );
+}
+
+function syncJobToCustomer(quote: QuoteRecord, job: JobRecord) {
+  const customers = parseStoredCustomers(
+    window.localStorage.getItem(CUSTOMERS_STORAGE_KEY),
+  );
+  const customer = findLinkedCustomer(customers, quote);
+
+  if (!customer) return;
+
+  const now = new Date().toISOString();
+  const existingJob = customer.jobs.find((item) => item.id === job.id);
+  const jobSummary = {
+    id: job.id,
+    title: job.title,
+    status: customerJobStatus(job.status),
+    startDate: job.scheduledDate,
+    completedAt: job.completedAt ?? undefined,
+    value: job.quotedValue,
+  };
+
+  const updatedCustomer: CustomerRecord = {
+    ...customer,
+    status: customer.status === "lead" ? "active" : customer.status,
+    updatedAt: now,
+    jobs: existingJob
+      ? customer.jobs.map((item) =>
+          item.id === job.id ? jobSummary : item,
+        )
+      : [jobSummary, ...customer.jobs],
+    timeline: existingJob
+      ? customer.timeline
+      : [
+          {
+            id: createId("timeline"),
+            type: "job",
+            title: `Job ${job.jobNumber} created`,
+            detail: `${job.title} was created from ${quote.quoteNumber}.`,
+            createdAt: now,
+          },
+          ...customer.timeline,
+        ],
+  };
+
+  persistCustomers(
+    customers.map((item) =>
+      item.id === updatedCustomer.id ? updatedCustomer : item,
+    ),
+  );
+}
+
 export default function BusinessQuotesPage() {
   const router = useRouter();
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
@@ -449,6 +723,8 @@ export default function BusinessQuotesPage() {
   const [search, setSearch] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const [selectedCustomer, setSelectedCustomer] =
+    useState<CustomerRecord | null>(null);
 
   const [workDescription, setWorkDescription] = useState("");
   const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
@@ -460,8 +736,27 @@ export default function BusinessQuotesPage() {
     const stored = parseStoredQuotes(
       window.localStorage.getItem(QUOTES_STORAGE_KEY),
     );
+    const selectedCustomerId = window.localStorage.getItem(
+      SELECTED_CUSTOMER_STORAGE_KEY,
+    );
+    const customers = parseStoredCustomers(
+      window.localStorage.getItem(CUSTOMERS_STORAGE_KEY),
+    );
+    const customer =
+      customers.find((item) => item.id === selectedCustomerId) ?? null;
 
     setQuotes(stored);
+    setSelectedCustomer(customer);
+
+    if (customer) {
+      setActiveQuote(
+        createNewQuote(nextQuoteSequence(stored), {
+          customer,
+        }),
+      );
+      window.localStorage.removeItem(SELECTED_CUSTOMER_STORAGE_KEY);
+    }
+
     setLoaded(true);
   }, []);
 
@@ -552,7 +847,9 @@ export default function BusinessQuotesPage() {
   }
 
   function startManualQuote() {
-    const quote = createNewQuote(nextQuoteSequence(quotes));
+    const quote = createNewQuote(nextQuoteSequence(quotes), {
+      customer: selectedCustomer,
+    });
     setActiveQuote(quote);
     setGenerationError(null);
     setSavedMessage(null);
@@ -674,6 +971,7 @@ export default function BusinessQuotesPage() {
       const quote = createNewQuote(nextQuoteSequence(quotes), {
         workDescription: description,
         imageNames: imagePreviews.map(({ file }) => file.name),
+        customer: selectedCustomer,
       });
 
       quote.items = items;
@@ -733,6 +1031,9 @@ export default function BusinessQuotesPage() {
       updatedAt: new Date().toISOString(),
     };
 
+    const linkedCustomerId = syncQuoteToCustomer(normalisedQuote);
+    normalisedQuote.customerId = linkedCustomerId;
+
     setQuotes((current) => {
       const exists = current.some((quote) => quote.id === normalisedQuote.id);
 
@@ -750,7 +1051,13 @@ export default function BusinessQuotesPage() {
   }
 
   function deleteQuote(id: string) {
-    setQuotes((current) => current.filter((quote) => quote.id !== id));
+    const quote = quotes.find((item) => item.id === id);
+
+    if (quote) {
+      removeQuoteFromCustomer(quote);
+    }
+
+    setQuotes((current) => current.filter((item) => item.id !== id));
 
     if (activeQuote?.id === id) {
       setActiveQuote(null);
@@ -908,6 +1215,7 @@ export default function BusinessQuotesPage() {
       JSON.stringify([job, ...storedJobs]),
     );
 
+    syncJobToCustomer(activeQuote, job);
     saveQuote();
     setSavedMessage(
       `${activeQuote.quoteNumber} converted to ${job.jobNumber}. Opening Jobs...`,
@@ -1020,6 +1328,18 @@ export default function BusinessQuotesPage() {
           {activeQuote ? (
             <div className="grid gap-8 xl:grid-cols-[1.1fr_0.9fr]">
               <section className="space-y-6 print:hidden">
+                {activeQuote.customerId ? (
+                  <article className="rounded-[2rem] border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+                    <p className="font-black text-emerald-900">
+                      Connected to Customer CRM
+                    </p>
+                    <p className="mt-2 leading-7 text-emerald-800">
+                      Saving this quote will update the customer profile,
+                      quote history, activity timeline and customer analytics.
+                    </p>
+                  </article>
+                ) : null}
+
                 {activeQuote.aiGenerated ? (
                   <article className="rounded-[2rem] border border-amber-300 bg-amber-50 p-6 shadow-sm">
                     <div className="flex items-start gap-4">
@@ -1704,6 +2024,23 @@ export default function BusinessQuotesPage() {
           ) : (
             <div className="grid gap-8 xl:grid-cols-[1.05fr_0.95fr] print:hidden">
               <section className="space-y-8">
+                {selectedCustomer ? (
+                  <article className="rounded-[2rem] border border-emerald-200 bg-emerald-50 p-6 shadow-sm">
+                    <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-emerald-800">
+                      Customer selected
+                    </p>
+                    <p className="mt-2 text-xl font-black text-slate-950">
+                      {selectedCustomer.name ||
+                        selectedCustomer.company ||
+                        "CRM customer"}
+                    </p>
+                    <p className="mt-2 text-slate-700">
+                      Their contact details will be added automatically to the
+                      next AI or manual quote.
+                    </p>
+                  </article>
+                ) : null}
+
                 <form
                   className="rounded-[2rem] border border-blue-200 bg-white p-7 shadow-2xl sm:p-9"
                   onSubmit={generateQuote}
