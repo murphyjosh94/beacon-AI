@@ -36,7 +36,7 @@ const businessNavigation = [
   },
   {
     label: "Account",
-    href: "/business/account",
+     href: "/business/dashboard",
   },
 ] as const;
 
