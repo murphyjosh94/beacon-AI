@@ -120,7 +120,8 @@ const dashboardModules: DashboardModule[] = [
     description:
       "Create professional quotations with labour, materials, discounts and VAT.",
     icon: "📋",
-    status: "coming_soon",
+    status: "available",
+    href: "/business/quotes",
   },
   {
     title: "Invoices",
@@ -798,15 +799,23 @@ export default function BusinessDashboard() {
               </p>
             </article>
 
-            <article className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <Link
+              href="/business/quotes"
+              className="group rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-xl"
+            >
               <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-blue-900">
                 Quotes
               </p>
-              <p className="mt-3 text-3xl font-black text-slate-950">0</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                Quote Builder is coming soon.
+              <p className="mt-3 text-3xl font-black text-slate-950">
+                Open
               </p>
-            </article>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Create, save and manage professional quotations.
+              </p>
+              <p className="mt-4 font-black text-blue-950">
+                Open Beacon Quote →
+              </p>
+            </Link>
 
             <article className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
               <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-blue-900">
