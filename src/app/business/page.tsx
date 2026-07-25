@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 
 import Link from "next/link";
 
-import BeaconFooter from "@/components/BeaconFooter";
-import Navbar from "@/components/Navbar";
 import JsonLd from "@/components/seo/JsonLd";
 
 import { absoluteUrl, siteConfig } from "@/lib/seo/SiteConfig";
@@ -255,8 +253,6 @@ export default function BusinessPage() {
       <JsonLd data={[businessPageSchema, softwareSchema]} />
 
       <main className="min-h-screen bg-slate-50">
-        <Navbar />
-
         <section className="relative overflow-hidden bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-950 px-6 py-20 text-white sm:py-24 lg:py-28">
           <div
             aria-hidden="true"
@@ -756,7 +752,6 @@ export default function BusinessPage() {
           </div>
         </section>
 
-        <BeaconFooter />
       </main>
     </>
   );

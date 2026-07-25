@@ -58,9 +58,7 @@ export default function BusinessTemplatesPage() {
       <JsonLd data={documentsSchema} />
 
       <main className="min-h-screen bg-slate-50">
-        <Navbar />
         <TemplatesClient />
-        <BeaconFooter />
       </main>
     </>
   );
