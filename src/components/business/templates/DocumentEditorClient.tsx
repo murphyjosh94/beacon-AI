@@ -8,6 +8,10 @@ import {
   type BusinessDetails,
   type TemplateDefinition,
 } from "@/lib/business/templates/templateDefinitions";
+import {
+  BRAND_KIT_STORAGE_KEY,
+  loadBrandKit,
+} from "@/lib/business/brand-kit/brandKit";
 
 type Props = {
   templateSlug: string;
@@ -67,24 +71,69 @@ export default function DocumentEditorClient({ templateSlug }: Props) {
   );
 
   useEffect(() => {
+    const applyBrandKit = () => {
+      const kit = loadBrandKit();
+
+      setBusiness({
+        businessName: kit.businessName,
+        ownerName: kit.ownerName,
+        address: kit.address,
+        email: kit.email,
+        phone: kit.phone,
+        website: kit.website,
+        companyNumber: kit.companyNumber,
+        vatNumber: kit.vatNumber,
+      });
+    };
+
+    applyBrandKit();
+
     try {
       const raw = window.localStorage.getItem(storageKey(template.slug));
-      if (!raw) return;
 
-      const parsed = JSON.parse(raw) as {
-        business?: BusinessDetails;
-        values?: Record<string, string>;
-        document?: string;
-        savedAt?: string;
-      };
+      if (raw) {
+        const parsed = JSON.parse(raw) as {
+          business?: BusinessDetails;
+          values?: Record<string, string>;
+          document?: string;
+          savedAt?: string;
+        };
 
-      if (parsed.business) setBusiness(parsed.business);
-      if (parsed.values) setValues(parsed.values);
-      if (parsed.document) setDocument(parsed.document);
-      if (parsed.savedAt) setSavedAt(parsed.savedAt);
+        if (parsed.business) {
+          setBusiness((current) => ({
+            ...current,
+            ...parsed.business,
+          }));
+        }
+
+        if (parsed.values) setValues(parsed.values);
+        if (parsed.document) setDocument(parsed.document);
+        if (parsed.savedAt) setSavedAt(parsed.savedAt);
+      }
     } catch {
       setMessage("The previous local draft could not be restored.");
     }
+
+    const handleBrandKitUpdate = () => applyBrandKit();
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === BRAND_KIT_STORAGE_KEY) {
+        applyBrandKit();
+      }
+    };
+
+    window.addEventListener(
+      "beacon-brand-kit-updated",
+      handleBrandKitUpdate,
+    );
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      window.removeEventListener(
+        "beacon-brand-kit-updated",
+        handleBrandKitUpdate,
+      );
+      window.removeEventListener("storage", handleStorage);
+    };
   }, [template.slug]);
 
   useEffect(() => {
@@ -239,9 +288,14 @@ export default function DocumentEditorClient({ templateSlug }: Props) {
               </div>
 
               <p className="mt-3 leading-7 text-slate-600">
-                These details appear throughout the document. They are saved
-                only in this browser until connected to your full Brand Kit.
+                These details are loaded from your Beacon Brand Kit. Changes made here apply to this document draft only.
               </p>
+              <Link
+                href="/business/brand-kit"
+                className="mt-4 inline-flex font-extrabold text-blue-900 hover:text-blue-700"
+              >
+                Manage Brand Kit →
+              </Link>
 
               <div className="mt-6 grid gap-5 sm:grid-cols-2">
                 {[
