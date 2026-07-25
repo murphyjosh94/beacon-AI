@@ -402,7 +402,7 @@ export default function BusinessJobsPage() {
 
   if (!loaded) {
     return (
-      <main className="min-h-screen bg-slate-50 px-6 py-20">
+      <main className="bg-slate-50 px-4 py-12 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl animate-pulse">
           <div className="h-12 w-72 rounded bg-slate-200" />
           <div className="mt-8 grid gap-5 md:grid-cols-4">
@@ -417,46 +417,53 @@ export default function BusinessJobsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-950">
-      <section className="relative overflow-hidden bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-950 px-6 py-16 text-white">
-        <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-blue-400/20 blur-3xl" />
+    <main className="bg-slate-50 text-slate-950">
+      <section className="border-b border-slate-200 bg-white">
+        <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
+          <nav aria-label="Breadcrumb" className="text-sm font-bold text-slate-500">
+            <ol className="flex flex-wrap items-center gap-2">
+              <li>
+                <Link
+                  className="rounded transition hover:text-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                  href="/business/dashboard"
+                >
+                  Business
+                </Link>
+              </li>
+              <li aria-hidden="true">/</li>
+              <li className="text-slate-800">Jobs</li>
+            </ol>
+          </nav>
+        </div>
 
-        <div className="relative mx-auto max-w-7xl">
-          <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-sm font-extrabold uppercase tracking-[0.28em] text-blue-200">
-                Beacon Jobs
-              </p>
-              <h1 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl">
-                Manage work from enquiry to completion.
-              </h1>
-              <p className="mt-5 max-w-3xl text-lg leading-8 text-blue-100">
-                Schedule jobs, assign work, track progress and keep every
-                customer project moving.
-              </p>
+        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row lg:items-end lg:justify-between lg:px-8">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-sm font-extrabold text-blue-900">
+              <span aria-hidden="true">🛠️</span>
+              Beacon Jobs
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Link
-                href="/business/dashboard"
-                className="inline-flex items-center justify-center rounded-2xl border border-white/30 bg-white/10 px-6 py-3 font-extrabold text-white transition hover:bg-white/20"
-              >
-                Back to Dashboard
-              </Link>
+            <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+              Manage work from enquiry to completion
+            </h1>
 
-              <button
-                className="inline-flex items-center justify-center rounded-2xl bg-amber-400 px-6 py-3 font-extrabold text-slate-950 transition hover:bg-amber-300"
-                onClick={startNewJob}
-                type="button"
-              >
-                + New Job
-              </button>
-            </div>
+            <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">
+              Schedule jobs, assign work, track progress and keep every customer
+              project moving from one clear workspace.
+            </p>
           </div>
+
+          <button
+            className="inline-flex items-center justify-center rounded-2xl bg-blue-950 px-6 py-4 font-extrabold text-white shadow-sm transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-200"
+            onClick={startNewJob}
+            type="button"
+          >
+            + New Job
+          </button>
         </div>
       </section>
 
-      <section className="px-6 py-10">
+      <section className="px-4 py-8 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
             <article className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
@@ -501,7 +508,7 @@ export default function BusinessJobsPage() {
         </div>
       </section>
 
-      <section className="px-6 pb-20">
+      <section className="px-4 pb-20 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           {activeJob ? (
             <div className="grid gap-8 xl:grid-cols-[1.1fr_0.8fr]">
@@ -767,7 +774,7 @@ export default function BusinessJobsPage() {
                   </p>
 
                   <div className="mt-8 grid gap-5 sm:grid-cols-2">
-                    <label className="space-y-2">
+                    <label className="space-y-2 sm:col-span-2">
                       <span className="text-sm font-bold text-slate-700">
                         Quoted value
                       </span>
@@ -786,23 +793,6 @@ export default function BusinessJobsPage() {
                         step="0.01"
                         type="number"
                         value={activeJob.quotedValue}
-                      />
-                    </label>
-
-                    <label className="space-y-2">
-                      <span className="text-sm font-bold text-slate-700">
-                        Linked invoice number
-                      </span>
-                      <input
-                        className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
-                        onChange={(event) =>
-                          updateActiveJob((job) => ({
-                            ...job,
-                            invoiceNumber: event.target.value,
-                          }))
-                        }
-                        placeholder="e.g. BI-2026-0001"
-                        value={activeJob.invoiceNumber}
                       />
                     </label>
 
@@ -844,7 +834,7 @@ export default function BusinessJobsPage() {
 
                 <article className="flex flex-col gap-3 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-xl sm:flex-row">
                   <button
-                    className="inline-flex flex-1 items-center justify-center rounded-2xl bg-blue-950 px-6 py-4 font-extrabold text-white transition hover:bg-blue-900"
+                    className="inline-flex flex-1 items-center justify-center rounded-2xl bg-blue-950 px-6 py-4 font-extrabold text-white transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-200"
                     onClick={saveJob}
                     type="button"
                   >
@@ -852,7 +842,7 @@ export default function BusinessJobsPage() {
                   </button>
 
                   <button
-                    className="inline-flex flex-1 items-center justify-center rounded-2xl border-2 border-amber-300 bg-amber-50 px-6 py-4 font-extrabold text-amber-900 transition hover:bg-amber-100"
+                    className="inline-flex flex-1 items-center justify-center rounded-2xl border-2 border-amber-300 bg-amber-50 px-6 py-4 font-extrabold text-amber-900 transition hover:bg-amber-100 focus:outline-none focus:ring-4 focus:ring-amber-100"
                     onClick={markInProgress}
                     type="button"
                   >
@@ -860,7 +850,7 @@ export default function BusinessJobsPage() {
                   </button>
 
                   <button
-                    className="inline-flex flex-1 items-center justify-center rounded-2xl border-2 border-emerald-300 bg-emerald-50 px-6 py-4 font-extrabold text-emerald-900 transition hover:bg-emerald-100"
+                    className="inline-flex flex-1 items-center justify-center rounded-2xl border-2 border-emerald-300 bg-emerald-50 px-6 py-4 font-extrabold text-emerald-900 transition hover:bg-emerald-100 focus:outline-none focus:ring-4 focus:ring-emerald-100"
                     onClick={markCompleted}
                     type="button"
                   >
@@ -952,17 +942,6 @@ export default function BusinessJobsPage() {
                     </p>
                   </div>
 
-                  {activeJob.invoiceNumber ? (
-                    <div>
-                      <p className="text-sm font-bold text-slate-500">
-                        Linked invoice
-                      </p>
-                      <p className="mt-1 font-black">
-                        {activeJob.invoiceNumber}
-                      </p>
-                    </div>
-                  ) : null}
-
                   {activeJob.status === "completed" ? (
                     <div className="rounded-2xl bg-emerald-100 p-4">
                       <p className="font-black text-emerald-800">
@@ -974,14 +953,7 @@ export default function BusinessJobsPage() {
 
                 <div className="mt-8 grid gap-3">
                   <button
-                    className="cursor-not-allowed rounded-2xl bg-slate-200 px-5 py-3 font-extrabold text-slate-500"
-                    disabled
-                    type="button"
-                  >
-                    Create Invoice from Job
-                  </button>
-                  <button
-                    className="rounded-2xl border-2 border-slate-300 px-5 py-3 font-extrabold text-slate-800 transition hover:border-blue-500 hover:text-blue-950"
+                    className="rounded-2xl border-2 border-slate-300 px-5 py-3 font-extrabold text-slate-800 transition hover:border-blue-500 hover:text-blue-950 focus:outline-none focus:ring-4 focus:ring-blue-100"
                     onClick={() => setActiveJob(null)}
                     type="button"
                   >
@@ -1004,7 +976,7 @@ export default function BusinessJobsPage() {
                   </div>
 
                   <button
-                    className="rounded-2xl bg-blue-950 px-5 py-3 font-extrabold text-white transition hover:bg-blue-900"
+                    className="rounded-2xl bg-blue-950 px-5 py-3 font-extrabold text-white transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-200"
                     onClick={startNewJob}
                     type="button"
                   >
@@ -1103,7 +1075,7 @@ export default function BusinessJobsPage() {
 
                         <div className="mt-5 flex flex-wrap gap-3">
                           <button
-                            className="rounded-xl bg-blue-950 px-4 py-2 text-sm font-extrabold text-white transition hover:bg-blue-900"
+                            className="rounded-xl bg-blue-950 px-4 py-2 text-sm font-extrabold text-white transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-200"
                             onClick={() => setActiveJob(job)}
                             type="button"
                           >
@@ -1211,6 +1183,46 @@ export default function BusinessJobsPage() {
             </div>
           )}
         </div>
+      </section>
+
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-20 sm:px-6 lg:grid-cols-3 lg:px-8">
+        {[
+          {
+            href: "/business/quotes",
+            eyebrow: "Previous step",
+            title: "Manage quotes",
+            description:
+              "Review customer quotations and convert accepted work into jobs.",
+          },
+          {
+            href: "/business/customers",
+            eyebrow: "Customer records",
+            title: "Open Customers",
+            description:
+              "Keep contact details, quote history and job activity together.",
+          },
+          {
+            href: "/business/analytics",
+            eyebrow: "Business insight",
+            title: "View Analytics",
+            description:
+              "Track jobs, pipeline value and completed work across the workspace.",
+          },
+        ].map((item) => (
+          <Link
+            className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-blue-100"
+            href={item.href}
+            key={item.href}
+          >
+            <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-blue-700">
+              {item.eyebrow}
+            </p>
+            <h2 className="mt-2 text-xl font-black text-slate-950">
+              {item.title}
+            </h2>
+            <p className="mt-2 leading-7 text-slate-600">{item.description}</p>
+          </Link>
+        ))}
       </section>
     </main>
   );

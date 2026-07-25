@@ -10,26 +10,12 @@ import {
   type BeaconBrandKit,
 } from "@/lib/business/brand-kit/brandKit";
 
-type NavigationItem = {
-  href: string;
-  label: string;
-};
-
 const fontOptions = [
   "Inter",
   "Arial",
   "Georgia",
   "Times New Roman",
   "Verdana",
-];
-
-const BUSINESS_NAVIGATION: NavigationItem[] = [
-  { href: "/business/dashboard", label: "Dashboard" },
-  { href: "/business/website", label: "Website Builder" },
-  { href: "/business/brand-kit", label: "Brand Kit" },
-  { href: "/business/templates", label: "Templates" },
-  { href: "/business/analytics", label: "Analytics" },
-  { href: "/business/memberships", label: "Membership" },
 ];
 
 const DETAIL_FIELDS: Array<{
@@ -185,136 +171,76 @@ export default function BrandKitClient() {
 
   return (
     <>
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex min-h-16 items-center justify-between gap-4">
-            <Link
-              className="text-lg font-black tracking-tight text-blue-950"
-              href="/business/dashboard"
-            >
-              Beacon Business
-            </Link>
-
-            <Link
-              className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-extrabold text-slate-800 transition hover:border-blue-400 hover:text-blue-950"
-              href="/my-beacon"
-            >
-              My Beacon
-            </Link>
-          </div>
-
-          <nav
-            aria-label="Business navigation"
-            className="-mx-4 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
-          >
-            <div className="flex min-w-max gap-2">
-              {BUSINESS_NAVIGATION.map((item) => {
-                const isCurrent = item.href === "/business/brand-kit";
-
-                return (
-                  <Link
-                    aria-current={isCurrent ? "page" : undefined}
-                    className={`rounded-xl px-4 py-2 text-sm font-extrabold transition ${
-                      isCurrent
-                        ? "bg-blue-950 text-white"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-blue-950"
-                    }`}
-                    href={item.href}
-                    key={item.href}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
-          </nav>
-        </div>
-      </header>
-
-      <section className="bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-950 px-4 py-14 text-white sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <nav
-            aria-label="Breadcrumb"
-            className="text-sm font-bold text-blue-200"
-          >
+      <section className="border-b border-slate-200 bg-white">
+        <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
+          <nav aria-label="Breadcrumb" className="text-sm font-bold text-slate-500">
             <ol className="flex flex-wrap items-center gap-2">
               <li>
                 <Link
-                  className="transition hover:text-white"
+                  className="rounded transition hover:text-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-100"
                   href="/business/dashboard"
                 >
                   Business
                 </Link>
               </li>
               <li aria-hidden="true">/</li>
-              <li className="text-white">Brand Kit</li>
+              <li className="text-slate-800">Brand Kit</li>
             </ol>
           </nav>
+        </div>
 
-          <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_340px] lg:items-end">
-            <div>
-              <p className="text-sm font-extrabold uppercase tracking-[0.28em] text-amber-200">
-                Beacon Business
-              </p>
-              <h1 className="mt-3 text-4xl font-black tracking-tight sm:text-6xl">
-                Brand Kit
-              </h1>
-              <p className="mt-5 max-w-3xl text-lg leading-8 text-blue-100 sm:text-xl sm:leading-9">
-                Store your business identity once and keep every document,
-                website and customer message consistent.
-              </p>
-
-              <div className="mt-6 flex flex-wrap gap-2">
-                {[
-                  "One source of truth",
-                  "Live brand preview",
-                  "Used across Beacon",
-                  "Easy to update",
-                ].map((badge) => (
-                  <span
-                    className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-sm font-bold text-blue-50"
-                    key={badge}
-                  >
-                    {badge}
-                  </span>
-                ))}
-              </div>
+        <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_340px] lg:items-end lg:px-8">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-sm font-extrabold text-blue-900">
+              <span aria-hidden="true">🎨</span>
+              Beacon Brand Kit
             </div>
 
-            <div className="rounded-[1.75rem] border border-white/15 bg-white/10 p-6 backdrop-blur">
-              <div className="flex items-center justify-between gap-4">
-                <span className="font-extrabold">Brand Kit completion</span>
-                <span className="text-2xl font-black text-amber-300">
-                  {completion}%
-                </span>
-              </div>
+            <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+              Keep your business identity consistent
+            </h1>
 
+            <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">
+              Store your logo, colours and business details once, then reuse
+              them across Beacon websites, templates and customer documents.
+            </p>
+          </div>
+
+          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-4">
+              <span className="font-extrabold text-slate-800">
+                Brand Kit completion
+              </span>
+              <span className="text-2xl font-black text-blue-950">
+                {completion}%
+              </span>
+            </div>
+
+            <div
+              aria-label={`Brand Kit ${completion}% complete`}
+              aria-valuemax={100}
+              aria-valuemin={0}
+              aria-valuenow={completion}
+              className="mt-4 h-3 overflow-hidden rounded-full bg-slate-200"
+              role="progressbar"
+            >
               <div
-                aria-label={`Brand Kit ${completion}% complete`}
-                aria-valuemax={100}
-                aria-valuemin={0}
-                aria-valuenow={completion}
-                className="mt-4 h-3 overflow-hidden rounded-full bg-white/15"
-                role="progressbar"
-              >
-                <div
-                  className="h-full rounded-full bg-amber-300 transition-all"
-                  style={{ width: `${completion}%` }}
-                />
-              </div>
+                className="h-full rounded-full bg-blue-950 transition-all"
+                style={{ width: `${completion}%` }}
+              />
+            </div>
 
-              <div className="mt-5 rounded-2xl bg-white/10 p-4">
-                <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-amber-200">
-                  Next step
-                </p>
-                <p className="mt-2 text-sm leading-6 text-blue-50">{nextStep}</p>
-              </div>
+            <div className="mt-4 rounded-2xl bg-white p-4">
+              <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-blue-700">
+                Next step
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{nextStep}</p>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="px-4 py-12 sm:px-6 lg:px-8">
+      <section className="px-4 py-10 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-7xl gap-8 xl:grid-cols-[1fr_380px]">
           <div className="space-y-8">
             <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
@@ -526,6 +452,7 @@ export default function BrandKitClient() {
                   <img
                     alt={`${brandKit.businessName || "Business"} logo`}
                     className="mb-5 h-16 max-w-full object-contain object-left"
+                    loading="lazy"
                     src={brandKit.logoUrl}
                   />
                 ) : (
@@ -600,7 +527,7 @@ export default function BrandKitClient() {
           </aside>
         </div>
 
-        <section className="mx-auto mt-10 grid max-w-7xl gap-6 md:grid-cols-3">
+        <section className="mx-auto mt-10 grid max-w-7xl gap-6 pb-10 md:grid-cols-3">
           {[
             {
               href: "/business/website",

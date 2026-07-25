@@ -19,10 +19,6 @@ type WebsiteProject = {
   suggestions: number;
 };
 
-type NavigationItem = {
-  href: string;
-  label: string;
-};
 
 const PROJECT_STORAGE_KEY = "beacon-business-website-project";
 
@@ -40,14 +36,6 @@ const EMPTY_PROJECT: WebsiteProject = {
   suggestions: 0,
 };
 
-const BUSINESS_NAVIGATION: NavigationItem[] = [
-  { href: "/business/dashboard", label: "Dashboard" },
-  { href: "/business/website", label: "Website Builder" },
-  { href: "/business/brand-kit", label: "Brand Kit" },
-  { href: "/business/templates", label: "Templates" },
-  { href: "/business/analytics", label: "Analytics" },
-  { href: "/business/memberships", label: "Membership" },
-];
 
 function formatDate(value: string) {
   if (!value) {
@@ -227,7 +215,7 @@ export default function BusinessWebsitePage() {
 
   if (!loaded) {
     return (
-      <main className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6 lg:px-8">
+      <main className="bg-slate-50 px-4 py-10 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl animate-pulse">
           <div className="h-14 rounded-2xl bg-white" />
           <div className="mt-8 h-10 w-72 rounded-xl bg-slate-200" />
@@ -243,60 +231,14 @@ export default function BusinessWebsitePage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex min-h-16 items-center justify-between gap-4">
-            <Link
-              className="text-lg font-black tracking-tight text-blue-950"
-              href="/business/dashboard"
-            >
-              Beacon Business
-            </Link>
-
-            <Link
-              className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-extrabold text-slate-800 transition hover:border-blue-400 hover:text-blue-950"
-              href="/my-beacon"
-            >
-              My Beacon
-            </Link>
-          </div>
-
-          <nav
-            aria-label="Business navigation"
-            className="-mx-4 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
-          >
-            <div className="flex min-w-max gap-2">
-              {BUSINESS_NAVIGATION.map((item) => {
-                const isCurrent = item.href === "/business/website";
-
-                return (
-                  <Link
-                    aria-current={isCurrent ? "page" : undefined}
-                    className={`rounded-xl px-4 py-2 text-sm font-extrabold transition ${
-                      isCurrent
-                        ? "bg-blue-950 text-white"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-blue-950"
-                    }`}
-                    href={item.href}
-                    key={item.href}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
-          </nav>
-        </div>
-      </header>
-
+    <main className="bg-slate-50">
       <section className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
           <nav aria-label="Breadcrumb" className="text-sm font-bold text-slate-500">
             <ol className="flex flex-wrap items-center gap-2">
               <li>
                 <Link
-                  className="transition hover:text-blue-900"
+                  className="rounded focus:outline-none focus:ring-4 focus:ring-blue-100 transition hover:text-blue-900"
                   href="/business/dashboard"
                 >
                   Business
@@ -344,7 +286,7 @@ export default function BusinessWebsitePage() {
           <div className="flex flex-col gap-3 sm:flex-row">
             {canManageDomains ? (
               <Link
-                className="inline-flex items-center justify-center rounded-2xl border-2 border-blue-200 bg-blue-50 px-6 py-4 font-extrabold text-blue-950 transition hover:border-blue-400 hover:bg-blue-100"
+                className="inline-flex items-center justify-center rounded-2xl border-2 border-blue-200 bg-blue-50 px-6 py-4 font-extrabold text-blue-950 transition hover:border-blue-400 hover:bg-blue-100 focus:outline-none focus:ring-4 focus:ring-blue-100"
                 href="/business/website/domains"
               >
                 Manage Domains

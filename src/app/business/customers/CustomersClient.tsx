@@ -410,12 +410,6 @@ export default function CustomersClient() {
 
     const contactGap = daysSince(selectedCustomer.lastContactAt);
 
-    if (customerTotals.outstanding > 0) {
-      return `${selectedCustomer.firstName} has ${formatCurrency(
-        customerTotals.outstanding,
-      )} outstanding. Consider sending a polite payment reminder.`;
-    }
-
     if (contactGap !== null && contactGap >= 30) {
       return `${selectedCustomer.firstName} has not been contacted for ${contactGap} days. A follow-up or maintenance reminder may be useful.`;
     }
@@ -432,7 +426,7 @@ export default function CustomersClient() {
       )}. Consider offering a repeat-customer service reminder.`;
     }
 
-    return "Add quotes, jobs, invoices and contact notes to unlock more useful customer insights.";
+    return "Add quotes, jobs and contact notes to unlock more useful customer insights.";
   }, [customerTotals, selectedCustomer]);
 
   function submitCustomer(event: React.FormEvent<HTMLFormElement>) {
@@ -543,42 +537,53 @@ export default function CustomersClient() {
 
   return (
     <>
-      <section className="relative overflow-hidden bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-950 px-6 py-20 text-white">
-        <div
-          aria-hidden="true"
-          className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-blue-400/20 blur-3xl"
-        />
+      <section className="border-b border-slate-200 bg-white">
+        <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
+          <nav aria-label="Breadcrumb" className="text-sm font-bold text-slate-500">
+            <ol className="flex flex-wrap items-center gap-2">
+              <li>
+                <Link
+                  href="/business/dashboard"
+                  className="rounded transition hover:text-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                >
+                  Business
+                </Link>
+              </li>
+              <li aria-hidden="true">/</li>
+              <li className="text-slate-800">Customers</li>
+            </ol>
+          </nav>
+        </div>
 
-        <div className="relative mx-auto max-w-7xl">
-          <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-blue-200">
-                Beacon Business Customers
-              </p>
-
-              <h1 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl">
-                Every customer. One connected record.
-              </h1>
-
-              <p className="mt-5 max-w-3xl text-lg leading-8 text-blue-100">
-                Keep contact details, quotes, jobs, invoices, documents and
-                activity together from first enquiry to final payment.
-              </p>
+        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:flex-row lg:items-end lg:justify-between lg:px-8">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-sm font-extrabold text-blue-900">
+              <span aria-hidden="true">👥</span>
+              Beacon Customers
             </div>
 
-            <button
-              type="button"
-              onClick={() => setShowForm(true)}
-              className="inline-flex items-center justify-center rounded-2xl bg-white px-6 py-4 font-extrabold text-blue-950 transition hover:bg-blue-50"
-            >
-              Add Customer
-            </button>
+            <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+              Every customer in one connected record
+            </h1>
+
+            <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">
+              Keep contact details, quotes, jobs, documents and activity
+              together from first enquiry to completed work.
+            </p>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setShowForm(true)}
+            className="inline-flex items-center justify-center rounded-2xl bg-blue-950 px-6 py-4 font-extrabold text-white shadow-sm transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-200"
+          >
+            Add Customer
+          </button>
         </div>
       </section>
 
-      <section className="px-6 py-10">
-        <div className="mx-auto grid max-w-7xl gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <section className="px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mx-auto grid max-w-7xl gap-5 md:grid-cols-3">
           <CustomerMetric
             label="Customers"
             value={String(metrics.total)}
@@ -594,15 +599,10 @@ export default function CustomersClient() {
             value={formatCurrency(metrics.lifetimeValue)}
             detail="Paid invoice value across all customers"
           />
-          <CustomerMetric
-            label="Outstanding"
-            value={formatCurrency(metrics.outstanding)}
-            detail="Sent and overdue invoice value"
-          />
         </div>
       </section>
 
-      <section className="px-6 pb-20">
+      <section className="px-4 pb-16 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-7xl gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
           <aside className="h-fit rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm xl:sticky xl:top-28">
             <div className="flex items-center justify-between gap-3">
@@ -618,7 +618,7 @@ export default function CustomersClient() {
               <button
                 type="button"
                 onClick={() => setShowForm(true)}
-                className="rounded-xl bg-blue-950 px-4 py-2 text-sm font-extrabold text-white transition hover:bg-blue-900"
+                className="rounded-xl bg-blue-950 px-4 py-2 text-sm font-extrabold text-white transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-200"
               >
                 Add
               </button>
@@ -660,7 +660,7 @@ export default function CustomersClient() {
                       key={customer.id}
                       type="button"
                       onClick={() => setSelectedCustomerId(customer.id)}
-                      className={`w-full rounded-2xl border p-4 text-left transition ${
+                      className={`w-full rounded-2xl border p-4 text-left transition focus:outline-none focus:ring-4 focus:ring-blue-100 ${
                         selected
                           ? "border-blue-700 bg-blue-50 shadow-sm"
                           : "border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50"
@@ -751,21 +751,21 @@ export default function CustomersClient() {
                       <button
                         type="button"
                         onClick={addTimelineNote}
-                        className="inline-flex items-center justify-center rounded-2xl bg-blue-950 px-5 py-3 font-extrabold text-white transition hover:bg-blue-900"
+                        className="inline-flex items-center justify-center rounded-2xl bg-blue-950 px-5 py-3 font-extrabold text-white transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-200"
                       >
                         Add Note
                       </button>
                       <button
                         type="button"
                         onClick={deleteCustomer}
-                        className="inline-flex items-center justify-center rounded-2xl border border-rose-300 bg-rose-50 px-5 py-3 font-extrabold text-rose-800 transition hover:bg-rose-100"
+                        className="inline-flex items-center justify-center rounded-2xl border border-rose-300 bg-rose-50 px-5 py-3 font-extrabold text-rose-800 transition hover:bg-rose-100 focus:outline-none focus:ring-4 focus:ring-rose-100"
                       >
                         Delete
                       </button>
                     </div>
                   </div>
 
-                  <dl className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <dl className="mt-8 grid gap-4 md:grid-cols-3">
                     <div className="rounded-2xl bg-slate-50 p-5">
                       <dt className="text-sm font-bold text-slate-500">
                         Joined
@@ -788,14 +788,6 @@ export default function CustomersClient() {
                       </dt>
                       <dd className="mt-2 font-black text-slate-950">
                         {formatCurrency(customerTotals.lifetimeValue)}
-                      </dd>
-                    </div>
-                    <div className="rounded-2xl bg-slate-50 p-5">
-                      <dt className="text-sm font-bold text-slate-500">
-                        Outstanding
-                      </dt>
-                      <dd className="mt-2 font-black text-slate-950">
-                        {formatCurrency(customerTotals.outstanding)}
                       </dd>
                     </div>
                   </dl>
@@ -852,7 +844,7 @@ export default function CustomersClient() {
                       </div>
                       <Link
                         href="/business/quotes"
-                        className="font-black text-blue-950"
+                        className="rounded font-black text-blue-950 transition hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100"
                       >
                         New quote →
                       </Link>
@@ -907,7 +899,7 @@ export default function CustomersClient() {
                       </div>
                       <Link
                         href="/business/jobs"
-                        className="font-black text-blue-950"
+                        className="rounded font-black text-blue-950 transition hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100"
                       >
                         Open jobs →
                       </Link>
@@ -947,61 +939,6 @@ export default function CustomersClient() {
                     <div className="flex items-center justify-between gap-4">
                       <div>
                         <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-blue-900">
-                          Invoices
-                        </p>
-                        <h3 className="mt-2 text-2xl font-black text-slate-950">
-                          Payments and balances
-                        </h3>
-                      </div>
-                      <Link
-                        href="/business/invoices"
-                        className="font-black text-blue-950"
-                      >
-                        New invoice →
-                      </Link>
-                    </div>
-
-                    <div className="mt-6 space-y-3">
-                      {selectedCustomer.invoices.length > 0 ? (
-                        selectedCustomer.invoices.map((invoice) => (
-                          <article
-                            key={invoice.id}
-                            className="rounded-2xl border border-slate-200 p-5"
-                          >
-                            <div className="flex items-start justify-between gap-4">
-                              <div>
-                                <p className="font-black text-slate-950">
-                                  {invoice.reference}
-                                </p>
-                                <p className="mt-1 text-sm font-semibold text-slate-500">
-                                  Due {formatDate(invoice.dueDate)}
-                                </p>
-                              </div>
-                              <span
-                                className={`rounded-full px-3 py-1 text-xs font-extrabold uppercase ${invoiceStatusClasses(
-                                  invoice.status,
-                                )}`}
-                              >
-                                {invoice.status}
-                              </span>
-                            </div>
-                            <p className="mt-4 text-2xl font-black text-blue-950">
-                              {formatCurrency(invoice.total)}
-                            </p>
-                          </article>
-                        ))
-                      ) : (
-                        <p className="rounded-2xl bg-slate-50 p-6 text-slate-600">
-                          No invoices are linked to this customer yet.
-                        </p>
-                      )}
-                    </div>
-                  </section>
-
-                  <section className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-sm">
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-blue-900">
                           Documents
                         </p>
                         <h3 className="mt-2 text-2xl font-black text-slate-950">
@@ -1010,7 +947,7 @@ export default function CustomersClient() {
                       </div>
                       <Link
                         href="/business/templates"
-                        className="font-black text-blue-950"
+                        className="rounded font-black text-blue-950 transition hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100"
                       >
                         Templates →
                       </Link>
@@ -1034,7 +971,7 @@ export default function CustomersClient() {
                             {document.href ? (
                               <Link
                                 href={document.href}
-                                className="font-black text-blue-950"
+                                className="rounded font-black text-blue-950 transition hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100"
                               >
                                 Open
                               </Link>
@@ -1116,13 +1053,13 @@ export default function CustomersClient() {
                   Add your first customer.
                 </h2>
                 <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-slate-600">
-                  Customer records connect quotes, jobs, invoices, documents
-                  and follow-ups across Beacon Business.
+                  Customer records connect quotes, jobs, documents and follow-ups
+                  across Beacon Business.
                 </p>
                 <button
                   type="button"
                   onClick={() => setShowForm(true)}
-                  className="mt-8 inline-flex rounded-2xl bg-blue-950 px-8 py-4 text-lg font-extrabold text-white transition hover:bg-blue-900"
+                  className="mt-8 inline-flex rounded-2xl bg-blue-950 px-8 py-4 text-lg font-extrabold text-white transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-200"
                 >
                   Add Customer
                 </button>
@@ -1130,6 +1067,46 @@ export default function CustomersClient() {
             )}
           </div>
         </div>
+      </section>
+
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-20 sm:px-6 lg:grid-cols-3 lg:px-8">
+        {[
+          {
+            href: "/business/quotes",
+            eyebrow: "Create proposals",
+            title: "Open Quotes",
+            description:
+              "Build clear quotations for customers and keep decisions connected.",
+          },
+          {
+            href: "/business/jobs",
+            eyebrow: "Manage delivery",
+            title: "Open Jobs",
+            description:
+              "Schedule accepted work and track each customer project to completion.",
+          },
+          {
+            href: "/business/analytics",
+            eyebrow: "Review performance",
+            title: "View Analytics",
+            description:
+              "Understand customer activity, job progress and pipeline value.",
+          },
+        ].map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-blue-100"
+          >
+            <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-blue-700">
+              {item.eyebrow}
+            </p>
+            <h2 className="mt-2 text-xl font-black text-slate-950">
+              {item.title}
+            </h2>
+            <p className="mt-2 leading-7 text-slate-600">{item.description}</p>
+          </Link>
+        ))}
       </section>
 
       {showForm ? (
@@ -1157,7 +1134,7 @@ export default function CustomersClient() {
                 type="button"
                 onClick={() => setShowForm(false)}
                 aria-label="Close customer form"
-                className="rounded-xl bg-slate-100 px-4 py-2 font-black text-slate-700 transition hover:bg-slate-200"
+                className="rounded-xl bg-slate-100 px-4 py-2 font-black text-slate-700 transition hover:bg-slate-200 focus:outline-none focus:ring-4 focus:ring-slate-200"
               >
                 ✕
               </button>
@@ -1316,13 +1293,13 @@ export default function CustomersClient() {
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="rounded-2xl border border-slate-300 px-6 py-3 font-extrabold text-slate-700 transition hover:bg-slate-50"
+                  className="rounded-2xl border border-slate-300 px-6 py-3 font-extrabold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="rounded-2xl bg-blue-950 px-6 py-3 font-extrabold text-white transition hover:bg-blue-900"
+                  className="rounded-2xl bg-blue-950 px-6 py-3 font-extrabold text-white transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-200"
                 >
                   Save Customer
                 </button>
