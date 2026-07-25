@@ -17,6 +17,7 @@
     "@better-auth/drizzle-adapter": "^1.6.23",
     "@better-auth/infra": "^0.3.6",
     "@neondatabase/serverless": "^1.1.0",
+    "@supabase/supabase-js": "^2.110.8",
     "@vercel/blob": "^2.6.1",
     "better-auth": "^1.6.23",
     "bufferutil": "^4.1.0",

@@ -1,116 +1,520 @@
-import type { Metadata } from "next";
+"use client";
 
-import BeaconFooter from "@/components/BeaconFooter";
-import Navbar from "@/components/Navbar";
-import JsonLd from "@/components/seo/JsonLd";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 
-import {
-  absoluteUrl,
-  siteConfig,
-} from "@/lib/seo/SiteConfig";
+type WebsiteStatus = "not_started" | "draft" | "ready" | "published";
 
-import WebsiteBriefBuilder from "./WebsiteBriefBuilder";
-
-export const metadata: Metadata = {
-  title: "Build Your Business Website | Beacon Business",
-
-  description:
-    "Tell Beacon about your business, choose your website package and create a complete website brief before reviewing your interactive preview.",
-
-  alternates: {
-    canonical: "/business/website",
-  },
-
-  openGraph: {
-    type: "website",
-    url: absoluteUrl("/business/website"),
-    title: "Build Your Website with Beacon Business",
-    description:
-      "Create your business website brief, choose your package and prepare an interactive preview before paying.",
-    images: [
-      {
-        url: absoluteUrl(siteConfig.socialImage),
-        width: 1200,
-        height: 630,
-        alt: "Beacon Business website brief builder",
-      },
-    ],
-  },
-
-  twitter: {
-    card: "summary_large_image",
-    title: "Build Your Website with Beacon Business",
-    description:
-      "Create a complete website brief and prepare your interactive website preview.",
-    images: [absoluteUrl(siteConfig.socialImage)],
-  },
+type WebsiteProject = {
+  businessName: string;
+  trade: string;
+  location: string;
+  domain: string;
+  status: WebsiteStatus;
+  completion: number;
+  lastUpdated: string;
+  lastPublished: string;
+  seoScore: number;
+  pagesGenerated: number;
+  suggestions: number;
 };
 
-const websiteBuilderSchema = {
-  "@context": "https://schema.org",
-  "@type": "WebPage",
-  "@id": absoluteUrl("/business/website#webpage"),
-  url: absoluteUrl("/business/website"),
-  name: "Beacon Business Website Builder",
-  description:
-    "A guided business website brief builder for creating an interactive website preview.",
-  inLanguage: siteConfig.language,
-  isPartOf: {
-    "@id": absoluteUrl("/#website"),
-  },
-  about: {
-    "@id": absoluteUrl("/#organization"),
-  },
+const PROJECT_STORAGE_KEY = "beacon-business-website-project";
+
+const EMPTY_PROJECT: WebsiteProject = {
+  businessName: "",
+  trade: "",
+  location: "",
+  domain: "",
+  status: "not_started",
+  completion: 0,
+  lastUpdated: "",
+  lastPublished: "",
+  seoScore: 0,
+  pagesGenerated: 0,
+  suggestions: 0,
 };
+
+function formatDate(value: string) {
+  if (!value) {
+    return "Not yet";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Not yet";
+  }
+
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+function readStoredProject(): WebsiteProject {
+  if (typeof window === "undefined") {
+    return EMPTY_PROJECT;
+  }
+
+  const raw = window.localStorage.getItem(PROJECT_STORAGE_KEY);
+
+  if (!raw) {
+    return EMPTY_PROJECT;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<WebsiteProject>;
+
+    return {
+      businessName:
+        typeof parsed.businessName === "string" ? parsed.businessName : "",
+      trade: typeof parsed.trade === "string" ? parsed.trade : "",
+      location: typeof parsed.location === "string" ? parsed.location : "",
+      domain: typeof parsed.domain === "string" ? parsed.domain : "",
+      status:
+        parsed.status === "draft" ||
+        parsed.status === "ready" ||
+        parsed.status === "published"
+          ? parsed.status
+          : "not_started",
+      completion:
+        typeof parsed.completion === "number"
+          ? Math.min(100, Math.max(0, parsed.completion))
+          : 0,
+      lastUpdated:
+        typeof parsed.lastUpdated === "string" ? parsed.lastUpdated : "",
+      lastPublished:
+        typeof parsed.lastPublished === "string" ? parsed.lastPublished : "",
+      seoScore:
+        typeof parsed.seoScore === "number"
+          ? Math.min(100, Math.max(0, parsed.seoScore))
+          : 0,
+      pagesGenerated:
+        typeof parsed.pagesGenerated === "number"
+          ? Math.max(0, parsed.pagesGenerated)
+          : 0,
+      suggestions:
+        typeof parsed.suggestions === "number"
+          ? Math.max(0, parsed.suggestions)
+          : 0,
+    };
+  } catch {
+    return EMPTY_PROJECT;
+  }
+}
+
+function statusLabel(status: WebsiteStatus) {
+  switch (status) {
+    case "draft":
+      return "In progress";
+    case "ready":
+      return "Ready to review";
+    case "published":
+      return "Live";
+    default:
+      return "Not started";
+  }
+}
+
+function statusClasses(status: WebsiteStatus) {
+  switch (status) {
+    case "draft":
+      return "bg-amber-100 text-amber-800 ring-amber-200";
+    case "ready":
+      return "bg-blue-100 text-blue-800 ring-blue-200";
+    case "published":
+      return "bg-emerald-100 text-emerald-800 ring-emerald-200";
+    default:
+      return "bg-slate-100 text-slate-700 ring-slate-200";
+  }
+}
+
+function Icon({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-2xl ${className}`}
+    >
+      {children}
+    </span>
+  );
+}
 
 export default function BusinessWebsitePage() {
+  const [project, setProject] = useState<WebsiteProject>(EMPTY_PROJECT);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    setProject(readStoredProject());
+    setLoaded(true);
+  }, []);
+
+  const hasProject = project.status !== "not_started" || project.completion > 0;
+  const primaryHref = hasProject ? "/business/project" : "/business/project";
+  const primaryLabel = hasProject ? "Continue Website Setup" : "Start Website Setup";
+
+  const websiteName = useMemo(() => {
+    if (project.businessName.trim()) {
+      return project.businessName.trim();
+    }
+
+    return "Your business website";
+  }, [project.businessName]);
+
+  if (!loaded) {
+    return (
+      <main className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl animate-pulse">
+          <div className="h-10 w-72 rounded-xl bg-slate-200" />
+          <div className="mt-4 h-6 w-full max-w-2xl rounded-xl bg-slate-200" />
+          <div className="mt-10 grid gap-6 lg:grid-cols-3">
+            <div className="h-64 rounded-3xl bg-white" />
+            <div className="h-64 rounded-3xl bg-white" />
+            <div className="h-64 rounded-3xl bg-white" />
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
-    <>
-      <JsonLd data={websiteBuilderSchema} />
+    <main className="min-h-screen bg-slate-50">
+      <section className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-10 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+          <div>
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-sm font-extrabold text-blue-900">
+              <span aria-hidden="true">✨</span>
+              AI Website Builder
+            </div>
 
-      <main className="min-h-screen bg-slate-50">
-        <Navbar />
-
-        <section className="relative overflow-hidden bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-950 px-6 py-20 text-white sm:py-24">
-          <div
-            aria-hidden="true"
-            className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-blue-400/20 blur-3xl"
-          />
-
-          <div className="relative mx-auto max-w-5xl text-center">
-            <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-blue-200">
-              Beacon Business Website Builder
-            </p>
-
-            <h1 className="mt-5 text-5xl font-black tracking-tight sm:text-6xl">
-              Tell us about your business.
+            <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+              Build and manage your business website
             </h1>
 
-            <p className="mx-auto mt-6 max-w-3xl text-xl leading-9 text-blue-100">
-              Complete your website brief, choose the right package and review
-              every detail before your interactive preview is prepared.
+            <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">
+              Beacon creates the content, pages, SEO and structure. The business
+              owner reviews the result and approves it before anything goes live.
+            </p>
+          </div>
+
+          <Link
+            className="inline-flex items-center justify-center rounded-2xl bg-blue-950 px-6 py-4 font-extrabold text-white shadow-sm transition hover:bg-blue-900"
+            href={primaryHref}
+          >
+            {primaryLabel}
+          </Link>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
+          <article className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-200 p-6 sm:p-8">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-blue-700">
+                    Website status
+                  </p>
+
+                  <h2 className="mt-2 text-2xl font-black text-slate-950">
+                    {websiteName}
+                  </h2>
+
+                  <p className="mt-2 text-slate-600">
+                    {project.trade || project.location
+                      ? [project.trade, project.location]
+                          .filter(Boolean)
+                          .join(" · ")
+                      : "Complete the setup wizard so Beacon can begin building."}
+                  </p>
+                </div>
+
+                <span
+                  className={`inline-flex w-fit items-center rounded-full px-4 py-2 text-sm font-extrabold ring-1 ${statusClasses(
+                    project.status,
+                  )}`}
+                >
+                  {statusLabel(project.status)}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-6 sm:p-8">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-sm font-bold text-slate-500">
+                    Setup completion
+                  </p>
+                  <p className="mt-1 text-4xl font-black text-slate-950">
+                    {project.completion}%
+                  </p>
+                </div>
+
+                <p className="text-right text-sm text-slate-500">
+                  Last updated
+                  <br />
+                  <span className="font-bold text-slate-700">
+                    {formatDate(project.lastUpdated)}
+                  </span>
+                </p>
+              </div>
+
+              <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full rounded-full bg-blue-700 transition-all"
+                  style={{ width: `${project.completion}%` }}
+                />
+              </div>
+
+              <div className="mt-8 grid gap-4 sm:grid-cols-3">
+                <div className="rounded-2xl bg-slate-50 p-5">
+                  <p className="text-sm font-bold text-slate-500">Pages</p>
+                  <p className="mt-2 text-2xl font-black text-slate-950">
+                    {project.pagesGenerated}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-slate-50 p-5">
+                  <p className="text-sm font-bold text-slate-500">SEO score</p>
+                  <p className="mt-2 text-2xl font-black text-slate-950">
+                    {project.seoScore || 0}/100
+                  </p>
+                </div>
+
+                <div className="rounded-2xl bg-slate-50 p-5">
+                  <p className="text-sm font-bold text-slate-500">
+                    AI suggestions
+                  </p>
+                  <p className="mt-2 text-2xl font-black text-slate-950">
+                    {project.suggestions}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Link
+                  className="inline-flex flex-1 items-center justify-center rounded-2xl bg-blue-950 px-5 py-4 font-extrabold text-white transition hover:bg-blue-900"
+                  href="/business/project"
+                >
+                  {hasProject ? "Continue Setup" : "Start Setup"}
+                </Link>
+
+                <Link
+                  className={`inline-flex flex-1 items-center justify-center rounded-2xl border-2 px-5 py-4 font-extrabold transition ${
+                    hasProject
+                      ? "border-slate-300 bg-white text-slate-800 hover:border-blue-400 hover:text-blue-950"
+                      : "pointer-events-none border-slate-200 bg-slate-100 text-slate-400"
+                  }`}
+                  href="/business/preview"
+                  aria-disabled={!hasProject}
+                  tabIndex={hasProject ? 0 : -1}
+                >
+                  Preview Website
+                </Link>
+              </div>
+            </div>
+          </article>
+
+          <aside className="rounded-3xl border border-slate-200 bg-blue-950 p-6 text-white shadow-sm sm:p-8">
+            <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-blue-200">
+              What Beacon handles
             </p>
 
-            <div className="mt-8 flex flex-wrap justify-center gap-3 text-sm font-bold text-blue-100">
-              <span className="rounded-full border border-white/20 bg-white/10 px-4 py-2">
-                Draft saved on this device
-              </span>
+            <h2 className="mt-3 text-2xl font-black">
+              A professional website without hiring a developer
+            </h2>
 
-              <span className="rounded-full border border-white/20 bg-white/10 px-4 py-2">
-                No payment at this stage
-              </span>
+            <div className="mt-7 space-y-4">
+              {[
+                "Writes the website content",
+                "Creates service and location pages",
+                "Builds mobile-friendly layouts",
+                "Adds SEO metadata and structured data",
+                "Creates privacy, cookie and terms pages",
+                "Prepares everything for review before publishing",
+              ].map((item) => (
+                <div className="flex gap-3" key={item}>
+                  <span
+                    aria-hidden="true"
+                    className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-400 font-black text-blue-950"
+                  >
+                    ✓
+                  </span>
+                  <p className="font-semibold text-blue-50">{item}</p>
+                </div>
+              ))}
+            </div>
+          </aside>
+        </div>
 
-              <span className="rounded-full border border-white/20 bg-white/10 px-4 py-2">
-                Review before submission
-              </span>
+        <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+          <Link
+            className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"
+            href="/business/project"
+          >
+            <Icon>🧭</Icon>
+            <h3 className="mt-5 text-xl font-black text-slate-950">
+              Website Setup
+            </h3>
+            <p className="mt-2 leading-7 text-slate-600">
+              Add business details, services, contact information, branding and
+              photos.
+            </p>
+            <p className="mt-5 font-extrabold text-blue-800 group-hover:text-blue-950">
+              Open setup →
+            </p>
+          </Link>
+
+          <Link
+            className={`group rounded-3xl border p-6 shadow-sm transition ${
+              hasProject
+                ? "border-slate-200 bg-white hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"
+                : "pointer-events-none border-slate-200 bg-slate-100 opacity-60"
+            }`}
+            href="/business/preview"
+            aria-disabled={!hasProject}
+            tabIndex={hasProject ? 0 : -1}
+          >
+            <Icon>🖥️</Icon>
+            <h3 className="mt-5 text-xl font-black text-slate-950">
+              Website Preview
+            </h3>
+            <p className="mt-2 leading-7 text-slate-600">
+              Review the generated website across desktop, tablet and mobile
+              layouts.
+            </p>
+            <p className="mt-5 font-extrabold text-blue-800 group-hover:text-blue-950">
+              Open preview →
+            </p>
+          </Link>
+
+          <Link
+            className={`group rounded-3xl border p-6 shadow-sm transition ${
+              project.status === "ready" || project.status === "published"
+                ? "border-slate-200 bg-white hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"
+                : "pointer-events-none border-slate-200 bg-slate-100 opacity-60"
+            }`}
+            href="/business/preview/review"
+            aria-disabled={
+              project.status !== "ready" && project.status !== "published"
+            }
+            tabIndex={
+              project.status === "ready" || project.status === "published"
+                ? 0
+                : -1
+            }
+          >
+            <Icon>✅</Icon>
+            <h3 className="mt-5 text-xl font-black text-slate-950">
+              Review & Approve
+            </h3>
+            <p className="mt-2 leading-7 text-slate-600">
+              Check AI-generated content and approve the website before it can
+              be published.
+            </p>
+            <p className="mt-5 font-extrabold text-blue-800 group-hover:text-blue-950">
+              Review website →
+            </p>
+          </Link>
+
+          <Link
+            className={`group rounded-3xl border p-6 shadow-sm transition ${
+              project.status === "ready" || project.status === "published"
+                ? "border-slate-200 bg-white hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"
+                : "pointer-events-none border-slate-200 bg-slate-100 opacity-60"
+            }`}
+            href="/business/final-scope"
+            aria-disabled={
+              project.status !== "ready" && project.status !== "published"
+            }
+            tabIndex={
+              project.status === "ready" || project.status === "published"
+                ? 0
+                : -1
+            }
+          >
+            <Icon>🚀</Icon>
+            <h3 className="mt-5 text-xl font-black text-slate-950">
+              Publish Website
+            </h3>
+            <p className="mt-2 leading-7 text-slate-600">
+              Confirm the final scope, domain and publishing details when the
+              website is ready.
+            </p>
+            <p className="mt-5 font-extrabold text-blue-800 group-hover:text-blue-950">
+              Publishing options →
+            </p>
+          </Link>
+        </div>
+
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="flex items-start gap-4">
+              <Icon>🌐</Icon>
+              <div>
+                <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                  Domain
+                </p>
+                <h2 className="mt-2 text-xl font-black text-slate-950">
+                  {project.domain || "No domain connected"}
+                </h2>
+                <p className="mt-2 leading-7 text-slate-600">
+                  Domain connection will become available after the website has
+                  been reviewed and approved.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="flex items-start gap-4">
+              <Icon>📅</Icon>
+              <div>
+                <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                  Last published
+                </p>
+                <h2 className="mt-2 text-xl font-black text-slate-950">
+                  {formatDate(project.lastPublished)}
+                </h2>
+                <p className="mt-2 leading-7 text-slate-600">
+                  Beacon will keep a record of each approved publication so the
+                  business owner always knows when the live website changed.
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <section className="mt-8 rounded-3xl border border-amber-200 bg-amber-50 p-6 sm:p-8">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+            <span
+              aria-hidden="true"
+              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-200 text-2xl"
+            >
+              🔒
+            </span>
+
+            <div>
+              <h2 className="text-xl font-black text-amber-950">
+                The business owner stays in control
+              </h2>
+              <p className="mt-2 max-w-4xl leading-7 text-amber-900">
+                Beacon can generate and prepare the complete website, but it
+                will not publish important changes automatically. The owner
+                reviews the preview and approves the final version first.
+              </p>
             </div>
           </div>
         </section>
-
-        <WebsiteBriefBuilder />
-
-        <BeaconFooter />
-      </main>
-    </>
+      </section>
+    </main>
   );
 }
