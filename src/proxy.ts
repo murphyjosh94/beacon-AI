@@ -134,7 +134,7 @@ function shouldRenderPublishedWebsite(
   return true;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const forwardedHost =
     request.headers.get("x-forwarded-host") ??
     request.headers.get("host") ??
