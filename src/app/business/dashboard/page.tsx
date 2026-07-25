@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 
-import BeaconFooter from "@/components/BeaconFooter";
-import Navbar from "@/components/Navbar";
 import JsonLd from "@/components/seo/JsonLd";
 
 import {
@@ -72,14 +70,7 @@ export default function BusinessDashboardPage() {
   return (
     <>
       <JsonLd data={dashboardSchema} />
-
-      <main className="min-h-screen bg-slate-50">
-        <Navbar />
-
-        <BusinessDashboard />
-
-        <BeaconFooter />
-      </main>
+      <BusinessDashboard />
     </>
   );
 }

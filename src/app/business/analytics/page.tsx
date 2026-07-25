@@ -44,6 +44,7 @@ type TimelineItem = {
   icon: string;
 };
 
+
 const WEBSITE_STORAGE_KEY = "beacon-business-website-project";
 const BRAND_KIT_STORAGE_KEY = "beacon-business-brand-kit";
 const QUOTES_STORAGE_KEYS = [
@@ -52,8 +53,11 @@ const QUOTES_STORAGE_KEYS = [
   "beacon-quote-builder-quotes",
 ];
 
+
 function safeParse<T>(value: string | null, fallback: T): T {
-  if (!value) return fallback;
+  if (!value) {
+    return fallback;
+  }
 
   try {
     return JSON.parse(value) as T;
@@ -75,11 +79,15 @@ function money(value: number) {
 }
 
 function formatDate(value?: string) {
-  if (!value) return "Not yet";
+  if (!value) {
+    return "Not yet";
+  }
 
   const date = new Date(value);
 
-  if (Number.isNaN(date.getTime())) return "Not yet";
+  if (Number.isNaN(date.getTime())) {
+    return "Not yet";
+  }
 
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
@@ -89,11 +97,15 @@ function formatDate(value?: string) {
 }
 
 function formatDateTime(value?: string) {
-  if (!value) return "Not yet";
+  if (!value) {
+    return "Not yet";
+  }
 
   const date = new Date(value);
 
-  if (Number.isNaN(date.getTime())) return "Not yet";
+  if (Number.isNaN(date.getTime())) {
+    return "Not yet";
+  }
 
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
@@ -104,13 +116,12 @@ function formatDateTime(value?: string) {
 }
 
 function readQuotes(): QuoteRecord[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") {
+    return [];
+  }
 
   for (const key of QUOTES_STORAGE_KEYS) {
-    const parsed = safeParse<unknown>(
-      window.localStorage.getItem(key),
-      [],
-    );
+    const parsed = safeParse<unknown>(window.localStorage.getItem(key), []);
 
     if (Array.isArray(parsed)) {
       return parsed.filter(
@@ -169,8 +180,8 @@ function MetricCard({
 
   return (
     <Link
+      className={`${className} hover:-translate-y-1 hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-blue-100`}
       href={href}
-      className={`${className} hover:-translate-y-1 hover:border-blue-300 hover:shadow-md`}
     >
       {content}
     </Link>
@@ -196,13 +207,56 @@ function ProgressRow({
         <span className="text-lg font-black text-slate-950">{value}/100</span>
       </div>
 
-      <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-100">
+      <div
+        aria-label={`${label} score: ${value} out of 100`}
+        aria-valuemax={100}
+        aria-valuemin={0}
+        aria-valuenow={value}
+        className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-100"
+        role="progressbar"
+      >
         <div
           className="h-full rounded-full bg-blue-700 transition-all"
           style={{ width: `${value}%` }}
         />
       </div>
     </div>
+  );
+}
+
+function LoadingState() {
+  return (
+    <main className="bg-slate-50">
+      <div className="border-b border-slate-200 bg-white">
+        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+          <div className="h-10 w-full max-w-md animate-pulse rounded-xl bg-slate-200" />
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="animate-pulse">
+          <div className="h-5 w-48 rounded-lg bg-slate-200" />
+          <div className="mt-5 h-12 w-full max-w-xl rounded-xl bg-slate-200" />
+          <div className="mt-4 h-6 w-full max-w-3xl rounded-xl bg-slate-200" />
+
+          <div className="mt-10 grid gap-6 xl:grid-cols-[1.15fr_1fr]">
+            <div className="h-72 rounded-[2rem] bg-slate-200" />
+            <div className="h-72 rounded-[2rem] bg-white" />
+          </div>
+
+          <div className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, index) => (
+              <div className="h-44 rounded-3xl bg-white" key={index} />
+            ))}
+          </div>
+
+          <div className="mt-8 grid gap-6 xl:grid-cols-2">
+            <div className="h-[34rem] rounded-[2rem] bg-white" />
+            <div className="h-[34rem] rounded-[2rem] bg-white" />
+          </div>
+        </div>
+      </div>
+    </main>
   );
 }
 
@@ -294,7 +348,8 @@ export default function BusinessAnalyticsPage() {
 
     const domainScore = website.domain?.trim() ? 100 : 0;
     const legalScore = website.status === "published" ? 80 : 40;
-    const quoteScore = quotes.length > 0 ? Math.min(100, 40 + quotes.length * 10) : 20;
+    const quoteScore =
+      quotes.length > 0 ? Math.min(100, 40 + quotes.length * 10) : 20;
 
     const healthScore = Math.round(
       websiteScore * 0.28 +
@@ -365,7 +420,10 @@ export default function BusinessAnalyticsPage() {
 
     quotes.forEach((quote, index) => {
       const date = quote.updatedAt || quote.createdAt;
-      if (!date) return;
+
+      if (!date) {
+        return;
+      }
 
       timeline.push({
         id: quote.id || `quote-${index}`,
@@ -391,8 +449,7 @@ export default function BusinessAnalyticsPage() {
     });
 
     timeline.sort(
-      (a, b) =>
-        new Date(b.date).getTime() - new Date(a.date).getTime(),
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
 
     return {
@@ -415,38 +472,49 @@ export default function BusinessAnalyticsPage() {
   }, [brandKit, quotes, website]);
 
   if (!loaded) {
-    return (
-      <main className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl animate-pulse">
-          <div className="h-10 w-80 rounded-xl bg-slate-200" />
-          <div className="mt-4 h-6 w-full max-w-2xl rounded-xl bg-slate-200" />
-          <div className="mt-10 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, index) => (
-              <div
-                key={index}
-                className="h-44 rounded-3xl bg-white"
-              />
-            ))}
-          </div>
-        </div>
-      </main>
-    );
+    return <LoadingState />;
   }
 
-  const businessName =
-    brandKit.businessName?.trim() || "Your business";
+  const businessName = brandKit.businessName?.trim() || "Your business";
+
+  const recommendedAction =
+    analytics.brandScore < 100
+      ? {
+          href: "/business/brand-kit",
+          label: "Complete Brand Kit",
+        }
+      : analytics.websiteScore < 100
+        ? {
+            href: "/business/website",
+            label: "Continue Website Setup",
+          }
+        : {
+            href: "/business/quotes",
+            label: "Open AI Quote Builder",
+          };
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="bg-slate-50">
       <section className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-7 px-4 py-10 sm:px-6 lg:flex-row lg:items-end lg:justify-between lg:px-8">
           <div>
-            <Link
-              href="/business/dashboard"
-              className="font-extrabold text-blue-800 hover:text-blue-950"
+            <nav
+              aria-label="Breadcrumb"
+              className="text-sm font-bold text-slate-500"
             >
-              ← Back to Dashboard
-            </Link>
+              <ol className="flex flex-wrap items-center gap-2">
+                <li>
+                  <Link
+                    className="transition hover:text-blue-950 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                    href="/business/dashboard"
+                  >
+                    Business
+                  </Link>
+                </li>
+                <li aria-hidden="true">/</li>
+                <li className="text-slate-950">Analytics</li>
+              </ol>
+            </nav>
 
             <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-sm font-extrabold text-blue-900">
               <span aria-hidden="true">📊</span>
@@ -464,10 +532,10 @@ export default function BusinessAnalyticsPage() {
           </div>
 
           <Link
-            href="/business/brand-kit"
-            className="inline-flex items-center justify-center rounded-2xl border-2 border-blue-200 bg-blue-50 px-6 py-4 font-extrabold text-blue-950 transition hover:border-blue-400 hover:bg-blue-100"
+            className="inline-flex items-center justify-center rounded-2xl border-2 border-blue-200 bg-blue-50 px-6 py-4 font-extrabold text-blue-950 transition hover:border-blue-400 hover:bg-blue-100 focus:outline-none focus:ring-4 focus:ring-blue-100"
+            href={recommendedAction.href}
           >
-            Manage Brand Kit
+            {recommendedAction.label}
           </Link>
         </div>
       </section>
@@ -480,7 +548,10 @@ export default function BusinessAnalyticsPage() {
                 <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-blue-200">
                   Business health
                 </p>
-                <p className="mt-3 text-6xl font-black tracking-tight">
+                <p
+                  aria-live="polite"
+                  className="mt-3 text-6xl font-black tracking-tight"
+                >
                   {analytics.healthScore}
                   <span className="text-2xl text-blue-200">/100</span>
                 </p>
@@ -500,7 +571,14 @@ export default function BusinessAnalyticsPage() {
                     {analytics.healthScore}%
                   </span>
                 </div>
-                <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/15">
+                <div
+                  aria-label={`Overall readiness: ${analytics.healthScore}%`}
+                  aria-valuemax={100}
+                  aria-valuemin={0}
+                  aria-valuenow={analytics.healthScore}
+                  className="mt-4 h-3 overflow-hidden rounded-full bg-white/15"
+                  role="progressbar"
+                >
                   <div
                     className="h-full rounded-full bg-amber-300"
                     style={{ width: `${analytics.healthScore}%` }}
@@ -518,142 +596,132 @@ export default function BusinessAnalyticsPage() {
               {analytics.insights[0]}
             </h2>
             <p className="mt-4 leading-7 text-slate-600">
-              Beacon uses your saved website, Brand Kit and quote data to surface
-              the next useful action.
+              Beacon uses your saved website, Brand Kit and quote data to
+              surface the next useful action.
             </p>
 
             <Link
-              href={
-                analytics.brandScore < 100
-                  ? "/business/brand-kit"
-                  : analytics.websiteScore < 100
-                    ? "/business/website"
-                    : "/business/quotes"
-              }
-              className="mt-6 inline-flex rounded-2xl bg-blue-950 px-5 py-3 font-extrabold text-white transition hover:bg-blue-900"
+              className="mt-6 inline-flex rounded-2xl bg-blue-950 px-5 py-3 font-extrabold text-white transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-100"
+              href={recommendedAction.href}
             >
-              Take recommended action
+              {recommendedAction.label}
             </Link>
           </section>
         </div>
 
         <div className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
-            label="Quotes generated"
-            value={String(quotes.length)}
-            note={`${analytics.pending.length} currently pending`}
+            href="/business/quotes"
             icon="📄"
-            href="/business/quotes"
+            label="Quotes generated"
+            note={`${analytics.pending.length} currently pending`}
+            value={String(quotes.length)}
           />
 
           <MetricCard
-            label="Accepted quotes"
-            value={String(analytics.accepted.length)}
-            note={`${analytics.conversionRate}% quote conversion`}
+            href="/business/quotes"
             icon="✅"
-            href="/business/quotes"
+            label="Accepted quotes"
+            note={`${analytics.conversionRate}% quote conversion`}
+            value={String(analytics.accepted.length)}
           />
 
           <MetricCard
-            label="Quoted value"
-            value={money(analytics.quotedValue)}
-            note={`${money(analytics.acceptedValue)} accepted`}
+            href="/business/quotes"
             icon="💷"
-            href="/business/quotes"
+            label="Quoted value"
+            note={`${money(analytics.acceptedValue)} accepted`}
+            value={money(analytics.quotedValue)}
           />
 
           <MetricCard
-            label="Website completion"
-            value={`${analytics.websiteScore}%`}
-            note={`${website.pagesGenerated ?? 0} pages generated`}
+            href="/business/website"
             icon="🖥️"
-            href="/business/website"
+            label="Website completion"
+            note={`${website.pagesGenerated ?? 0} pages generated`}
+            value={`${analytics.websiteScore}%`}
           />
 
           <MetricCard
-            label="SEO score"
-            value={`${analytics.seoScore}/100`}
-            note={`${website.suggestions ?? 0} AI suggestions available`}
+            href="/business/website"
             icon="🔎"
-            href="/business/website"
+            label="SEO score"
+            note={`${website.suggestions ?? 0} AI suggestions available`}
+            value={`${analytics.seoScore}/100`}
           />
 
           <MetricCard
+            href="/business/brand-kit"
+            icon="🎨"
             label="Brand Kit"
-            value={`${analytics.brandScore}%`}
             note={
               analytics.brandScore === 100
                 ? "Core business details completed"
                 : "Complete missing business details"
             }
-            icon="🎨"
-            href="/business/brand-kit"
+            value={`${analytics.brandScore}%`}
           />
 
           <MetricCard
-            label="Domain"
-            value={analytics.domainScore === 100 ? "Connected" : "Not connected"}
-            note={website.domain || "Add a domain when the website is ready"}
+            href="/business/website"
             icon="🌐"
-            href="/business/website/domains"
+            label="Domain"
+            note={website.domain || "Add a domain when the website is ready"}
+            value={analytics.domainScore === 100 ? "Connected" : "Not connected"}
           />
 
           <MetricCard
+            href="/business/website"
+            icon="🚀"
             label="Last published"
-            value={formatDate(website.lastPublished)}
             note={
               website.status === "published"
                 ? "Website is marked as live"
                 : "No live publication recorded"
             }
-            icon="🚀"
-            href="/business/website"
+            value={formatDate(website.lastPublished)}
           />
         </div>
 
-        <div className="mt-8 grid gap-6 xl:grid-cols-[1fr_1fr]">
+        <div className="mt-8 grid gap-6 xl:grid-cols-2">
           <section className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-sm sm:p-8">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-blue-700">
-                  Business readiness
-                </p>
-                <h2 className="mt-2 text-2xl font-black text-slate-950">
-                  Connected platform health
-                </h2>
-              </div>
-            </div>
+            <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-blue-700">
+              Business readiness
+            </p>
+            <h2 className="mt-2 text-2xl font-black text-slate-950">
+              Connected platform health
+            </h2>
 
             <div className="mt-7 space-y-6">
               <ProgressRow
+                detail="Setup, content and publishing readiness"
                 label="Website"
                 value={analytics.websiteScore}
-                detail="Setup, content and publishing readiness"
               />
               <ProgressRow
+                detail="Search visibility and content quality"
                 label="SEO"
                 value={analytics.seoScore}
-                detail="Search visibility and content quality"
               />
               <ProgressRow
+                detail="Business identity and reusable details"
                 label="Brand Kit"
                 value={analytics.brandScore}
-                detail="Business identity and reusable details"
               />
               <ProgressRow
+                detail="Website address and live connection"
                 label="Domain"
                 value={analytics.domainScore}
-                detail="Website address and live connection"
               />
               <ProgressRow
+                detail="Privacy, cookies, terms and publishing checks"
                 label="Legal readiness"
                 value={analytics.legalScore}
-                detail="Privacy, cookies, terms and publishing checks"
               />
               <ProgressRow
+                detail="Customer quotation and conversion activity"
                 label="Quote activity"
                 value={analytics.quoteScore}
-                detail="Customer quotation and conversion activity"
               />
             </div>
           </section>
@@ -669,8 +737,8 @@ export default function BusinessAnalyticsPage() {
             <div className="mt-7 space-y-4">
               {analytics.insights.map((insight, index) => (
                 <div
-                  key={insight}
                   className="flex gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5"
+                  key={insight}
                 >
                   <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 font-black text-blue-950">
                     {index + 1}
@@ -695,10 +763,13 @@ export default function BusinessAnalyticsPage() {
               <div className="mt-7 space-y-4">
                 {analytics.timeline.map((item) => (
                   <div
-                    key={item.id}
                     className="flex gap-4 rounded-2xl border border-slate-200 p-5"
+                    key={item.id}
                   >
-                    <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-xl">
+                    <span
+                      aria-hidden="true"
+                      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-xl"
+                    >
                       {item.icon}
                     </span>
 
@@ -723,10 +794,25 @@ export default function BusinessAnalyticsPage() {
                 <p className="text-lg font-black text-slate-900">
                   No activity recorded yet
                 </p>
-                <p className="mt-2 leading-7 text-slate-600">
+                <p className="mx-auto mt-2 max-w-xl leading-7 text-slate-600">
                   Website updates and quote activity will appear here
                   automatically.
                 </p>
+
+                <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+                  <Link
+                    className="inline-flex items-center justify-center rounded-2xl bg-blue-950 px-5 py-3 font-extrabold text-white transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                    href="/business/quotes"
+                  >
+                    Create first quote
+                  </Link>
+                  <Link
+                    className="inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 py-3 font-extrabold text-slate-800 transition hover:border-blue-300 hover:text-blue-950 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                    href="/business/website"
+                  >
+                    Open Website Builder
+                  </Link>
+                </div>
               </div>
             )}
           </section>
@@ -790,31 +876,72 @@ export default function BusinessAnalyticsPage() {
             </div>
 
             <Link
+              className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-blue-950 px-5 py-4 font-extrabold text-white transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-100"
               href="/business/quotes"
-              className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-blue-950 px-5 py-4 font-extrabold text-white transition hover:bg-blue-900"
             >
               Open AI Quote Builder
             </Link>
           </section>
         </div>
 
+        <section className="mt-8">
+          <div className="grid gap-6 md:grid-cols-3">
+            {[
+              {
+                href: "/business/website",
+                title: "Website Builder",
+                description:
+                  "Improve your website completion, SEO score and publishing readiness.",
+              },
+              {
+                href: "/business/brand-kit",
+                title: "Brand Kit",
+                description:
+                  "Complete your identity details so Beacon can reuse them consistently.",
+              },
+              {
+                href: "/business/templates",
+                title: "Documents",
+                description:
+                  "Create branded business documents using your saved Beacon details.",
+              },
+            ].map((item) => (
+              <Link
+                className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-blue-100"
+                href={item.href}
+                key={item.href}
+              >
+                <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-blue-700">
+                  Related tool
+                </p>
+                <h2 className="mt-2 text-xl font-black text-slate-950">
+                  {item.title}
+                </h2>
+                <p className="mt-2 leading-7 text-slate-600">
+                  {item.description}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+
         <section className="mt-8 rounded-[2rem] border border-blue-200 bg-blue-50 p-7 sm:p-8">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-2xl font-black text-blue-950">
-                Analytics will grow with Beacon Business
+                Analytics grows with your Beacon Business activity
               </h2>
               <p className="mt-2 max-w-4xl leading-7 text-blue-900">
-                This dashboard already reads the business data stored by your
-                Website Builder, Brand Kit and quote tools. Live visitor,
-                enquiry, invoice and payment analytics can be connected when
-                those services are added.
+                This dashboard reads the business data stored by your Website
+                Builder, Brand Kit and quote tools. More meaningful trends will
+                appear as you create quotes, update your website and complete
+                your business setup.
               </p>
             </div>
 
             <Link
+              className="inline-flex shrink-0 items-center justify-center rounded-2xl bg-blue-950 px-6 py-4 font-extrabold text-white transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-100"
               href="/business/dashboard"
-              className="inline-flex shrink-0 items-center justify-center rounded-2xl bg-blue-950 px-6 py-4 font-extrabold text-white transition hover:bg-blue-900"
             >
               Return to Dashboard
             </Link>

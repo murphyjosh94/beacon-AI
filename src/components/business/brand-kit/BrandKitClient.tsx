@@ -10,6 +10,11 @@ import {
   type BeaconBrandKit,
 } from "@/lib/business/brand-kit/brandKit";
 
+type NavigationItem = {
+  href: string;
+  label: string;
+};
+
 const fontOptions = [
   "Inter",
   "Arial",
@@ -17,6 +22,75 @@ const fontOptions = [
   "Times New Roman",
   "Verdana",
 ];
+
+const BUSINESS_NAVIGATION: NavigationItem[] = [
+  { href: "/business/dashboard", label: "Dashboard" },
+  { href: "/business/website", label: "Website Builder" },
+  { href: "/business/brand-kit", label: "Brand Kit" },
+  { href: "/business/templates", label: "Templates" },
+  { href: "/business/analytics", label: "Analytics" },
+  { href: "/business/memberships", label: "Membership" },
+];
+
+const DETAIL_FIELDS: Array<{
+  key: keyof BeaconBrandKit;
+  label: string;
+  type: string;
+  placeholder?: string;
+}> = [
+  {
+    key: "businessName",
+    label: "Business name",
+    type: "text",
+    placeholder: "Beacon Electrical Ltd",
+  },
+  {
+    key: "ownerName",
+    label: "Owner or representative",
+    type: "text",
+    placeholder: "Jordan Smith",
+  },
+  {
+    key: "email",
+    label: "Business email",
+    type: "email",
+    placeholder: "hello@example.co.uk",
+  },
+  {
+    key: "phone",
+    label: "Phone number",
+    type: "tel",
+    placeholder: "0151 000 0000",
+  },
+  {
+    key: "website",
+    label: "Website",
+    type: "url",
+    placeholder: "https://example.co.uk",
+  },
+  {
+    key: "companyNumber",
+    label: "Company number",
+    type: "text",
+    placeholder: "12345678",
+  },
+  {
+    key: "vatNumber",
+    label: "VAT number",
+    type: "text",
+    placeholder: "GB123456789",
+  },
+  {
+    key: "tagline",
+    label: "Tagline",
+    type: "text",
+    placeholder: "Reliable service. Local expertise.",
+  },
+];
+
+function validHexColour(value: string, fallback: string) {
+  return /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
+}
 
 export default function BrandKitClient() {
   const [brandKit, setBrandKit] = useState<BeaconBrandKit>(emptyBrandKit);
@@ -43,6 +117,26 @@ export default function BrandKitClient() {
     return Math.round((completed / important.length) * 100);
   }, [brandKit]);
 
+  const nextStep = useMemo(() => {
+    if (!brandKit.businessName.trim()) {
+      return "Add your business name so Beacon can personalise documents, websites and customer communications.";
+    }
+
+    if (!brandKit.email.trim() || !brandKit.phone.trim()) {
+      return "Add your contact details so Beacon can place them consistently across every business tool.";
+    }
+
+    if (!brandKit.address.trim() || !brandKit.website.trim()) {
+      return "Complete your business address and website details to finish the core company profile.";
+    }
+
+    if (!brandKit.logoUrl.trim()) {
+      return "Add your logo URL to complete the visual identity shown across websites and documents.";
+    }
+
+    return "Your Brand Kit is ready. Save any final changes before using it across Beacon Business.";
+  }, [brandKit]);
+
   function update<K extends keyof BeaconBrandKit>(
     key: K,
     value: BeaconBrandKit[K],
@@ -51,101 +145,217 @@ export default function BrandKitClient() {
       ...current,
       [key]: value,
     }));
+
+    if (message) {
+      setMessage("");
+    }
   }
 
   function handleSave() {
     const saved = saveBrandKit(brandKit);
     setBrandKit(saved);
-    setMessage("Brand Kit saved. Beacon Documents will now use these details automatically.");
+    setMessage(
+      "Brand Kit saved successfully. Your website, templates and documents will now use your updated branding.",
+    );
   }
+
+  const previewPrimary = validHexColour(
+    brandKit.primaryColour,
+    emptyBrandKit.primaryColour,
+  );
+  const previewSecondary = validHexColour(
+    brandKit.secondaryColour,
+    emptyBrandKit.secondaryColour,
+  );
 
   if (!loaded) {
     return (
-      <section className="px-6 py-20">
-        <div className="mx-auto h-96 max-w-7xl animate-pulse rounded-[2rem] bg-white shadow-xl" />
+      <section className="px-4 py-12 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl animate-pulse space-y-8">
+          <div className="h-20 rounded-2xl bg-white" />
+          <div className="h-72 rounded-[2rem] bg-slate-200" />
+          <div className="grid gap-8 xl:grid-cols-[1fr_380px]">
+            <div className="h-[720px] rounded-[2rem] bg-white" />
+            <div className="h-[520px] rounded-[2rem] bg-white" />
+          </div>
+        </div>
       </section>
     );
   }
 
   return (
     <>
-      <section className="bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-950 px-6 py-16 text-white">
-        <div className="mx-auto max-w-7xl">
-          <Link
-            href="/business/dashboard"
-            className="font-extrabold text-blue-100 hover:text-white"
-          >
-            ← Back to Dashboard
-          </Link>
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex min-h-16 items-center justify-between gap-4">
+            <Link
+              className="text-lg font-black tracking-tight text-blue-950"
+              href="/business/dashboard"
+            >
+              Beacon Business
+            </Link>
 
-          <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_320px] lg:items-end">
+            <Link
+              className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-extrabold text-slate-800 transition hover:border-blue-400 hover:text-blue-950"
+              href="/my-beacon"
+            >
+              My Beacon
+            </Link>
+          </div>
+
+          <nav
+            aria-label="Business navigation"
+            className="-mx-4 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+          >
+            <div className="flex min-w-max gap-2">
+              {BUSINESS_NAVIGATION.map((item) => {
+                const isCurrent = item.href === "/business/brand-kit";
+
+                return (
+                  <Link
+                    aria-current={isCurrent ? "page" : undefined}
+                    className={`rounded-xl px-4 py-2 text-sm font-extrabold transition ${
+                      isCurrent
+                        ? "bg-blue-950 text-white"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-blue-950"
+                    }`}
+                    href={item.href}
+                    key={item.href}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
+        </div>
+      </header>
+
+      <section className="bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-950 px-4 py-14 text-white sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <nav
+            aria-label="Breadcrumb"
+            className="text-sm font-bold text-blue-200"
+          >
+            <ol className="flex flex-wrap items-center gap-2">
+              <li>
+                <Link
+                  className="transition hover:text-white"
+                  href="/business/dashboard"
+                >
+                  Business
+                </Link>
+              </li>
+              <li aria-hidden="true">/</li>
+              <li className="text-white">Brand Kit</li>
+            </ol>
+          </nav>
+
+          <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_340px] lg:items-end">
             <div>
               <p className="text-sm font-extrabold uppercase tracking-[0.28em] text-amber-200">
                 Beacon Business
               </p>
-              <h1 className="mt-3 text-5xl font-black tracking-tight sm:text-6xl">
+              <h1 className="mt-3 text-4xl font-black tracking-tight sm:text-6xl">
                 Brand Kit
               </h1>
-              <p className="mt-5 max-w-3xl text-xl leading-9 text-blue-100">
+              <p className="mt-5 max-w-3xl text-lg leading-8 text-blue-100 sm:text-xl sm:leading-9">
                 Store your business identity once and keep every document,
                 website and customer message consistent.
               </p>
+
+              <div className="mt-6 flex flex-wrap gap-2">
+                {[
+                  "One source of truth",
+                  "Live brand preview",
+                  "Used across Beacon",
+                  "Easy to update",
+                ].map((badge) => (
+                  <span
+                    className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-sm font-bold text-blue-50"
+                    key={badge}
+                  >
+                    {badge}
+                  </span>
+                ))}
+              </div>
             </div>
 
             <div className="rounded-[1.75rem] border border-white/15 bg-white/10 p-6 backdrop-blur">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4">
                 <span className="font-extrabold">Brand Kit completion</span>
                 <span className="text-2xl font-black text-amber-300">
                   {completion}%
                 </span>
               </div>
-              <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/15">
+
+              <div
+                aria-label={`Brand Kit ${completion}% complete`}
+                aria-valuemax={100}
+                aria-valuemin={0}
+                aria-valuenow={completion}
+                className="mt-4 h-3 overflow-hidden rounded-full bg-white/15"
+                role="progressbar"
+              >
                 <div
                   className="h-full rounded-full bg-amber-300 transition-all"
                   style={{ width: `${completion}%` }}
                 />
+              </div>
+
+              <div className="mt-5 rounded-2xl bg-white/10 p-4">
+                <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-amber-200">
+                  Next step
+                </p>
+                <p className="mt-2 text-sm leading-6 text-blue-50">{nextStep}</p>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="px-6 py-12">
+      <section className="px-4 py-12 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-7xl gap-8 xl:grid-cols-[1fr_380px]">
           <div className="space-y-8">
-            <section className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-xl">
-              <h2 className="text-2xl font-black text-slate-950">
-                Business details
-              </h2>
-              <p className="mt-2 text-slate-600">
-                These details are inserted into Beacon Documents automatically.
-              </p>
+            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+              <div>
+                <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-blue-700">
+                  Company profile
+                </p>
+                <h2 className="mt-2 text-2xl font-black text-slate-950">
+                  Business details
+                </h2>
+                <p className="mt-2 text-slate-600">
+                  Beacon inserts these details automatically into supported
+                  documents, pages and customer communications.
+                </p>
+              </div>
 
               <div className="mt-6 grid gap-5 sm:grid-cols-2">
-                {[
-                  ["businessName", "Business name", "text"],
-                  ["ownerName", "Owner or representative", "text"],
-                  ["email", "Business email", "email"],
-                  ["phone", "Phone number", "tel"],
-                  ["website", "Website", "text"],
-                  ["companyNumber", "Company number", "text"],
-                  ["vatNumber", "VAT number", "text"],
-                  ["tagline", "Tagline", "text"],
-                ].map(([key, label, type]) => (
-                  <label key={key} className="block">
+                {DETAIL_FIELDS.map(({ key, label, type, placeholder }) => (
+                  <label className="block" key={key}>
                     <span className="text-sm font-extrabold text-slate-800">
                       {label}
                     </span>
                     <input
-                      type={type}
-                      value={brandKit[key as keyof BeaconBrandKit] as string}
-                      onChange={(event) =>
-                        update(
-                          key as keyof BeaconBrandKit,
-                          event.target.value,
-                        )
+                      autoComplete={
+                        key === "email"
+                          ? "email"
+                          : key === "phone"
+                            ? "tel"
+                            : key === "businessName"
+                              ? "organization"
+                              : key === "website"
+                                ? "url"
+                                : undefined
                       }
                       className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                      onChange={(event) =>
+                        update(key, event.target.value as BeaconBrandKit[typeof key])
+                      }
+                      placeholder={placeholder}
+                      type={type}
+                      value={brandKit[key] as string}
                     />
                   </label>
                 ))}
@@ -155,19 +365,30 @@ export default function BrandKitClient() {
                     Business address
                   </span>
                   <textarea
+                    autoComplete="street-address"
+                    className="mt-2 w-full resize-y rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                    onChange={(event) => update("address", event.target.value)}
+                    placeholder="Business address, town or city, postcode"
                     rows={4}
                     value={brandKit.address}
-                    onChange={(event) => update("address", event.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
                   />
                 </label>
               </div>
             </section>
 
-            <section className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-xl">
-              <h2 className="text-2xl font-black text-slate-950">
-                Visual identity
-              </h2>
+            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+              <div>
+                <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-blue-700">
+                  Brand styling
+                </p>
+                <h2 className="mt-2 text-2xl font-black text-slate-950">
+                  Visual identity
+                </h2>
+                <p className="mt-2 text-slate-600">
+                  Set the logo, colours and font Beacon should use when creating
+                  branded material.
+                </p>
+              </div>
 
               <div className="mt-6 grid gap-5 sm:grid-cols-2">
                 <label className="block sm:col-span-2">
@@ -175,12 +396,16 @@ export default function BrandKitClient() {
                     Logo URL
                   </span>
                   <input
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                    onChange={(event) => update("logoUrl", event.target.value)}
+                    placeholder="https://example.co.uk/logo.png"
                     type="url"
                     value={brandKit.logoUrl}
-                    onChange={(event) => update("logoUrl", event.target.value)}
-                    placeholder="https://..."
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
                   />
+                  <span className="mt-2 block text-sm leading-6 text-slate-500">
+                    Use a direct image address ending in .png, .jpg, .webp or
+                    .svg for the most reliable preview.
+                  </span>
                 </label>
 
                 <label className="block">
@@ -189,19 +414,22 @@ export default function BrandKitClient() {
                   </span>
                   <div className="mt-2 flex gap-3">
                     <input
-                      type="color"
-                      value={brandKit.primaryColour}
+                      aria-label="Choose primary brand colour"
+                      className="h-12 w-16 shrink-0 cursor-pointer rounded-xl border border-slate-200 bg-white p-1"
                       onChange={(event) =>
                         update("primaryColour", event.target.value)
                       }
-                      className="h-12 w-16 rounded-xl border border-slate-200 bg-white p-1"
+                      type="color"
+                      value={previewPrimary}
                     />
                     <input
-                      value={brandKit.primaryColour}
+                      aria-label="Primary colour hex value"
+                      className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold uppercase outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
                       onChange={(event) =>
                         update("primaryColour", event.target.value)
                       }
-                      className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold uppercase"
+                      placeholder="#0F172A"
+                      value={brandKit.primaryColour}
                     />
                   </div>
                 </label>
@@ -212,19 +440,22 @@ export default function BrandKitClient() {
                   </span>
                   <div className="mt-2 flex gap-3">
                     <input
-                      type="color"
-                      value={brandKit.secondaryColour}
+                      aria-label="Choose secondary brand colour"
+                      className="h-12 w-16 shrink-0 cursor-pointer rounded-xl border border-slate-200 bg-white p-1"
                       onChange={(event) =>
                         update("secondaryColour", event.target.value)
                       }
-                      className="h-12 w-16 rounded-xl border border-slate-200 bg-white p-1"
+                      type="color"
+                      value={previewSecondary}
                     />
                     <input
-                      value={brandKit.secondaryColour}
+                      aria-label="Secondary colour hex value"
+                      className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold uppercase outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
                       onChange={(event) =>
                         update("secondaryColour", event.target.value)
                       }
-                      className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold uppercase"
+                      placeholder="#FBBF24"
+                      value={brandKit.secondaryColour}
                     />
                   </div>
                 </label>
@@ -234,11 +465,11 @@ export default function BrandKitClient() {
                     Brand font
                   </span>
                   <select
-                    value={brandKit.fontFamily}
+                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
                     onChange={(event) =>
                       update("fontFamily", event.target.value)
                     }
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 font-semibold outline-none"
+                    value={brandKit.fontFamily}
                   >
                     {fontOptions.map((font) => (
                       <option key={font} value={font}>
@@ -251,47 +482,67 @@ export default function BrandKitClient() {
             </section>
 
             <button
-              type="button"
+              className="w-full rounded-2xl bg-blue-950 px-7 py-4 text-lg font-extrabold text-white shadow-sm transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-200"
               onClick={handleSave}
-              className="w-full rounded-2xl bg-blue-950 px-7 py-4 text-lg font-extrabold text-white transition hover:bg-blue-900"
+              type="button"
             >
               Save Brand Kit
             </button>
 
             {message ? (
               <div
+                aria-live="polite"
+                className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-emerald-900"
                 role="status"
-                className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 font-bold text-emerald-800"
               >
-                {message}
+                <div className="flex gap-3">
+                  <span
+                    aria-hidden="true"
+                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-200 font-black"
+                  >
+                    ✓
+                  </span>
+                  <div>
+                    <p className="font-extrabold">
+                      Brand Kit saved successfully
+                    </p>
+                    <p className="mt-1 leading-6">{message}</p>
+                  </div>
+                </div>
               </div>
             ) : null}
           </div>
 
           <aside className="xl:sticky xl:top-28 xl:self-start">
             <div
-              className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl"
+              className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl"
               style={{ fontFamily: brandKit.fontFamily }}
             >
               <div
                 className="p-7 text-white"
-                style={{ backgroundColor: brandKit.primaryColour }}
+                style={{ backgroundColor: previewPrimary }}
               >
                 {brandKit.logoUrl ? (
                   <img
-                    src={brandKit.logoUrl}
-                    alt=""
+                    alt={`${brandKit.businessName || "Business"} logo`}
                     className="mb-5 h-16 max-w-full object-contain object-left"
+                    src={brandKit.logoUrl}
                   />
                 ) : (
-                  <div
-                    className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl text-3xl font-black"
-                    style={{
-                      backgroundColor: brandKit.secondaryColour,
-                      color: brandKit.primaryColour,
-                    }}
-                  >
-                    {brandKit.businessName.charAt(0).toUpperCase() || "B"}
+                  <div>
+                    <div
+                      aria-hidden="true"
+                      className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl text-3xl font-black"
+                      style={{
+                        backgroundColor: previewSecondary,
+                        color: previewPrimary,
+                      }}
+                    >
+                      {brandKit.businessName.charAt(0).toUpperCase() || "B"}
+                    </div>
+                    <p className="mb-5 text-sm font-semibold text-white/75">
+                      No logo uploaded yet
+                    </p>
                   </div>
                 )}
 
@@ -309,12 +560,12 @@ export default function BrandKitClient() {
               <div className="p-7">
                 <div
                   className="h-2 w-24 rounded-full"
-                  style={{ backgroundColor: brandKit.secondaryColour }}
+                  style={{ backgroundColor: previewSecondary }}
                 />
                 <p className="mt-6 leading-7 text-slate-600">
                   {brandKit.address || "Business address"}
                 </p>
-                <div className="mt-5 space-y-2 font-semibold text-slate-800">
+                <div className="mt-5 space-y-2 break-words font-semibold text-slate-800">
                   <p>{brandKit.phone || "Phone number"}</p>
                   <p>{brandKit.email || "Business email"}</p>
                   <p>{brandKit.website || "Website"}</p>
@@ -322,14 +573,74 @@ export default function BrandKitClient() {
               </div>
             </div>
 
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-slate-500">
+                Used across
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                {["Website", "Quote", "Document", "Customer message"].map(
+                  (item) => (
+                    <div
+                      className="rounded-xl bg-slate-50 px-3 py-3 text-center text-sm font-extrabold text-slate-700"
+                      key={item}
+                    >
+                      {item}
+                    </div>
+                  ),
+                )}
+              </div>
+            </div>
+
             <Link
+              className="mt-5 flex items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 px-6 py-4 font-extrabold text-blue-950 transition hover:border-blue-400 hover:bg-blue-100 focus:outline-none focus:ring-4 focus:ring-blue-100"
               href="/business/templates"
-              className="mt-5 flex items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 px-6 py-4 font-extrabold text-blue-950 transition hover:bg-blue-100"
             >
               Open Beacon Documents →
             </Link>
           </aside>
         </div>
+
+        <section className="mx-auto mt-10 grid max-w-7xl gap-6 md:grid-cols-3">
+          {[
+            {
+              href: "/business/website",
+              eyebrow: "Related tool",
+              title: "Website Builder",
+              description:
+                "Apply your colours, logo and business details to your generated website.",
+            },
+            {
+              href: "/business/templates",
+              eyebrow: "Related tool",
+              title: "Template Library",
+              description:
+                "Create consistent business documents using your saved Brand Kit.",
+            },
+            {
+              href: "/business/analytics",
+              eyebrow: "Related tool",
+              title: "Business Analytics",
+              description:
+                "Review how your Beacon Business tools and customer activity are performing.",
+            },
+          ].map((item) => (
+            <Link
+              className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-blue-100"
+              href={item.href}
+              key={item.href}
+            >
+              <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-blue-700">
+                {item.eyebrow}
+              </p>
+              <h2 className="mt-2 text-xl font-black text-slate-950">
+                {item.title}
+              </h2>
+              <p className="mt-2 leading-7 text-slate-600">
+                {item.description}
+              </p>
+            </Link>
+          ))}
+        </section>
       </section>
     </>
   );

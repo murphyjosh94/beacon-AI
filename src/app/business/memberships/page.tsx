@@ -1,9 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import Link from "next/link";
-
-import Navbar from "@/components/Navbar";
+import { useMemo, useState } from "react";
 
 type MembershipPlanId = "business" | "business_pro";
 
@@ -14,8 +12,26 @@ type MembershipPlan = {
   description: string;
   badge?: string;
   featured?: boolean;
+  bestFor: string[];
   features: string[];
 };
+
+type BusinessNavigationItem = {
+  href: string;
+  label: string;
+};
+
+const BUSINESS_NAVIGATION: BusinessNavigationItem[] = [
+  { href: "/business/dashboard", label: "Dashboard" },
+  { href: "/business/quotes", label: "Quotes" },
+  { href: "/business/customers", label: "Customers" },
+  { href: "/business/jobs", label: "Jobs" },
+  { href: "/business/website", label: "Website Builder" },
+  { href: "/business/brand-kit", label: "Brand Kit" },
+  { href: "/business/templates", label: "Templates" },
+  { href: "/business/analytics", label: "Analytics" },
+  { href: "/business/memberships", label: "Membership" },
+];
 
 const plans: MembershipPlan[] = [
   {
@@ -24,14 +40,15 @@ const plans: MembershipPlan[] = [
     price: "£19.99",
     description:
       "Everything a startup, sole trader or growing small business needs to manage its online presence and day-to-day work.",
+    bestFor: ["Sole traders", "Startups", "Local service businesses"],
     features: [
       "Website Builder",
       "Secure website hosting",
       "SSL certificate management",
-      "Beacon Quote",
-      "Beacon Invoices",
+      "AI Quote Builder",
       "Business Templates",
       "Customer Manager",
+      "Jobs workspace",
       "Brand Kit",
       "Beacon AI Assistant",
       "Business Dashboard",
@@ -47,6 +64,7 @@ const plans: MembershipPlan[] = [
       "Advanced tools, priority support and growth features for businesses ready to go further.",
     badge: "Most Popular",
     featured: true,
+    bestFor: ["Growing businesses", "Small teams", "Businesses focused on growth"],
     features: [
       "Everything in Beacon Business",
       "Priority support",
@@ -69,10 +87,10 @@ const comparisonRows = [
   ["Secure hosting", "Included", "Included"],
   ["SSL certificate management", "Included", "Included"],
   ["Website maintenance", "Included", "Included"],
-  ["Beacon Quote", "Included", "Included"],
-  ["Beacon Invoices", "Included", "Included"],
+  ["AI Quote Builder", "Included", "Included"],
   ["Business Templates", "Included", "Premium library"],
   ["Customer Manager", "Included", "Included"],
+  ["Jobs workspace", "Included", "Included"],
   ["Brand Kit", "Included", "Included"],
   ["Beacon AI Assistant", "Included", "Advanced features"],
   ["Business Dashboard", "Included", "Included"],
@@ -114,12 +132,12 @@ const faqs = [
   {
     question: "What business tools are included?",
     answer:
-      "Beacon Business is designed to include websites, quotes, invoices, business templates, customer records, brand management, an AI assistant and one central dashboard.",
+      "Beacon Business includes websites, quotes, customer records, jobs, business templates, brand management, analytics, an AI assistant and one central dashboard.",
   },
   {
     question: "Can I use Beacon Business without buying a website build?",
     answer:
-      "Yes. You can join Beacon Business for its quotes, invoices, templates, customer tools and other modules even if you do not purchase a professionally built website.",
+      "Yes. You can join Beacon Business for its quotes, templates, customer tools, jobs workspace and other modules even if you do not purchase a professionally built website.",
   },
   {
     question: "Can Beacon support a website built elsewhere?",
@@ -142,16 +160,16 @@ const platformModules = [
       "Create clear, professional quotations with labour, materials, discounts and VAT.",
   },
   {
-    title: "Invoices",
-    icon: "🧾",
-    description:
-      "Create invoices, manage due dates and track paid, unpaid and overdue work.",
-  },
-  {
     title: "Customers",
     icon: "👥",
     description:
-      "Keep customer details, notes, quotes, invoices and future work connected.",
+      "Keep customer details, notes, quotes and future work connected.",
+  },
+  {
+    title: "Jobs",
+    icon: "🛠️",
+    description:
+      "Organise active work, track progress and keep customer activity connected.",
   },
   {
     title: "Templates",
@@ -175,7 +193,26 @@ const platformModules = [
     title: "Dashboard",
     icon: "📊",
     description:
-      "See quotes, invoices, customers, website status and membership in one place.",
+      "See quotes, customers, jobs, website status and membership in one place.",
+  },
+];
+
+const trustPoints = [
+  {
+    value: "14 days",
+    label: "Free trial",
+  },
+  {
+    value: "£0",
+    label: "Setup fee",
+  },
+  {
+    value: "Any time",
+    label: "Cancellation",
+  },
+  {
+    value: "Secure",
+    label: "Stripe checkout",
   },
 ];
 
@@ -225,7 +262,9 @@ export default function BusinessMembershipsPage() {
   const isLoading = useMemo(() => loadingPlan !== null, [loadingPlan]);
 
   async function startTrial(planId: MembershipPlanId) {
-    if (isLoading) return;
+    if (isLoading) {
+      return;
+    }
 
     setLoadingPlan(planId);
     setError(null);
@@ -265,15 +304,35 @@ export default function BusinessMembershipsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <Navbar />
+    <main className="bg-slate-950 text-white">
       <section className="relative overflow-hidden border-b border-white/10">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.28),transparent_38%),radial-gradient(circle_at_85%_15%,rgba(245,158,11,0.18),transparent_32%)]" />
 
-        <div className="relative mx-auto max-w-7xl px-6 py-20 sm:py-24 lg:px-8 lg:py-28">
+        <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+          <nav
+            aria-label="Breadcrumb"
+            className="mx-auto mb-8 max-w-4xl text-sm font-bold text-slate-400"
+          >
+            <ol className="flex flex-wrap items-center justify-center gap-2">
+              <li>
+                <Link
+                  className="transition hover:text-white focus:outline-none focus:ring-4 focus:ring-blue-400/30"
+                  href="/business/dashboard"
+                >
+                  Business
+                </Link>
+              </li>
+              <li aria-hidden="true">/</li>
+              <li className="text-white">Memberships</li>
+            </ol>
+          </nav>
+
           <div className="mx-auto max-w-4xl text-center">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-300/10 px-4 py-2 text-sm font-bold text-amber-200">
-              <span className="h-2 w-2 rounded-full bg-amber-300" />
+              <span
+                aria-hidden="true"
+                className="h-2 w-2 rounded-full bg-amber-300"
+              />
               14-day free trial on both plans
             </div>
 
@@ -282,24 +341,26 @@ export default function BusinessMembershipsPage() {
             </h1>
 
             <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-slate-300 sm:text-xl">
-              Build your website, create professional quotes and invoices,
-              manage customers, organise your branding and use practical AI to
-              help your business grow.
+              Build your website, create professional quotes, manage customers
+              and jobs, organise your branding and use practical AI to help your
+              business grow.
             </p>
 
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <button
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-400 px-7 py-4 text-base font-black text-slate-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-400 px-7 py-4 text-base font-black text-slate-950 transition hover:bg-amber-300 focus:outline-none focus:ring-4 focus:ring-amber-200/40 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                 disabled={isLoading}
                 onClick={() => startTrial("business_pro")}
                 type="button"
               >
-                Start 14-Day Free Trial
-                <ArrowIcon />
+                {loadingPlan === "business_pro"
+                  ? "Opening secure checkout..."
+                  : "Start 14-Day Free Trial"}
+                {loadingPlan !== "business_pro" ? <ArrowIcon /> : null}
               </button>
 
               <a
-                className="inline-flex w-full items-center justify-center rounded-2xl border border-white/20 bg-white/5 px-7 py-4 text-base font-bold text-white transition hover:border-white/40 hover:bg-white/10 sm:w-auto"
+                className="inline-flex w-full items-center justify-center rounded-2xl border border-white/20 bg-white/5 px-7 py-4 text-base font-bold text-white transition hover:border-white/40 hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-blue-400/30 sm:w-auto"
                 href="#compare"
               >
                 Compare Plans
@@ -325,7 +386,23 @@ export default function BusinessMembershipsPage() {
         </div>
       </section>
 
-      <section className="bg-white px-6 py-20 text-slate-950 lg:px-8">
+      <section className="bg-white px-4 py-8 text-slate-950 sm:px-6 lg:px-8">
+        <div className="mx-auto grid max-w-7xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {trustPoints.map((item) => (
+            <article
+              className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-center"
+              key={item.label}
+            >
+              <p className="text-2xl font-black text-slate-950">{item.value}</p>
+              <p className="mt-1 text-sm font-bold text-slate-500">
+                {item.label}
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="bg-white px-4 py-20 text-slate-950 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="mx-auto max-w-3xl text-center">
             <p className="text-sm font-black uppercase tracking-[0.22em] text-blue-700">
@@ -345,7 +422,7 @@ export default function BusinessMembershipsPage() {
           <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {platformModules.map((module) => (
               <article
-                className="rounded-3xl border border-slate-200 bg-slate-50 p-6"
+                className="rounded-3xl border border-slate-200 bg-slate-50 p-6 transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"
                 key={module.title}
               >
                 <span
@@ -366,7 +443,7 @@ export default function BusinessMembershipsPage() {
         </div>
       </section>
 
-      <section className="bg-slate-50 px-6 py-20 text-slate-950 lg:px-8">
+      <section className="bg-slate-50 px-4 py-20 text-slate-950 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="mx-auto max-w-3xl text-center">
             <p className="text-sm font-black uppercase tracking-[0.22em] text-blue-700">
@@ -395,7 +472,7 @@ export default function BusinessMembershipsPage() {
           <div className="mt-14 grid gap-8 lg:grid-cols-2">
             {plans.map((plan) => (
               <article
-                className={`relative flex h-full flex-col rounded-3xl border bg-white p-7 shadow-sm sm:p-9 ${
+                className={`relative flex h-full flex-col rounded-3xl border bg-white p-7 shadow-sm transition sm:p-9 ${
                   plan.featured
                     ? "border-blue-600 shadow-xl shadow-blue-950/10"
                     : "border-slate-200"
@@ -410,7 +487,7 @@ export default function BusinessMembershipsPage() {
 
                 <div>
                   <h3 className="text-2xl font-black">{plan.name}</h3>
-                  <p className="mt-4 min-h-14 leading-7 text-slate-600">
+                  <p className="mt-4 leading-7 text-slate-600">
                     {plan.description}
                   </p>
                 </div>
@@ -426,6 +503,25 @@ export default function BusinessMembershipsPage() {
 
                 <div className="mt-3 text-sm font-bold text-emerald-700">
                   14 days free, then billed monthly
+                </div>
+
+                <div className="mt-7 rounded-2xl border border-blue-100 bg-blue-50 p-5">
+                  <p className="text-sm font-black uppercase tracking-[0.16em] text-blue-700">
+                    Best for
+                  </p>
+                  <ul className="mt-3 space-y-2">
+                    {plan.bestFor.map((item) => (
+                      <li
+                        className="flex items-center gap-2 font-semibold text-blue-950"
+                        key={item}
+                      >
+                        <span aria-hidden="true" className="text-blue-700">
+                          •
+                        </span>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
 
                 <div className="mt-8 h-px bg-slate-200" />
@@ -445,7 +541,7 @@ export default function BusinessMembershipsPage() {
                 </ul>
 
                 <button
-                  className={`mt-9 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-base font-black transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                  className={`mt-9 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-4 text-base font-black transition focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-60 ${
                     plan.featured
                       ? "bg-blue-700 text-white hover:bg-blue-800"
                       : "border-2 border-slate-950 bg-white text-slate-950 hover:bg-slate-950 hover:text-white"
@@ -472,7 +568,7 @@ export default function BusinessMembershipsPage() {
       </section>
 
       <section
-        className="border-y border-slate-200 bg-white px-6 py-20 text-slate-950 lg:px-8"
+        className="scroll-mt-24 border-y border-slate-200 bg-white px-4 py-20 text-slate-950 sm:px-6 lg:px-8"
         id="compare"
       >
         <div className="mx-auto max-w-7xl">
@@ -494,41 +590,55 @@ export default function BusinessMembershipsPage() {
           <div className="mt-10 overflow-hidden rounded-3xl border border-slate-200">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] border-collapse text-left">
+                <caption className="sr-only">
+                  Comparison of Beacon Business and Beacon Business Pro
+                  membership features
+                </caption>
                 <thead className="bg-slate-950 text-white">
                   <tr>
-                    <th className="px-6 py-5 text-sm font-black uppercase tracking-wider">
+                    <th
+                      className="px-6 py-5 text-sm font-black uppercase tracking-wider"
+                      scope="col"
+                    >
                       Feature
                     </th>
-                    <th className="px-6 py-5 text-sm font-black uppercase tracking-wider">
+                    <th
+                      className="px-6 py-5 text-sm font-black uppercase tracking-wider"
+                      scope="col"
+                    >
                       Beacon Business
                     </th>
-                    <th className="px-6 py-5 text-sm font-black uppercase tracking-wider">
+                    <th
+                      className="px-6 py-5 text-sm font-black uppercase tracking-wider"
+                      scope="col"
+                    >
                       Beacon Business Pro
                     </th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {comparisonRows.map(
-                    ([feature, business, pro], index) => (
-                      <tr
-                        className={
-                          index % 2 === 0 ? "bg-white" : "bg-slate-50"
-                        }
-                        key={feature}
+                  {comparisonRows.map(([feature, business, pro], index) => (
+                    <tr
+                      className={
+                        index % 2 === 0 ? "bg-white" : "bg-slate-50"
+                      }
+                      key={feature}
+                    >
+                      <th
+                        className="border-t border-slate-200 px-6 py-5 font-black text-slate-900"
+                        scope="row"
                       >
-                        <th className="border-t border-slate-200 px-6 py-5 font-black text-slate-900">
-                          {feature}
-                        </th>
-                        <td className="border-t border-slate-200 px-6 py-5 font-semibold text-slate-600">
-                          {business}
-                        </td>
-                        <td className="border-t border-slate-200 px-6 py-5 font-semibold text-slate-700">
-                          {pro}
-                        </td>
-                      </tr>
-                    ),
-                  )}
+                        {feature}
+                      </th>
+                      <td className="border-t border-slate-200 px-6 py-5 font-semibold text-slate-600">
+                        {business}
+                      </td>
+                      <td className="border-t border-slate-200 px-6 py-5 font-semibold text-slate-700">
+                        {pro}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -536,7 +646,7 @@ export default function BusinessMembershipsPage() {
         </div>
       </section>
 
-      <section className="bg-slate-50 px-6 py-20 text-slate-950 lg:px-8">
+      <section className="bg-slate-50 px-4 py-20 text-slate-950 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="mx-auto max-w-3xl text-center">
             <p className="text-sm font-black uppercase tracking-[0.22em] text-blue-700">
@@ -568,7 +678,7 @@ export default function BusinessMembershipsPage() {
               [
                 "04",
                 "Run your business",
-                "Create quotes, invoices, templates and manage your website.",
+                "Create quotes, organise jobs, use templates and manage your website.",
               ],
             ].map(([number, title, text]) => (
               <article
@@ -586,7 +696,7 @@ export default function BusinessMembershipsPage() {
         </div>
       </section>
 
-      <section className="bg-white px-6 py-20 text-slate-950 lg:px-8">
+      <section className="bg-white px-4 py-20 text-slate-950 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-4xl">
           <div className="text-center">
             <p className="text-sm font-black uppercase tracking-[0.22em] text-blue-700">
@@ -601,12 +711,15 @@ export default function BusinessMembershipsPage() {
           <div className="mt-12 space-y-4">
             {faqs.map((faq) => (
               <details
-                className="group rounded-2xl border border-slate-200 bg-slate-50 px-6 py-5"
+                className="group rounded-2xl border border-slate-200 bg-slate-50 px-6 py-5 focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-100"
                 key={faq.question}
               >
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-black text-slate-950">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-black text-slate-950 outline-none">
                   <span>{faq.question}</span>
-                  <span className="text-2xl leading-none text-blue-700 transition group-open:rotate-45">
+                  <span
+                    aria-hidden="true"
+                    className="text-2xl leading-none text-blue-700 transition group-open:rotate-45"
+                  >
                     +
                   </span>
                 </summary>
@@ -620,7 +733,50 @@ export default function BusinessMembershipsPage() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-blue-800 px-6 py-20 lg:px-8">
+      <section className="bg-slate-50 px-4 py-16 text-slate-950 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-6 md:grid-cols-3">
+            {[
+              {
+                href: "/business/dashboard",
+                title: "Business Dashboard",
+                description:
+                  "See your customers, quotes, jobs, website status and business progress.",
+              },
+              {
+                href: "/business/website",
+                title: "Website Builder",
+                description:
+                  "Build a professional online presence inside the same Beacon workspace.",
+              },
+              {
+                href: "/business/templates",
+                title: "Business Templates",
+                description:
+                  "Create practical branded documents for everyday business use.",
+              },
+            ].map((item) => (
+              <Link
+                className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-blue-100"
+                href={item.href}
+                key={item.href}
+              >
+                <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-blue-700">
+                  Related tool
+                </p>
+                <h2 className="mt-2 text-xl font-black text-slate-950">
+                  {item.title}
+                </h2>
+                <p className="mt-2 leading-7 text-slate-600">
+                  {item.description}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="relative overflow-hidden bg-blue-800 px-4 py-20 sm:px-6 lg:px-8">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.16),transparent_30%),radial-gradient(circle_at_80%_70%,rgba(245,158,11,0.18),transparent_32%)]" />
 
         <div className="relative mx-auto max-w-5xl text-center">
@@ -639,30 +795,34 @@ export default function BusinessMembershipsPage() {
 
           <div className="mt-9 flex flex-col justify-center gap-4 sm:flex-row">
             <button
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-7 py-4 font-black text-blue-800 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-7 py-4 font-black text-blue-800 transition hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-white/30 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={isLoading}
               onClick={() => startTrial("business")}
               type="button"
             >
-              Start Beacon Business
-              <ArrowIcon />
+              {loadingPlan === "business"
+                ? "Opening secure checkout..."
+                : "Start Beacon Business"}
+              {loadingPlan !== "business" ? <ArrowIcon /> : null}
             </button>
 
             <button
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-400 px-7 py-4 font-black text-slate-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-400 px-7 py-4 font-black text-slate-950 transition hover:bg-amber-300 focus:outline-none focus:ring-4 focus:ring-amber-200/40 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={isLoading}
               onClick={() => startTrial("business_pro")}
               type="button"
             >
-              Start Beacon Business Pro
-              <ArrowIcon />
+              {loadingPlan === "business_pro"
+                ? "Opening secure checkout..."
+                : "Start Beacon Business Pro"}
+              {loadingPlan !== "business_pro" ? <ArrowIcon /> : null}
             </button>
           </div>
 
           <div className="mt-8">
             <Link
-              className="font-bold text-blue-100 underline decoration-blue-300/60 underline-offset-4 transition hover:text-white"
-              href="/business"
+              className="font-bold text-blue-100 underline decoration-blue-300/60 underline-offset-4 transition hover:text-white focus:outline-none focus:ring-4 focus:ring-white/30"
+              href="/business/dashboard"
             >
               Return to Beacon Business
             </Link>
