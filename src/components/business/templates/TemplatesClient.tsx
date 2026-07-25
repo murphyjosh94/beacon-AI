@@ -23,19 +23,7 @@ type TemplateCategory = {
   templates: TemplateItem[];
 };
 
-type NavigationItem = {
-  href: string;
-  label: string;
-};
 
-const BUSINESS_NAVIGATION: NavigationItem[] = [
-  { href: "/business/dashboard", label: "Dashboard" },
-  { href: "/business/website", label: "Website Builder" },
-  { href: "/business/brand-kit", label: "Brand Kit" },
-  { href: "/business/templates", label: "Templates" },
-  { href: "/business/analytics", label: "Analytics" },
-  { href: "/business/memberships", label: "Membership" },
-];
 
 const categories: TemplateCategory[] = [
   {
@@ -429,51 +417,6 @@ export default function TemplatesClient() {
 
   return (
     <>
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex min-h-16 items-center justify-between gap-4">
-            <Link
-              className="text-lg font-black tracking-tight text-blue-950"
-              href="/business/dashboard"
-            >
-              Beacon Business
-            </Link>
-
-            <Link
-              className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-extrabold text-slate-800 transition hover:border-blue-400 hover:text-blue-950 focus:outline-none focus:ring-4 focus:ring-blue-100"
-              href="/my-beacon"
-            >
-              My Beacon
-            </Link>
-          </div>
-
-          <nav
-            aria-label="Business navigation"
-            className="-mx-4 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
-          >
-            <div className="flex min-w-max gap-2">
-              {BUSINESS_NAVIGATION.map((item) => {
-                const isCurrent = item.href === "/business/templates";
-
-                return (
-                  <Link
-                    aria-current={isCurrent ? "page" : undefined}
-                    className={`rounded-xl px-4 py-2 text-sm font-extrabold transition focus:outline-none focus:ring-4 focus:ring-blue-100 ${
-                      isCurrent
-                        ? "bg-blue-950 text-white"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-blue-950"
-                    }`}
-                    href={item.href}
-                    key={item.href}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
-          </nav>
-        </div>
-      </header>
 
       <section className="relative overflow-hidden bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-950 px-4 py-16 text-white sm:px-6 sm:py-20 lg:px-8">
         <div
