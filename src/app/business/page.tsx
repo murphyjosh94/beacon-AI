@@ -6,223 +6,176 @@ import BeaconFooter from "@/components/BeaconFooter";
 import Navbar from "@/components/Navbar";
 import JsonLd from "@/components/seo/JsonLd";
 
-import {
-  absoluteUrl,
-  siteConfig,
-} from "@/lib/seo/SiteConfig";
+import { absoluteUrl, siteConfig } from "@/lib/seo/SiteConfig";
 
 export const metadata: Metadata = {
-  title: "Beacon Business | Websites and Business Growth Tools",
-
+  title: "Beacon Business | Websites, Quotes, Invoices and Business Tools",
   description:
-    "Build and grow your business with professional websites, intelligent quoting, branding, templates, analytics, SEO and practical business tools from Beacon.",
-
+    "Run your business from one trusted platform with professional websites, Beacon Quote, invoicing, templates, customers, branding and practical AI support.",
   alternates: {
     canonical: "/business",
   },
-
   openGraph: {
     type: "website",
     url: absoluteUrl("/business"),
-    title: "Beacon Business | See Your Website Before You Pay",
+    title: "Beacon Business | Your Business Operating Platform",
     description:
-      "Create an interactive business website preview, request changes and only pay once you are ready to move forward.",
+      "Professional websites, quotes, invoices, templates, branding and business tools brought together in one secure Beacon dashboard.",
     images: [
       {
         url: absoluteUrl(siteConfig.socialImage),
         width: 1200,
         height: 630,
-        alt: "Beacon Business website and business growth tools",
+        alt: "Beacon Business platform",
       },
     ],
   },
-
   twitter: {
     card: "summary_large_image",
-    title: "Beacon Business | Websites Built Around Your Business",
+    title: "Beacon Business | Your Business Operating Platform",
     description:
-      "Preview your new business website before paying, then grow with practical Beacon Business tools.",
+      "Build your online presence and manage day-to-day business tasks from one trusted platform.",
     images: [absoluteUrl(siteConfig.socialImage)],
   },
 };
 
-const businessTools = [
+const coreModules = [
   {
-    title: "Website Preview & Build",
+    icon: "🌐",
+    title: "Website Builder",
     description:
-      "Tell Beacon about your business and receive an interactive website preview before committing to a purchase.",
-    icon: "🖥️",
-    status: "Available first",
+      "Create a professional business website, review an interactive preview before payment and manage future improvements from the same dashboard.",
+    features: [
+      "Interactive preview before payment",
+      "Professional business websites",
+      "Online shops and membership areas",
+      "Hosting, SSL and maintenance",
+    ],
   },
   {
+    icon: "📋",
     title: "Beacon Quote",
     description:
-      "Create clear, professional customer quotes faster and keep your pricing consistent.",
-    icon: "🧾",
-    status: "Coming next",
+      "Create clear, professional quotations with customer details, labour, materials, discounts, VAT and branded documents.",
+    features: [
+      "Editable line items",
+      "Labour and material breakdowns",
+      "PDF-ready quotations",
+      "Convert accepted quotes into invoices",
+    ],
   },
   {
+    icon: "🧾",
+    title: "Beacon Invoices",
+    description:
+      "Create professional invoices, manage due dates and keep track of what has been paid, is outstanding or has become overdue.",
+    features: [
+      "Automatic invoice numbering",
+      "Paid, unpaid and overdue status",
+      "VAT and discount support",
+      "Professional PDF documents",
+    ],
+  },
+  {
+    icon: "📄",
     title: "Business Templates",
     description:
-      "Use professional templates for invoices, estimates, customer messages and everyday business documents.",
-    icon: "📄",
-    status: "Planned",
+      "Start with practical business documents instead of a blank page and customise each template around your business.",
+    features: [
+      "Terms and policy templates",
+      "Contracts and estimate templates",
+      "Risk assessments and method statements",
+      "Email and marketing templates",
+    ],
   },
   {
-    title: "Branding",
+    icon: "👥",
+    title: "Customer Manager",
     description:
-      "Build a consistent identity with practical guidance for colours, messaging and visual presentation.",
+      "Store customer information once and connect each customer to their quotes, invoices, documents and future work.",
+    features: [
+      "Customer contact records",
+      "Quote and invoice history",
+      "Job notes and business records",
+      "Designed for future CRM features",
+    ],
+  },
+  {
     icon: "🎨",
-    status: "Planned",
+    title: "Brand Kit",
+    description:
+      "Keep your logo, colours, fonts, business details and contact information consistent across every Beacon Business module.",
+    features: [
+      "Logo and business identity",
+      "Brand colours and fonts",
+      "Company and VAT information",
+      "Reusable details across documents",
+    ],
   },
   {
-    title: "AI Chatbot",
+    icon: "🤖",
+    title: "Beacon AI Assistant",
     description:
-      "Add a helpful website assistant that can answer common questions and guide potential customers.",
-    icon: "💬",
-    status: "Planned",
+      "Use practical business-focused AI to help write customer messages, improve content and create professional documents faster.",
+    features: [
+      "Write customer replies",
+      "Create marketing content",
+      "Improve website copy",
+      "Assist with quotes and documents",
+    ],
   },
   {
-    title: "Analytics",
-    description:
-      "Understand how visitors find and use your website without being overwhelmed by unnecessary data.",
     icon: "📊",
-    status: "Planned",
-  },
-  {
-    title: "SEO",
-    description:
-      "Improve how your business appears in search with clear, practical optimisation recommendations.",
-    icon: "🔎",
-    status: "Planned",
-  },
-  {
     title: "Business Dashboard",
     description:
-      "Manage your website, tools, progress, upgrades and business activity from one clear workspace.",
-    icon: "📌",
-    status: "Core feature",
-  },
-];
-
-const websiteProcess = [
-  {
-    step: "01",
-    title: "Tell us about your business",
-    description:
-      "Share your services, location, colours, contact information and any photographs you want to use.",
-  },
-  {
-    step: "02",
-    title: "Beacon creates your preview",
-    description:
-      "Beacon turns your information into an interactive website preview you can explore within minutes.",
-  },
-  {
-    step: "03",
-    title: "Review and request changes",
-    description:
-      "Browse the preview, check each section and tell us what you would like adjusted.",
-  },
-  {
-    step: "04",
-    title: "Approve your design",
-    description:
-      "Confirm that the direction is right before making any payment.",
-  },
-  {
-    step: "05",
-    title: "Pay securely",
-    description:
-      "Choose the website package that matches your business and complete your order securely.",
-  },
-  {
-    step: "06",
-    title: "Professional build and launch",
-    description:
-      "We refine, test and publish your website with an estimated completion time of 2–4 weeks.",
-  },
-];
-
-const websitePackages = [
-  {
-    name: "Starter Website",
-    price: "£150",
-    description: "A professional starting point for new and local businesses.",
+      "See your website, quotes, invoices, customers, membership and recent activity from one organised business control centre.",
     features: [
-      "Up to 5 core pages",
-      "Mobile-responsive design",
-      "Contact form",
-      "Business details and services",
-      "Basic search optimisation",
-      "Powered by Beacon Business footer",
+      "Business overview",
+      "Outstanding invoice visibility",
+      "Quote progress",
+      "Website and membership status",
     ],
-    featured: false,
-  },
-  {
-    name: "Business Website",
-    price: "£350",
-    description:
-      "A stronger website for established businesses ready to grow.",
-    features: [
-      "Everything in Starter",
-      "Additional business pages",
-      "Gallery and testimonials",
-      "Service-area content",
-      "Enhanced search optimisation",
-      "Analytics setup",
-      "Expanded conversion features",
-    ],
-    featured: true,
-  },
-  {
-    name: "Premium Website",
-    price: "From £600",
-    description:
-      "A more advanced website with bespoke functionality and integrations.",
-    features: [
-      "Everything in Business",
-      "Advanced website modules",
-      "Booking or customer tools",
-      "Bespoke functionality",
-      "Priority build support",
-      "Premium design refinements",
-      "Beacon branding removal",
-    ],
-    featured: false,
   },
 ];
 
-const modules = [
-  {
-    name: "AI Chatbot",
-    price: "£50",
-    description:
-      "A helpful website assistant for common customer questions and enquiries.",
-  },
-  {
-    name: "Online Shop",
-    price: "£50",
-    description:
-      "Add a simple product catalogue and online selling capability.",
-  },
-  {
-    name: "Membership Area",
-    price: "£37.50",
-    description:
-      "Create protected content or account access for registered members.",
-  },
+const includedFeatures = [
+  "Website Builder",
+  "Beacon Quote",
+  "Beacon Invoices",
+  "Business Templates",
+  "Customer Manager",
+  "Brand Kit",
+  "Beacon AI Assistant",
+  "Business Dashboard",
+  "Secure website hosting",
+  "SSL certificate",
+  "Website maintenance",
+  "Email support",
 ];
 
-const progressSteps = [
-  "Preview Generated",
-  "Customer Review",
-  "Awaiting Approval",
-  "Payment Received",
-  "Professional Build",
-  "Quality Assurance",
-  "Domain Connected",
-  "Website Live",
+const proFeatures = [
+  "Everything in Beacon Business",
+  "Priority support",
+  "Advanced analytics",
+  "SEO monitoring",
+  "Team member access",
+  "AI automations",
+  "Growth reports",
+  "Premium templates",
+  "Future Pro modules",
+];
+
+const futureModules = [
+  "Appointment booking",
+  "Job scheduling",
+  "Recurring invoices",
+  "Expense tracking",
+  "Stock management",
+  "Staff management",
+  "Vehicle management",
+  "Customer reminders",
+  "AI receptionist",
+  "Business analytics",
 ];
 
 const businessPageSchema = {
@@ -230,9 +183,9 @@ const businessPageSchema = {
   "@type": "WebPage",
   "@id": absoluteUrl("/business#webpage"),
   url: absoluteUrl("/business"),
-  name: "Beacon Business",
+  name: "Beacon Business operating platform",
   description:
-    "Professional websites and practical business growth tools powered by Beacon.",
+    "Beacon Business combines websites, quotes, invoices, templates, customer management, branding and practical AI support.",
   inLanguage: siteConfig.language,
   isPartOf: {
     "@id": absoluteUrl("/#website"),
@@ -242,543 +195,467 @@ const businessPageSchema = {
   },
 };
 
-const serviceSchema = {
+const softwareSchema = {
   "@context": "https://schema.org",
-  "@type": "Service",
-  name: "Beacon Business Website Design and Business Tools",
-  provider: {
-    "@id": absoluteUrl("/#organization"),
-  },
-  areaServed: {
-    "@type": "Country",
-    name: "United Kingdom",
-  },
+  "@type": "SoftwareApplication",
+  name: "Beacon Business",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
   url: absoluteUrl("/business"),
   description:
-    "Interactive website previews, professional website builds and practical business tools for UK businesses.",
+    "A business operating platform for websites, quotes, invoicing, templates, customers, branding and AI support.",
+  offers: [
+    {
+      "@type": "Offer",
+      name: "Beacon Business",
+      price: "19.99",
+      priceCurrency: "GBP",
+      category: "subscription",
+    },
+    {
+      "@type": "Offer",
+      name: "Beacon Business Pro",
+      price: "29.99",
+      priceCurrency: "GBP",
+      category: "subscription",
+    },
+  ],
 };
 
 export default function BusinessPage() {
   return (
     <>
-      <JsonLd data={[businessPageSchema, serviceSchema]} />
+      <JsonLd data={[businessPageSchema, softwareSchema]} />
 
       <main className="min-h-screen bg-slate-50">
         <Navbar />
 
-        <section className="relative overflow-hidden bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-950 px-6 py-24 text-white sm:py-28">
+        <section className="relative overflow-hidden bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-950 px-6 py-20 text-white sm:py-24 lg:py-28">
           <div
             aria-hidden="true"
-            className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-blue-400/20 blur-3xl"
+            className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-amber-300/20 blur-3xl"
           />
-
           <div
             aria-hidden="true"
-            className="absolute -bottom-32 left-1/4 h-96 w-96 rounded-full bg-indigo-400/20 blur-3xl"
+            className="absolute -bottom-32 left-1/4 h-96 w-96 rounded-full bg-blue-400/20 blur-3xl"
           />
 
-          <div className="relative mx-auto grid max-w-7xl gap-14 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+          <div className="relative mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
             <div>
-              <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-blue-200">
+              <div className="inline-flex items-center rounded-full border border-amber-200/30 bg-white/10 px-4 py-2 text-sm font-extrabold uppercase tracking-[0.22em] text-amber-200 backdrop-blur">
                 Beacon Business
-              </p>
+              </div>
 
-              <h1 className="mt-5 max-w-4xl text-5xl font-black tracking-tight sm:text-6xl lg:text-7xl">
-                Grow your business with confidence.
+              <h1 className="mt-6 max-w-5xl text-5xl font-black tracking-tight sm:text-6xl lg:text-7xl">
+                Your business operating platform.
               </h1>
 
               <p className="mt-6 max-w-3xl text-xl leading-9 text-blue-100">
-                Professional websites, intelligent business tools and practical
-                support designed to help small businesses start strong and grow
-                naturally.
+                Build your online presence, create professional quotes and
+                invoices, manage customers, use practical templates and keep
+                your business organised from one trusted dashboard.
               </p>
 
-              <div className="mt-9 flex flex-col gap-4 sm:flex-row">
+              <div className="mt-8 flex flex-col gap-4 sm:flex-row">
                 <Link
-                  href="/business/website"
-                  className="inline-flex items-center justify-center rounded-2xl bg-white px-7 py-4 text-lg font-extrabold text-blue-950 shadow-xl transition hover:-translate-y-0.5 hover:bg-blue-50"
+                  href="/business/membership"
+                  className="inline-flex items-center justify-center rounded-2xl bg-amber-300 px-8 py-4 text-lg font-extrabold text-blue-950 shadow-xl transition hover:-translate-y-0.5 hover:bg-amber-200"
                 >
-                  Build my website
+                  Explore memberships
+                  <span aria-hidden="true" className="ml-2">
+                    →
+                  </span>
                 </Link>
 
-                <a
-                  href="#business-tools"
-                  className="inline-flex items-center justify-center rounded-2xl border border-white/30 bg-white/10 px-7 py-4 text-lg font-extrabold text-white backdrop-blur transition hover:bg-white/20"
+                <Link
+                  href="/business/website-builder"
+                  className="inline-flex items-center justify-center rounded-2xl border border-white/30 bg-white/10 px-8 py-4 text-lg font-extrabold text-white backdrop-blur transition hover:bg-white/20"
                 >
-                  Explore business tools
-                </a>
+                  Build a website
+                </Link>
               </div>
 
-              <div className="mt-8 flex flex-wrap gap-3 text-sm font-bold text-blue-100">
-                <span className="rounded-full border border-white/20 bg-white/10 px-4 py-2">
-                  See your website before paying
-                </span>
-
-                <span className="rounded-full border border-white/20 bg-white/10 px-4 py-2">
-                  Clear package pricing
-                </span>
-
-                <span className="rounded-full border border-white/20 bg-white/10 px-4 py-2">
-                  Built for UK businesses
-                </span>
+              <div className="mt-8 flex flex-wrap gap-3">
+                {[
+                  "14-day free trial",
+                  "Built for UK businesses",
+                  "Cancel through secure billing",
+                ].map((item) => (
+                  <span
+                    key={item}
+                    className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold text-blue-100 backdrop-blur"
+                  >
+                    ✓ {item}
+                  </span>
+                ))}
               </div>
             </div>
 
-            <div className="rounded-[2rem] border border-white/20 bg-white p-6 text-slate-950 shadow-2xl sm:p-8">
-              <div className="rounded-3xl bg-slate-100 p-4">
-                <div className="flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-full bg-slate-300" />
-                  <span className="h-3 w-3 rounded-full bg-slate-300" />
-                  <span className="h-3 w-3 rounded-full bg-slate-300" />
-
-                  <div className="ml-2 flex-1 rounded-full bg-white px-4 py-2 text-xs font-bold text-slate-500">
-                    your-business-preview.co.uk
+            <div className="rounded-[2.25rem] border border-white/15 bg-white/10 p-6 shadow-2xl backdrop-blur sm:p-8">
+              <div className="rounded-[1.75rem] bg-white p-6 text-slate-950 shadow-xl">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-blue-900">
+                      Business overview
+                    </p>
+                    <p className="mt-2 text-2xl font-black">
+                      Everything in one place
+                    </p>
                   </div>
+                  <span
+                    aria-hidden="true"
+                    className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-2xl"
+                  >
+                    🏢
+                  </span>
                 </div>
-              </div>
 
-              <div className="mt-5 rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-6">
-                <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-blue-900">
-                  Interactive website preview
-                </p>
-
-                <h2 className="mt-4 text-3xl font-black tracking-tight text-slate-950">
-                  See your new website before you pay.
-                </h2>
-
-                <p className="mt-4 leading-7 text-slate-600">
-                  Explore your design, request changes and only move forward
-                  when you are happy with the direction.
-                </p>
-
-                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <div className="mt-6 grid gap-4 sm:grid-cols-2">
                   {[
-                    "Your colours",
-                    "Your services",
-                    "Your photographs",
-                    "Your contact details",
-                  ].map((item) => (
+                    ["Quotes", "Create and manage"],
+                    ["Invoices", "Track payments"],
+                    ["Website", "Build and maintain"],
+                    ["Customers", "Keep records"],
+                  ].map(([title, detail]) => (
                     <div
-                      key={item}
-                      className="rounded-2xl bg-white px-4 py-3 font-bold text-slate-700 shadow-sm"
+                      key={title}
+                      className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
                     >
-                      ✓ {item}
+                      <p className="font-black text-slate-950">{title}</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">
+                        {detail}
+                      </p>
                     </div>
                   ))}
                 </div>
-              </div>
 
-              <div className="mt-5 rounded-2xl bg-blue-950 px-5 py-4 text-sm leading-6 text-blue-100">
-                <strong className="block text-white">
-                  Preview generated by Beacon AI
-                </strong>
-                You are viewing an interactive preview based on the
-                information you provided. Final refinements, content updates
-                and publishing begin once your order is confirmed.
+                <div className="mt-4 rounded-2xl bg-blue-950 p-5 text-white">
+                  <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-amber-200">
+                    Beacon AI Assistant
+                  </p>
+                  <p className="mt-2 font-bold">
+                    “Create a professional quote, reply to a customer or improve
+                    my website.”
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
         <section
-          className="px-6 py-20"
-          aria-labelledby="website-process"
+          className="border-b border-slate-200 bg-white px-6 py-10"
+          aria-label="Beacon Business platform summary"
+        >
+          <div className="mx-auto grid max-w-7xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              ["One dashboard", "Manage your day-to-day business tools"],
+              ["Consistent branding", "Use the same details across documents"],
+              ["Practical AI", "Support focused on real business tasks"],
+              ["Built to grow", "New modules can be added over time"],
+            ].map(([title, description]) => (
+              <div key={title} className="rounded-2xl bg-slate-50 p-5">
+                <p className="font-black text-slate-950">{title}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section
+          className="px-6 py-20 sm:py-24"
+          aria-labelledby="business-modules"
         >
           <div className="mx-auto max-w-7xl">
             <div className="mx-auto max-w-3xl text-center">
               <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-blue-900">
-                Website Preview & Build
+                Core modules
               </p>
-
               <h2
-                id="website-process"
+                id="business-modules"
                 className="mt-4 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl"
               >
-                From business details to a professional website.
+                More than a website membership.
               </h2>
-
               <p className="mt-5 text-lg leading-8 text-slate-600">
-                Beacon makes the early design process faster and clearer while
-                keeping the final build personal, professional and carefully
-                reviewed.
+                Beacon Business supports the work that happens before, during
+                and after every customer job—from your first quote through to
+                invoicing, records and future growth.
               </p>
             </div>
 
-            <div className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {websiteProcess.map((item) => (
+            <div className="mt-14 grid gap-7 md:grid-cols-2 xl:grid-cols-4">
+              {coreModules.map((module) => (
                 <article
-                  key={item.step}
-                  className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-lg"
+                  key={module.title}
+                  className="flex h-full flex-col rounded-[2rem] border border-slate-200 bg-white p-7 shadow-xl transition hover:-translate-y-1 hover:border-blue-200"
                 >
-                  <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-950 font-black text-white">
-                    {item.step}
+                  <span
+                    aria-hidden="true"
+                    className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 text-3xl"
+                  >
+                    {module.icon}
                   </span>
 
-                  <h3 className="mt-5 text-2xl font-black tracking-tight text-slate-950">
-                    {item.title}
+                  <h3 className="mt-6 text-2xl font-black tracking-tight text-slate-950">
+                    {module.title}
                   </h3>
 
-                  <p className="mt-3 leading-7 text-slate-600">
-                    {item.description}
+                  <p className="mt-4 leading-7 text-slate-600">
+                    {module.description}
                   </p>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
 
-        <section
-          id="business-tools"
-          className="border-y border-slate-200 bg-white px-6 py-20"
-          aria-labelledby="business-tools-title"
-        >
-          <div className="mx-auto max-w-7xl">
-            <div className="max-w-3xl">
-              <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-blue-900">
-                One Business Platform
-              </p>
-
-              <h2
-                id="business-tools-title"
-                className="mt-4 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl"
-              >
-                Practical tools built around real business needs.
-              </h2>
-
-              <p className="mt-5 text-lg leading-8 text-slate-600">
-                Start with your website, then add the tools that help you save
-                time, look more professional and understand your growth.
-              </p>
-            </div>
-
-            <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-              {businessTools.map((tool) => (
-                <article
-                  key={tool.title}
-                  className="flex h-full flex-col rounded-[2rem] border border-slate-200 bg-slate-50 p-6 transition hover:-translate-y-1 hover:border-blue-200 hover:bg-white hover:shadow-xl"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <span aria-hidden="true" className="text-4xl">
-                      {tool.icon}
-                    </span>
-
-                    <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-blue-900">
-                      {tool.status}
-                    </span>
+                  <div className="mt-6 space-y-3">
+                    {module.features.map((feature) => (
+                      <div
+                        key={feature}
+                        className="flex items-start gap-3 text-sm font-semibold leading-6 text-slate-700"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-black text-emerald-800"
+                        >
+                          ✓
+                        </span>
+                        <span>{feature}</span>
+                      </div>
+                    ))}
                   </div>
-
-                  <h3 className="mt-5 text-xl font-black tracking-tight text-slate-950">
-                    {tool.title}
-                  </h3>
-
-                  <p className="mt-3 flex-1 leading-7 text-slate-600">
-                    {tool.description}
-                  </p>
                 </article>
               ))}
             </div>
           </div>
         </section>
 
+        <section className="bg-slate-950 px-6 py-20 text-white sm:py-24">
+          <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+            <div>
+              <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-amber-300">
+                One connected system
+              </p>
+              <h2 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl">
+                Enter your business details once. Use them everywhere.
+              </h2>
+              <p className="mt-6 text-lg leading-8 text-slate-300">
+                Your brand kit, contact details and customer records are
+                designed to connect across quotes, invoices, templates and your
+                website. That means less repeated work and a more consistent
+                business identity.
+              </p>
+
+              <Link
+                href="/business/dashboard"
+                className="mt-8 inline-flex rounded-2xl bg-white px-7 py-4 font-extrabold text-blue-950 transition hover:bg-blue-50"
+              >
+                Open Business Dashboard
+              </Link>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[
+                ["1", "Store your brand and business details"],
+                ["2", "Create or select a customer"],
+                ["3", "Build a quote using products and services"],
+                ["4", "Convert approved work into an invoice"],
+                ["5", "Track progress from the dashboard"],
+                ["6", "Reuse templates across future jobs"],
+              ].map(([number, text]) => (
+                <div
+                  key={number}
+                  className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6"
+                >
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-amber-300 font-black text-blue-950">
+                    {number}
+                  </span>
+                  <p className="mt-4 font-bold leading-7 text-white">{text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section
-          className="px-6 py-20"
-          aria-labelledby="website-packages"
+          className="px-6 py-20 sm:py-24"
+          aria-labelledby="business-memberships"
         >
           <div className="mx-auto max-w-7xl">
             <div className="mx-auto max-w-3xl text-center">
               <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-blue-900">
-                Website Packages
+                Memberships
               </p>
-
               <h2
-                id="website-packages"
+                id="business-memberships"
                 className="mt-4 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl"
               >
-                Start at the right level and grow when you are ready.
+                Choose the support your business needs.
               </h2>
-
               <p className="mt-5 text-lg leading-8 text-slate-600">
-                Every package gives your business a professional foundation.
-                Higher packages add more content, tools and functionality
-                without forcing you to rebuild from the beginning.
+                Both plans are designed around the complete Beacon Business
+                platform—not only website maintenance.
               </p>
             </div>
 
-            <div className="mt-14 grid gap-8 lg:grid-cols-3">
-              {websitePackages.map((websitePackage) => (
-                <article
-                  key={websitePackage.name}
-                  className={`relative flex h-full flex-col rounded-[2rem] border p-8 shadow-xl ${
-                    websitePackage.featured
-                      ? "border-blue-900 bg-blue-950 text-white"
-                      : "border-slate-200 bg-white text-slate-950"
-                  }`}
+            <div className="mx-auto mt-14 grid max-w-5xl gap-8 lg:grid-cols-2">
+              <article className="flex h-full flex-col rounded-[2rem] border border-slate-200 bg-white p-8 shadow-xl sm:p-10">
+                <p className="text-sm font-extrabold uppercase tracking-[0.25em] text-blue-900">
+                  Beacon Business
+                </p>
+                <div className="mt-5 flex items-end gap-2">
+                  <span className="text-5xl font-black tracking-tight text-slate-950">
+                    £19.99
+                  </span>
+                  <span className="pb-1 font-bold text-slate-500">/month</span>
+                </div>
+                <p className="mt-5 text-lg leading-8 text-slate-600">
+                  Practical tools for startups, sole traders and growing small
+                  businesses.
+                </p>
+
+                <div className="mt-8 space-y-3">
+                  {includedFeatures.map((feature) => (
+                    <div
+                      key={feature}
+                      className="flex items-start gap-3 font-semibold leading-7 text-slate-700"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-black text-emerald-800"
+                      >
+                        ✓
+                      </span>
+                      <span>{feature}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <Link
+                  href="/business/membership"
+                  className="mt-10 inline-flex justify-center rounded-2xl bg-blue-950 px-7 py-4 font-extrabold text-white transition hover:bg-blue-900"
                 >
-                  {websitePackage.featured ? (
-                    <span className="absolute right-6 top-6 rounded-full bg-white px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-blue-950">
-                      Best value
+                  Start 14-day free trial
+                </Link>
+              </article>
+
+              <article className="relative flex h-full flex-col overflow-hidden rounded-[2rem] border border-amber-300 bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-950 p-8 text-white shadow-2xl sm:p-10">
+                <div
+                  aria-hidden="true"
+                  className="absolute -right-16 -top-20 h-56 w-56 rounded-full bg-amber-300/20 blur-3xl"
+                />
+
+                <div className="relative">
+                  <span className="inline-flex rounded-full bg-amber-300 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.2em] text-blue-950">
+                    Advanced growth
+                  </span>
+
+                  <p className="mt-5 text-sm font-extrabold uppercase tracking-[0.25em] text-amber-200">
+                    Beacon Business Pro
+                  </p>
+                  <div className="mt-5 flex items-end gap-2">
+                    <span className="text-5xl font-black tracking-tight">
+                      £29.99
                     </span>
-                  ) : null}
-
-                  <p
-                    className={`text-sm font-extrabold uppercase tracking-[0.22em] ${
-                      websitePackage.featured
-                        ? "text-blue-200"
-                        : "text-blue-900"
-                    }`}
-                  >
-                    {websitePackage.name}
+                    <span className="pb-1 font-bold text-blue-200">/month</span>
+                  </div>
+                  <p className="mt-5 text-lg leading-8 text-blue-100">
+                    Advanced tools, priority support and growth features for
+                    businesses ready to go further.
                   </p>
 
-                  <p className="mt-4 text-4xl font-black tracking-tight">
-                    {websitePackage.price}
-                  </p>
-
-                  <p
-                    className={`mt-4 leading-7 ${
-                      websitePackage.featured
-                        ? "text-blue-100"
-                        : "text-slate-600"
-                    }`}
-                  >
-                    {websitePackage.description}
-                  </p>
-
-                  <div className="mt-7 space-y-3">
-                    {websitePackage.features.map((feature) => (
+                  <div className="mt-8 space-y-3">
+                    {proFeatures.map((feature) => (
                       <div
                         key={feature}
-                        className={`rounded-2xl px-4 py-3 font-semibold ${
-                          websitePackage.featured
-                            ? "bg-white/10 text-white"
-                            : "bg-slate-50 text-slate-700"
-                        }`}
+                        className="flex items-start gap-3 font-semibold leading-7 text-blue-50"
                       >
-                        ✓ {feature}
+                        <span
+                          aria-hidden="true"
+                          className="mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-300 text-xs font-black text-blue-950"
+                        >
+                          ✓
+                        </span>
+                        <span>{feature}</span>
                       </div>
                     ))}
                   </div>
 
                   <Link
-                    href="/business/website"
-                    className={`mt-8 inline-flex items-center justify-center rounded-2xl px-6 py-4 font-extrabold transition ${
-                      websitePackage.featured
-                        ? "bg-white text-blue-950 hover:bg-blue-50"
-                        : "bg-blue-950 text-white hover:bg-blue-900"
-                    }`}
+                    href="/business/membership"
+                    className="mt-10 inline-flex w-full justify-center rounded-2xl bg-amber-300 px-7 py-4 font-extrabold text-blue-950 transition hover:bg-amber-200"
                   >
-                    Start my website
+                    Start Pro free trial
                   </Link>
-                </article>
-              ))}
+                </div>
+              </article>
             </div>
 
-            <p className="mt-8 text-center text-sm leading-6 text-slate-500">
-              Final scope is confirmed before payment. Advanced or bespoke
-              requirements may affect the final price.
+            <p className="mt-8 text-center text-sm font-semibold leading-6 text-slate-500">
+              Trial eligibility and billing are confirmed securely during
+              checkout. Membership can be managed through the billing portal.
             </p>
           </div>
         </section>
 
-        <section
-          className="bg-blue-950 px-6 py-20 text-white"
-          aria-labelledby="website-upgrades"
-        >
-          <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1fr_0.9fr] lg:items-center">
-            <div>
-              <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-blue-200">
-                Fair Upgrade Pricing
-              </p>
-
-              <h2
-                id="website-upgrades"
-                className="mt-4 text-4xl font-black tracking-tight sm:text-5xl"
-              >
-                You never pay for the same website twice.
-              </h2>
-
-              <p className="mt-6 max-w-3xl text-lg leading-8 text-blue-100">
-                Upgrading adds the elements of the higher package to your
-                existing Beacon website. It is not treated as a redesign or a
-                completely new build.
-              </p>
-
-              <div className="mt-8 rounded-[2rem] border border-white/15 bg-white/10 p-6 backdrop-blur">
-                <p className="font-extrabold text-white">
-                  Starter to Business example
+        <section className="border-y border-slate-200 bg-white px-6 py-20">
+          <div className="mx-auto max-w-7xl">
+            <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+              <div>
+                <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-blue-900">
+                  Built to keep growing
                 </p>
-
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl bg-white/10 p-4">
-                    <p className="text-sm text-blue-200">Starter Website</p>
-                    <p className="mt-1 text-2xl font-black">£150</p>
-                  </div>
-
-                  <div className="rounded-2xl bg-white/10 p-4">
-                    <p className="text-sm text-blue-200">Business Website</p>
-                    <p className="mt-1 text-2xl font-black">£350</p>
-                  </div>
-                </div>
-
-                <div className="mt-5 space-y-2 text-blue-100">
-                  <p>Package difference: £200</p>
-                  <p>Existing-customer discount: £20</p>
-                  <p className="pt-2 text-2xl font-black text-white">
-                    Upgrade price: £180
-                  </p>
-                </div>
+                <h2 className="mt-4 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">
+                  Future modules fit into the same platform.
+                </h2>
+                <p className="mt-6 text-lg leading-8 text-slate-600">
+                  Beacon Business is structured so future tools can be added
+                  without turning your account into a collection of unrelated
+                  products or separate subscriptions.
+                </p>
               </div>
-            </div>
 
-            <div>
-              <div className="rounded-[2rem] bg-white p-8 text-slate-950 shadow-2xl">
-                <p className="text-sm font-extrabold uppercase tracking-[0.22em] text-blue-900">
-                  Flexible Modules
-                </p>
-
-                <h3 className="mt-4 text-3xl font-black tracking-tight">
-                  Add one feature without changing package.
-                </h3>
-
-                <p className="mt-4 leading-7 text-slate-600">
-                  Individual modules give businesses flexibility. Buying
-                  several modules separately will cost slightly more than the
-                  equivalent full package upgrade, keeping the package the best
-                  overall value.
-                </p>
-
-                <div className="mt-7 space-y-4">
-                  {modules.map((module) => (
-                    <div
-                      key={module.name}
-                      className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <h4 className="font-black text-slate-950">
-                            {module.name}
-                          </h4>
-
-                          <p className="mt-2 text-sm leading-6 text-slate-600">
-                            {module.description}
-                          </p>
-                        </div>
-
-                        <span className="shrink-0 rounded-full bg-blue-100 px-3 py-1 font-extrabold text-blue-900">
-                          {module.price}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <p className="mt-6 rounded-2xl bg-blue-50 px-5 py-4 text-sm font-semibold leading-6 text-blue-950">
-                  Need several modules? Beacon will show when a package upgrade
-                  offers better value.
-                </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {futureModules.map((module) => (
+                  <div
+                    key={module}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 font-bold text-slate-800"
+                  >
+                    + {module}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </section>
 
-        <section
-          className="px-6 py-20"
-          aria-labelledby="project-progress"
-        >
-          <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-            <div>
-              <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-blue-900">
-                Clear Progress
-              </p>
-
-              <h2
-                id="project-progress"
-                className="mt-4 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl"
-              >
-                Follow your website from preview to launch.
-              </h2>
-
-              <p className="mt-5 text-lg leading-8 text-slate-600">
-                Every customer can see what has been completed, what is
-                happening now and what comes next.
-              </p>
-
-              <p className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 px-5 py-4 font-bold text-blue-950">
-                Estimated completion after payment: 2–4 weeks.
-              </p>
-            </div>
-
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-2xl sm:p-9">
-              <div className="space-y-4">
-                {progressSteps.map((step, index) => {
-                  const completed = index < 2;
-                  const current = index === 2;
-
-                  return (
-                    <div
-                      key={step}
-                      className={`flex items-center gap-4 rounded-2xl border px-5 py-4 ${
-                        completed
-                          ? "border-emerald-200 bg-emerald-50"
-                          : current
-                            ? "border-blue-300 bg-blue-50"
-                            : "border-slate-200 bg-slate-50"
-                      }`}
-                    >
-                      <span
-                        className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-black ${
-                          completed
-                            ? "bg-emerald-600 text-white"
-                            : current
-                              ? "bg-blue-900 text-white"
-                              : "bg-slate-200 text-slate-500"
-                        }`}
-                      >
-                        {completed ? "✓" : index + 1}
-                      </span>
-
-                      <div>
-                        <p className="font-black text-slate-950">{step}</p>
-
-                        {current ? (
-                          <p className="mt-1 text-sm font-semibold text-blue-800">
-                            Current stage
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="px-6 pb-24">
-          <div className="mx-auto max-w-5xl rounded-[2rem] bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-950 px-7 py-14 text-center text-white shadow-2xl sm:px-12">
-            <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-blue-200">
-              Start with confidence
+        <section className="px-6 py-20 sm:py-24">
+          <div className="mx-auto max-w-5xl overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-950 p-8 text-center text-white shadow-2xl sm:p-12">
+            <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-amber-200">
+              Start with Beacon Business
             </p>
-
-            <h2 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl">
-              Show us your business. We will show you its potential.
+            <h2 className="mx-auto mt-4 max-w-3xl text-4xl font-black tracking-tight sm:text-5xl">
+              Give your business the tools to look professional and stay
+              organised.
             </h2>
-
-            <p className="mx-auto mt-5 max-w-3xl text-lg leading-8 text-blue-100">
-              Create your website brief and let Beacon turn it into an
-              interactive preview before you decide to move forward.
+            <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-blue-100">
+              Build your website, prepare quotes, manage invoices and keep your
+              business information together in one trusted place.
             </p>
 
-            <Link
-              href="/business/website"
-              className="mt-8 inline-flex rounded-2xl bg-white px-8 py-4 text-lg font-extrabold text-blue-950 shadow-xl transition hover:-translate-y-0.5 hover:bg-blue-50"
-            >
-              Create my website preview
-            </Link>
-
-            <p className="mt-6 text-sm leading-6 text-blue-200">
-              Powered by Beacon Business
-            </p>
+            <div className="mt-9 flex flex-col justify-center gap-4 sm:flex-row">
+              <Link
+                href="/business/membership"
+                className="inline-flex items-center justify-center rounded-2xl bg-amber-300 px-8 py-4 text-lg font-extrabold text-blue-950 transition hover:bg-amber-200"
+              >
+                Explore Beacon Business
+              </Link>
+              <Link
+                href="/business/website-builder"
+                className="inline-flex items-center justify-center rounded-2xl border border-white/25 bg-white/10 px-8 py-4 text-lg font-extrabold text-white transition hover:bg-white/20"
+              >
+                Preview a website
+              </Link>
+            </div>
           </div>
         </section>
 
