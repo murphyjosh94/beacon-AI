@@ -34,10 +34,7 @@ const businessNavigation = [
     label: "Memberships",
     href: "/business/memberships",
   },
-  {
-    label: "Account",
-     href: "/business/dashboard",
-  },
+  
 ] as const;
 
 function readUserRole(user: unknown): string | null {
