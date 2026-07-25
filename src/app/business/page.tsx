@@ -77,18 +77,6 @@ const coreModules = [
     ],
   },
   {
-    icon: "📄",
-    title: "Business Templates",
-    description:
-      "Start with practical business documents instead of a blank page and customise each template around your business.",
-    features: [
-      "Terms and policy templates",
-      "Contracts and estimate templates",
-      "Risk assessments and method statements",
-      "Email and marketing templates",
-    ],
-  },
-  {
     icon: "👥",
     title: "Customer Manager",
     description:
@@ -135,6 +123,45 @@ const coreModules = [
       "Quote progress",
       "Website and membership status",
     ],
+  },
+];
+
+const templateCategories = [
+  {
+    icon: "📋",
+    title: "Quotes and estimates",
+    description:
+      "Create polished, branded quote and estimate documents without starting from scratch.",
+  },
+  {
+    icon: "🧾",
+    title: "Invoices and credit notes",
+    description:
+      "Prepare professional payment documents using your saved business details.",
+  },
+  {
+    icon: "⚖️",
+    title: "Policies and terms",
+    description:
+      "Build practical starting points for privacy, cookies, refunds and terms.",
+  },
+  {
+    icon: "🦺",
+    title: "Trade documents",
+    description:
+      "Create risk assessments, method statements, RAMS and completion certificates.",
+  },
+  {
+    icon: "✉️",
+    title: "Customer messages",
+    description:
+      "Generate professional welcome emails, reminders, follow-ups and confirmations.",
+  },
+  {
+    icon: "📣",
+    title: "Marketing content",
+    description:
+      "Prepare social posts, Google Business updates and promotional campaigns.",
   },
 ];
 
@@ -261,7 +288,7 @@ export default function BusinessPage() {
                   href="/business/memberships"
                   className="inline-flex items-center justify-center rounded-2xl bg-amber-300 px-8 py-4 text-lg font-extrabold text-blue-950 shadow-xl transition hover:-translate-y-0.5 hover:bg-amber-200"
                 >
-                  Explore memberships
+                  Start Beacon Business
                   <span aria-hidden="true" className="ml-2">
                     →
                   </span>
@@ -271,7 +298,7 @@ export default function BusinessPage() {
                   href="/business/website"
                   className="inline-flex items-center justify-center rounded-2xl border border-white/30 bg-white/10 px-8 py-4 text-lg font-extrabold text-white backdrop-blur transition hover:bg-white/20"
                 >
-                  Build a website
+                  Preview Your Website
                 </Link>
               </div>
 
@@ -279,7 +306,8 @@ export default function BusinessPage() {
                 {[
                   "14-day free trial",
                   "Built for UK businesses",
-                  "Cancel through secure billing",
+                  "Secure billing",
+                  "Cancel anytime",
                 ].map((item) => (
                   <span
                     key={item}
@@ -429,6 +457,51 @@ export default function BusinessPage() {
           </div>
         </section>
 
+        <section className="bg-white px-6 py-20 sm:py-24">
+          <div className="mx-auto max-w-7xl">
+            <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
+              <div>
+                <p className="text-sm font-extrabold uppercase tracking-[0.3em] text-blue-900">
+                  Professional templates
+                </p>
+                <h2 className="mt-4 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">
+                  Create business documents without starting from a blank page.
+                </h2>
+                <p className="mt-6 text-lg leading-8 text-slate-600">
+                  Beacon Business Templates use your saved brand details to
+                  create consistent, professional documents for everyday work.
+                  Each template can be edited and improved with practical AI.
+                </p>
+                <Link
+                  href="/business/templates"
+                  className="mt-8 inline-flex rounded-2xl bg-blue-950 px-7 py-4 font-extrabold text-white transition hover:bg-blue-900"
+                >
+                  Explore Templates
+                </Link>
+              </div>
+
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {templateCategories.map((category) => (
+                  <article
+                    key={category.title}
+                    className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-6 transition hover:-translate-y-1 hover:border-blue-200 hover:bg-white hover:shadow-xl"
+                  >
+                    <span aria-hidden="true" className="text-3xl">
+                      {category.icon}
+                    </span>
+                    <h3 className="mt-4 text-xl font-black tracking-tight text-slate-950">
+                      {category.title}
+                    </h3>
+                    <p className="mt-3 leading-7 text-slate-600">
+                      {category.description}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="bg-slate-950 px-6 py-20 text-white sm:py-24">
           <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div>
@@ -534,8 +607,11 @@ export default function BusinessPage() {
                   href="/business/memberships"
                   className="mt-10 inline-flex justify-center rounded-2xl bg-blue-950 px-7 py-4 font-extrabold text-white transition hover:bg-blue-900"
                 >
-                  Start 14-day free trial
+                  Start Beacon Business
                 </Link>
+                <p className="mt-3 text-center text-sm font-bold text-slate-500">
+                  14-day free trial included
+                </p>
               </article>
 
               <article className="relative flex h-full flex-col overflow-hidden rounded-[2rem] border border-amber-300 bg-gradient-to-br from-blue-950 via-blue-900 to-indigo-950 p-8 text-white shadow-2xl sm:p-10">
@@ -584,16 +660,37 @@ export default function BusinessPage() {
                     href="/business/memberships"
                     className="mt-10 inline-flex w-full justify-center rounded-2xl bg-amber-300 px-7 py-4 font-extrabold text-blue-950 transition hover:bg-amber-200"
                   >
-                    Start Pro free trial
+                    Upgrade to Business Pro
                   </Link>
+                  <p className="mt-3 text-center text-sm font-bold text-blue-100">
+                    14-day free trial included
+                  </p>
                 </div>
               </article>
             </div>
 
-            <p className="mt-8 text-center text-sm font-semibold leading-6 text-slate-500">
-              Trial eligibility and billing are confirmed securely during
-              checkout. Membership can be managed through the billing portal.
+            <p className="mx-auto mt-8 max-w-4xl text-center text-sm font-semibold leading-6 text-slate-500">
+              Every Beacon Business membership includes a 14-day free trial.
+              Secure billing is powered by Stripe, and you can manage or cancel
+              your membership through your billing portal.
             </p>
+
+            <div className="mx-auto mt-8 grid max-w-5xl gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              {[
+                "14-day free trial",
+                "Secure billing with Stripe",
+                "Cancel anytime",
+                "Built for UK businesses",
+                "No hidden fees",
+              ].map((item) => (
+                <div
+                  key={item}
+                  className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-center text-sm font-extrabold text-slate-700 shadow-sm"
+                >
+                  ✓ {item}
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -647,13 +744,13 @@ export default function BusinessPage() {
                 href="/business/memberships"
                 className="inline-flex items-center justify-center rounded-2xl bg-amber-300 px-8 py-4 text-lg font-extrabold text-blue-950 transition hover:bg-amber-200"
               >
-                Explore Beacon Business
+                Start Beacon Business
               </Link>
               <Link
                 href="/business/website"
                 className="inline-flex items-center justify-center rounded-2xl border border-white/25 bg-white/10 px-8 py-4 text-lg font-extrabold text-white transition hover:bg-white/20"
               >
-                Preview a website
+                Preview Your Website
               </Link>
             </div>
           </div>
