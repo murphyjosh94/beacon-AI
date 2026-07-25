@@ -128,7 +128,8 @@ const dashboardModules: DashboardModule[] = [
     description:
       "Create invoices, manage due dates and track payment status.",
     icon: "🧾",
-    status: "coming_soon",
+    status: "available",
+    href: "/business/invoices",
   },
   {
     title: "Customers",
@@ -817,15 +818,23 @@ export default function BusinessDashboard() {
               </p>
             </Link>
 
-            <article className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <Link
+              href="/business/invoices"
+              className="group rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-xl"
+            >
               <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-blue-900">
                 Invoices
               </p>
-              <p className="mt-3 text-3xl font-black text-slate-950">0</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                Invoice Builder is coming soon.
+              <p className="mt-3 text-3xl font-black text-slate-950">
+                Open
               </p>
-            </article>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Create invoices and track payment status.
+              </p>
+              <p className="mt-4 font-black text-blue-950">
+                Open Beacon Invoices →
+              </p>
+            </Link>
 
             <article className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
               <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-blue-900">
