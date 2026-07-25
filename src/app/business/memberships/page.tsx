@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 
+import Navbar from "@/components/Navbar";
+
 type MembershipPlanId = "business" | "business_pro";
 
 type MembershipPlan = {
@@ -264,6 +266,7 @@ export default function BusinessMembershipsPage() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
+      <Navbar />
       <section className="relative overflow-hidden border-b border-white/10">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.28),transparent_38%),radial-gradient(circle_at_85%_15%,rgba(245,158,11,0.18),transparent_32%)]" />
 
