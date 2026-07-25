@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import BeaconFooter from "@/components/BeaconFooter";
@@ -27,7 +30,88 @@ const plusFeatures = [
   "Early access to new Beacon tools",
 ];
 
+type BillingInterval = "monthly" | "annual";
+
+type CheckoutResponse = {
+  checkoutUrl?: string;
+  error?: string;
+};
+
+const pricing = {
+  monthly: {
+    displayPrice: "£20",
+    suffix: "/month",
+    supportingText: "Flexible monthly billing",
+    buttonLabel: "Upgrade to Beacon+ Monthly",
+  },
+  annual: {
+    displayPrice: "£219.99",
+    suffix: "/year",
+    supportingText: "Equivalent to £18.33 per month",
+    savingText: "Save one month (£20)",
+    buttonLabel: "Upgrade to Beacon+ Annual",
+  },
+} as const;
+
 export default function MembershipPage() {
+  const [billingInterval, setBillingInterval] =
+    useState<BillingInterval>("monthly");
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
+
+  const selectedPlan = pricing[billingInterval];
+  const isAnnual = billingInterval === "annual";
+
+  async function startBeaconPlusCheckout() {
+    if (isCheckingOut) {
+      return;
+    }
+
+    setIsCheckingOut(true);
+    setCheckoutError("");
+
+    try {
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          purchaseType: "subscription",
+          billingInterval,
+        }),
+      });
+
+      const data = (await response.json()) as CheckoutResponse;
+
+      if (response.status === 401) {
+        window.location.href = "/signin";
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Beacon could not start checkout. Please try again."
+        );
+      }
+
+      if (!data.checkoutUrl) {
+        throw new Error(
+          "Stripe did not return a secure checkout link. Please try again."
+        );
+      }
+
+      window.location.href = data.checkoutUrl;
+    } catch (error) {
+      setCheckoutError(
+        error instanceof Error
+          ? error.message
+          : "Beacon could not start checkout. Please try again."
+      );
+      setIsCheckingOut(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-slate-50">
       <Navbar />
@@ -108,14 +192,78 @@ export default function MembershipPage() {
                 </span>
               </div>
 
-              <div className="mt-5 flex items-end gap-2">
-                <p className="text-5xl font-black">£4.99</p>
-                <p className="pb-1 font-semibold text-blue-200">/month</p>
+              <div className="mt-7 grid grid-cols-2 rounded-2xl bg-white/10 p-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBillingInterval("monthly");
+                    setCheckoutError("");
+                  }}
+                  aria-pressed={billingInterval === "monthly"}
+                  className={`rounded-xl px-4 py-3 text-sm font-extrabold transition ${
+                    billingInterval === "monthly"
+                      ? "bg-white text-blue-950 shadow-lg"
+                      : "text-blue-100 hover:bg-white/10"
+                  }`}
+                >
+                  Monthly
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBillingInterval("annual");
+                    setCheckoutError("");
+                  }}
+                  aria-pressed={billingInterval === "annual"}
+                  className={`rounded-xl px-4 py-3 text-sm font-extrabold transition ${
+                    billingInterval === "annual"
+                      ? "bg-white text-blue-950 shadow-lg"
+                      : "text-blue-100 hover:bg-white/10"
+                  }`}
+                >
+                  Annual
+                </button>
               </div>
 
-              <p className="mt-3 text-sm font-bold text-blue-200">
-                Billed monthly. Cancel anytime. No setup fee.
-              </p>
+              <div className="mt-6">
+                <div className="flex flex-wrap items-end gap-2">
+                  <p className="text-5xl font-black">
+                    {selectedPlan.displayPrice}
+                  </p>
+                  <p className="pb-1 font-semibold text-blue-200">
+                    {selectedPlan.suffix}
+                  </p>
+                </div>
+
+                {isAnnual ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-sm font-extrabold text-emerald-300">
+                      {pricing.annual.savingText}
+                    </span>
+
+                    <span className="text-sm font-semibold text-blue-200">
+                      {pricing.annual.supportingText}
+                    </span>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm font-bold text-blue-200">
+                    {pricing.monthly.supportingText}
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
+                <p className="font-extrabold text-white">
+                  Built for people who rely on Beacon every day.
+                </p>
+
+                <p className="mt-2 text-sm leading-6 text-blue-100">
+                  Unlimited AI research, persistent profiles, saved
+                  comparisons, price tracking, alerts and premium tools in one
+                  subscription.
+                </p>
+              </div>
 
               <p className="mt-5 leading-7 text-blue-100">
                 Beacon+ remembers your preferences, plans around your household
@@ -137,12 +285,29 @@ export default function MembershipPage() {
                 ))}
               </ul>
 
-              <Link
-                href="/signin"
-                className="mt-10 inline-flex w-full items-center justify-center rounded-2xl bg-white px-6 py-4 text-lg font-extrabold text-blue-950 shadow-xl transition hover:-translate-y-0.5 hover:bg-blue-50"
+              {checkoutError ? (
+                <div
+                  role="alert"
+                  className="mt-8 rounded-2xl border border-red-300/30 bg-red-400/10 px-4 py-3 text-sm font-bold text-red-100"
+                >
+                  {checkoutError}
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={startBeaconPlusCheckout}
+                disabled={isCheckingOut}
+                className="mt-10 inline-flex w-full items-center justify-center rounded-2xl bg-white px-6 py-4 text-lg font-extrabold text-blue-950 shadow-xl transition hover:-translate-y-0.5 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0"
               >
-                Upgrade to Beacon+
-              </Link>
+                {isCheckingOut
+                  ? "Opening secure checkout..."
+                  : selectedPlan.buttonLabel}
+              </button>
+
+              <p className="mt-4 text-center text-sm font-semibold text-blue-200">
+                Secure checkout powered by Stripe. Cancel anytime.
+              </p>
             </div>
           </article>
         </div>
