@@ -43,6 +43,10 @@ const businessNavigation = [
     href: "/business/templates",
   },
   {
+    label: "Analytics",
+    href: "/business/analytics",
+  },
+  {
     label: "Memberships",
     href: "/business/memberships",
   },
@@ -181,117 +185,123 @@ export default function Navbar() {
       </div>
 
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 sm:gap-5 sm:px-6 sm:py-4">
-          <Link
-            href={isBusinessRoute ? "/business" : "/"}
-            aria-label={isBusinessRoute ? "Beacon Business home" : "Beacon home"}
-            className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4"
-          >
-            <div className="relative h-12 w-12 shrink-0 sm:h-16 sm:w-16 lg:h-20 lg:w-20">
-              <Image
-                src="/images/logo.svg"
-                alt="Beacon lighthouse logo"
-                fill
-                priority
-                className="object-contain"
-                sizes="(max-width: 640px) 48px, (max-width: 1024px) 64px, 80px"
-              />
+        <div className="w-full px-3 py-3 sm:px-5 sm:py-4 lg:px-6 xl:px-8">
+          <div className="flex w-full items-center gap-3 sm:gap-4">
+            <Link
+              href={isBusinessRoute ? "/business" : "/"}
+              aria-label={
+                isBusinessRoute
+                  ? "Beacon Business home"
+                  : "Beacon home"
+              }
+              className="flex shrink-0 items-center gap-2 sm:gap-3"
+            >
+              <div className="relative h-12 w-12 shrink-0 sm:h-16 sm:w-16 lg:h-20 lg:w-20">
+                <Image
+                  src="/images/logo.svg"
+                  alt="Beacon lighthouse logo"
+                  fill
+                  priority
+                  className="object-contain"
+                  sizes="(max-width: 640px) 48px, (max-width: 1024px) 64px, 80px"
+                />
+              </div>
+
+              <div className="hidden min-w-0 2xl:block">
+                <p className="truncate text-2xl font-black tracking-tight text-slate-950">
+                  Beacon
+                </p>
+
+                <p className="truncate text-sm font-semibold text-slate-500">
+                  {strapline}
+                </p>
+              </div>
+            </Link>
+
+            <div className="hidden shrink-0 xl:block">
+              <ModeToggle isBusinessRoute={isBusinessRoute} />
             </div>
 
-            <div className="min-w-0">
-              <p className="truncate text-xl font-black tracking-tight text-slate-950 min-[390px]:text-2xl lg:text-3xl">
-                Beacon
-              </p>
+            <nav
+              aria-label={
+                isBusinessRoute
+                  ? "Beacon Business navigation"
+                  : "Beacon personal navigation"
+              }
+              className="hidden min-w-0 flex-1 items-center justify-center gap-1 lg:flex"
+            >
+              {navigation.map((item) => {
+                const active = isActiveRoute(pathname, item.href);
 
-              <p className="hidden truncate text-sm font-semibold text-slate-500 sm:block lg:text-base">
-                {strapline}
-              </p>
-            </div>
-          </Link>
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    className={`rounded-xl px-3 py-3 text-center font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 ${
+                      active
+                        ? isBusinessRoute
+                          ? "bg-blue-950 text-white"
+                          : "bg-blue-100 text-blue-950"
+                        : "text-slate-700 hover:bg-blue-50 hover:text-blue-950"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
 
-          <div className="hidden xl:block">
-            <ModeToggle isBusinessRoute={isBusinessRoute} />
-          </div>
-
-          <nav
-            aria-label={
-              isBusinessRoute
-                ? "Beacon Business navigation"
-                : "Beacon personal navigation"
-            }
-            className="hidden items-center gap-1 lg:flex"
-          >
-            {navigation.map((item) => {
-              const active = isActiveRoute(pathname, item.href);
-
-              return (
+              {isAdmin ? (
                 <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={active ? "page" : undefined}
-                  className={`rounded-xl px-3 py-3 font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 ${
-                    active
-                      ? isBusinessRoute
-                        ? "bg-blue-950 text-white"
-                        : "bg-blue-100 text-blue-950"
-                      : "text-slate-700 hover:bg-blue-50 hover:text-blue-950"
-                  }`}
+                  href="/admin"
+                  className="rounded-xl px-3 py-3 font-extrabold text-amber-700 transition hover:bg-amber-50 hover:text-amber-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
                 >
-                  {item.label}
+                  Admin
                 </Link>
-              );
-            })}
+              ) : null}
+            </nav>
 
-            {isAdmin ? (
+            <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
               <Link
-                href="/admin"
-                className="rounded-xl px-3 py-3 font-extrabold text-amber-700 transition hover:bg-amber-50 hover:text-amber-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+                href={accountHref}
+                aria-disabled={isPending}
+                className={`hidden rounded-xl px-4 py-3 font-extrabold text-blue-950 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 2xl:inline-flex ${
+                  isPending ? "pointer-events-none opacity-50" : ""
+                }`}
               >
-                Admin
+                {isPending ? "Loading..." : accountLabel}
               </Link>
-            ) : null}
-          </nav>
 
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <Link
-              href={accountHref}
-              aria-disabled={isPending}
-              className={`hidden rounded-xl px-4 py-3 font-extrabold text-blue-950 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 sm:inline-flex ${
-                isPending ? "pointer-events-none opacity-50" : ""
-              }`}
-            >
-              {isPending ? "Loading..." : accountLabel}
-            </Link>
+              <Link
+                href={primaryHref}
+                aria-disabled={isPending}
+                className={`inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl px-3 py-2 text-sm font-extrabold shadow-lg transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 sm:px-5 sm:py-3 sm:text-base ${
+                  isAdmin
+                    ? "bg-amber-600 text-white hover:bg-amber-500 focus-visible:ring-amber-600"
+                    : isBusinessRoute
+                      ? "bg-amber-300 text-blue-950 hover:bg-amber-200 focus-visible:ring-amber-500"
+                      : "bg-blue-900 text-white hover:bg-blue-800 focus-visible:ring-blue-700"
+                } ${isPending ? "pointer-events-none opacity-50" : ""}`}
+              >
+                <span className="sm:hidden">
+                  {isPending
+                    ? "Account"
+                    : isAdmin
+                      ? "Admin"
+                      : isSignedIn
+                        ? isBusinessRoute
+                          ? "Business"
+                          : "Dashboard"
+                        : isBusinessRoute
+                          ? "Start"
+                          : "Beacon+"}
+                </span>
 
-            <Link
-              href={primaryHref}
-              aria-disabled={isPending}
-              className={`inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl px-3 py-2 text-sm font-extrabold shadow-lg transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 sm:px-5 sm:py-3 sm:text-base ${
-                isAdmin
-                  ? "bg-amber-600 text-white hover:bg-amber-500 focus-visible:ring-amber-600"
-                  : isBusinessRoute
-                    ? "bg-amber-300 text-blue-950 hover:bg-amber-200 focus-visible:ring-amber-500"
-                    : "bg-blue-900 text-white hover:bg-blue-800 focus-visible:ring-blue-700"
-              } ${isPending ? "pointer-events-none opacity-50" : ""}`}
-            >
-              <span className="sm:hidden">
-                {isPending
-                  ? "Account"
-                  : isAdmin
-                    ? "Admin"
-                    : isSignedIn
-                      ? isBusinessRoute
-                        ? "Business"
-                        : "Dashboard"
-                      : isBusinessRoute
-                        ? "Start"
-                        : "Beacon+"}
-              </span>
-
-              <span className="hidden sm:inline">
-                {isPending ? "Loading..." : primaryLabel}
-              </span>
-            </Link>
+                <span className="hidden sm:inline">
+                  {isPending ? "Loading..." : primaryLabel}
+                </span>
+              </Link>
+            </div>
           </div>
         </div>
 
