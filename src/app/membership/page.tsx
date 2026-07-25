@@ -109,8 +109,13 @@ export default function MembershipPage() {
               </div>
 
               <div className="mt-5 flex items-end gap-2">
-                <p className="text-5xl font-black">Coming Soon</p>
+                <p className="text-5xl font-black">£4.99</p>
+                <p className="pb-1 font-semibold text-blue-200">/month</p>
               </div>
+
+              <p className="mt-3 text-sm font-bold text-blue-200">
+                Billed monthly. Cancel anytime. No setup fee.
+              </p>
 
               <p className="mt-5 leading-7 text-blue-100">
                 Beacon+ remembers your preferences, plans around your household
@@ -136,7 +141,7 @@ export default function MembershipPage() {
                 href="/signin"
                 className="mt-10 inline-flex w-full items-center justify-center rounded-2xl bg-white px-6 py-4 text-lg font-extrabold text-blue-950 shadow-xl transition hover:-translate-y-0.5 hover:bg-blue-50"
               >
-                Join the Beacon+ Waitlist
+                Upgrade to Beacon+
               </Link>
             </div>
           </article>
