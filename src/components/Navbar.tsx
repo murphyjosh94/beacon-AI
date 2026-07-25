@@ -31,8 +31,8 @@ const businessNavigation = [
     href: "/business/dashboard",
   },
   {
-    label: "Membership",
-    href: "/business/membership",
+    label: "Memberships",
+    href: "/business/memberships",
   },
   {
     label: "Account",
