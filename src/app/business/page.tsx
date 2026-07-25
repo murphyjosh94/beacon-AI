@@ -268,7 +268,7 @@ export default function BusinessPage() {
                 </Link>
 
                 <Link
-                  href="/business/website-builder"
+                  href="/business/website"
                   className="inline-flex items-center justify-center rounded-2xl border border-white/30 bg-white/10 px-8 py-4 text-lg font-extrabold text-white backdrop-blur transition hover:bg-white/20"
                 >
                   Build a website
@@ -650,7 +650,7 @@ export default function BusinessPage() {
                 Explore Beacon Business
               </Link>
               <Link
-                href="/business/website-builder"
+                href="/business/website"
                 className="inline-flex items-center justify-center rounded-2xl border border-white/25 bg-white/10 px-8 py-4 text-lg font-extrabold text-white transition hover:bg-white/20"
               >
                 Preview a website

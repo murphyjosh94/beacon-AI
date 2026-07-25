@@ -158,8 +158,13 @@ export default function BusinessWebsitePage() {
   }, []);
 
   const hasProject = project.status !== "not_started" || project.completion > 0;
-  const primaryHref = hasProject ? "/business/project" : "/business/project";
-  const primaryLabel = hasProject ? "Continue Website Setup" : "Start Website Setup";
+  const canReview =
+    project.status === "ready" || project.status === "published";
+  const canManageDomains = project.status === "published";
+  const primaryHref = "/business/project";
+  const primaryLabel = hasProject
+    ? "Continue Website Setup"
+    : "Start Website Setup";
 
   const websiteName = useMemo(() => {
     if (project.businessName.trim()) {
@@ -205,12 +210,23 @@ export default function BusinessWebsitePage() {
             </p>
           </div>
 
-          <Link
-            className="inline-flex items-center justify-center rounded-2xl bg-blue-950 px-6 py-4 font-extrabold text-white shadow-sm transition hover:bg-blue-900"
-            href={primaryHref}
-          >
-            {primaryLabel}
-          </Link>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            {canManageDomains ? (
+              <Link
+                className="inline-flex items-center justify-center rounded-2xl border-2 border-blue-200 bg-blue-50 px-6 py-4 font-extrabold text-blue-950 transition hover:border-blue-400 hover:bg-blue-100"
+                href="/business/website/domains"
+              >
+                Manage Domains
+              </Link>
+            ) : null}
+
+            <Link
+              className="inline-flex items-center justify-center rounded-2xl bg-blue-950 px-6 py-4 font-extrabold text-white shadow-sm transition hover:bg-blue-900"
+              href={primaryHref}
+            >
+              {primaryLabel}
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -355,7 +371,7 @@ export default function BusinessWebsitePage() {
           </aside>
         </div>
 
-        <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-5">
           <Link
             className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"
             href="/business/project"
@@ -398,19 +414,13 @@ export default function BusinessWebsitePage() {
 
           <Link
             className={`group rounded-3xl border p-6 shadow-sm transition ${
-              project.status === "ready" || project.status === "published"
+              canReview
                 ? "border-slate-200 bg-white hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"
                 : "pointer-events-none border-slate-200 bg-slate-100 opacity-60"
             }`}
             href="/business/preview/review"
-            aria-disabled={
-              project.status !== "ready" && project.status !== "published"
-            }
-            tabIndex={
-              project.status === "ready" || project.status === "published"
-                ? 0
-                : -1
-            }
+            aria-disabled={!canReview}
+            tabIndex={canReview ? 0 : -1}
           >
             <Icon>✅</Icon>
             <h3 className="mt-5 text-xl font-black text-slate-950">
@@ -427,19 +437,13 @@ export default function BusinessWebsitePage() {
 
           <Link
             className={`group rounded-3xl border p-6 shadow-sm transition ${
-              project.status === "ready" || project.status === "published"
+              canReview
                 ? "border-slate-200 bg-white hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"
                 : "pointer-events-none border-slate-200 bg-slate-100 opacity-60"
             }`}
             href="/business/final-scope"
-            aria-disabled={
-              project.status !== "ready" && project.status !== "published"
-            }
-            tabIndex={
-              project.status === "ready" || project.status === "published"
-                ? 0
-                : -1
-            }
+            aria-disabled={!canReview}
+            tabIndex={canReview ? 0 : -1}
           >
             <Icon>🚀</Icon>
             <h3 className="mt-5 text-xl font-black text-slate-950">
@@ -453,23 +457,60 @@ export default function BusinessWebsitePage() {
               Publishing options →
             </p>
           </Link>
+
+          <Link
+            className={`group rounded-3xl border p-6 shadow-sm transition ${
+              canManageDomains
+                ? "border-slate-200 bg-white hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"
+                : "pointer-events-none border-slate-200 bg-slate-100 opacity-60"
+            }`}
+            href="/business/website/domains"
+            aria-disabled={!canManageDomains}
+            tabIndex={canManageDomains ? 0 : -1}
+          >
+            <Icon>🌐</Icon>
+            <h3 className="mt-5 text-xl font-black text-slate-950">
+              Manage Domains
+            </h3>
+            <p className="mt-2 leading-7 text-slate-600">
+              Create a Beacon address, connect a custom domain, verify DNS and
+              manage SSL.
+            </p>
+            <p className="mt-5 font-extrabold text-blue-800 group-hover:text-blue-950">
+              Manage domains →
+            </p>
+          </Link>
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
           <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
             <div className="flex items-start gap-4">
               <Icon>🌐</Icon>
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-extrabold uppercase tracking-[0.16em] text-slate-500">
                   Domain
                 </p>
-                <h2 className="mt-2 text-xl font-black text-slate-950">
+                <h2 className="mt-2 break-all text-xl font-black text-slate-950">
                   {project.domain || "No domain connected"}
                 </h2>
                 <p className="mt-2 leading-7 text-slate-600">
-                  Domain connection will become available after the website has
-                  been reviewed and approved.
+                  {canManageDomains
+                    ? "Manage the live website address, DNS verification, SSL and primary-domain settings."
+                    : "Domain management becomes available after the website has been published."}
                 </p>
+
+                <Link
+                  className={`mt-5 inline-flex items-center justify-center rounded-2xl border-2 px-5 py-3 font-extrabold transition ${
+                    canManageDomains
+                      ? "border-blue-200 bg-blue-50 text-blue-950 hover:border-blue-400 hover:bg-blue-100"
+                      : "pointer-events-none border-slate-200 bg-slate-100 text-slate-400"
+                  }`}
+                  href="/business/website/domains"
+                  aria-disabled={!canManageDomains}
+                  tabIndex={canManageDomains ? 0 : -1}
+                >
+                  Manage Domains
+                </Link>
               </div>
             </div>
           </section>
