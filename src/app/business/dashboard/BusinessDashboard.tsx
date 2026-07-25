@@ -110,18 +110,34 @@ const dashboardModules: DashboardModule[] = [
   {
     title: "Websites",
     description:
-      "Create, review and manage your business website from one workspace.",
+      "Create, review and manage your business websites from one workspace.",
     icon: "🌐",
     status: "available",
     href: "/business/website",
   },
   {
+    title: "Customers",
+    description:
+      "Keep customer details, notes, quotes, jobs and invoices connected.",
+    icon: "👥",
+    status: "available",
+    href: "/business/customers",
+  },
+  {
     title: "Quotes",
     description:
-      "Create professional quotations with labour, materials, discounts and VAT.",
+      "Create professional quotations and prepare them for customer approval.",
     icon: "📋",
     status: "available",
     href: "/business/quotes",
+  },
+  {
+    title: "Jobs",
+    description:
+      "Schedule work, manage progress and turn completed jobs into invoices.",
+    icon: "🛠️",
+    status: "available",
+    href: "/business/jobs",
   },
   {
     title: "Invoices",
@@ -131,13 +147,9 @@ const dashboardModules: DashboardModule[] = [
     status: "available",
     href: "/business/invoices",
   },
-  {
-    title: "Customers",
-    description:
-      "Keep customer details, notes, quotes and invoices connected.",
-    icon: "👥",
-    status: "coming_soon",
-  },
+];
+
+const comingSoonModules: DashboardModule[] = [
   {
     title: "Templates",
     description:
@@ -759,8 +771,8 @@ export default function BusinessDashboard() {
               </h1>
 
               <p className="mt-5 max-w-3xl text-lg leading-8 text-blue-100">
-                Manage your website, quotes, invoices, customers, documents,
-                brand and membership from one clear business control centre.
+                Manage your websites, customers, quotes, jobs, invoices and membership
+                from one clear business control centre.
               </p>
             </div>
 
@@ -769,7 +781,7 @@ export default function BusinessDashboard() {
                 href="/business/website"
                 className="inline-flex items-center justify-center rounded-2xl bg-white px-6 py-3 font-extrabold text-blue-950 transition hover:bg-blue-50"
               >
-                {brief ? "Manage website" : "Create website"}
+                Open Websites
               </Link>
 
               <Link
@@ -857,15 +869,38 @@ export default function BusinessDashboard() {
         <div className="mx-auto max-w-7xl">
           <div>
             <p className="text-sm font-extrabold uppercase tracking-[0.22em] text-blue-900">
-              Modules
+              Business tools
             </p>
             <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-              Everything your business needs in one place.
+              Run your business from one connected workspace.
             </h2>
+            <p className="mt-4 max-w-3xl text-lg leading-8 text-slate-600">
+              Move naturally from customer to quote, quote to job and completed
+              job to invoice without losing the details along the way.
+            </p>
           </div>
 
           <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
             {dashboardModules.map((module) => (
+              <ModuleCard hasPro={hasPro} key={module.title} module={module} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="px-6 pb-10">
+        <div className="mx-auto max-w-7xl">
+          <div>
+            <p className="text-sm font-extrabold uppercase tracking-[0.22em] text-blue-900">
+              Coming next
+            </p>
+            <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+              More tools are being added to Beacon Business.
+            </h2>
+          </div>
+
+          <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            {comingSoonModules.map((module) => (
               <ModuleCard hasPro={hasPro} key={module.title} module={module} />
             ))}
           </div>
@@ -1167,7 +1202,7 @@ export default function BusinessDashboard() {
             </span>
 
             <p className="mt-6 text-sm font-extrabold uppercase tracking-[0.3em] text-blue-900">
-              Website Module
+              Websites
             </p>
 
             <h2 className="mt-4 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">
@@ -1175,15 +1210,15 @@ export default function BusinessDashboard() {
             </h2>
 
             <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-              Your wider business workspace is ready. Start the Website Builder
-              when you are ready to create your online presence.
+              Your business workspace is ready. Open Websites when you are ready
+              to create and manage your online presence.
             </p>
 
             <Link
               href="/business/website"
               className="mt-8 inline-flex rounded-2xl bg-blue-950 px-8 py-4 text-lg font-extrabold text-white shadow-xl transition hover:-translate-y-0.5 hover:bg-blue-900"
             >
-              Open Website Builder
+              Open Websites
             </Link>
           </div>
         </section>

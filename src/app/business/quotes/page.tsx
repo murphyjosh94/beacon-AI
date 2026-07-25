@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  ChangeEvent,
+  FormEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 type QuoteStatus = "draft" | "sent" | "accepted" | "declined" | "expired";
 
@@ -11,6 +19,7 @@ type QuoteItem = {
   quantity: number;
   unitPrice: number;
   vatRate: number;
+  category?: "labour" | "materials" | "equipment" | "other";
 };
 
 type QuoteCustomer = {
@@ -35,9 +44,73 @@ type QuoteRecord = {
   notes: string;
   terms: string;
   updatedAt: string;
+  aiGenerated: boolean;
+  workDescription: string;
+  imageNames: string[];
+  assumptions: string[];
+  warnings: string[];
+};
+
+type AiQuoteResponse = {
+  title?: string;
+  summary?: string;
+  items?: Array<{
+    description?: string;
+    quantity?: number;
+    unitPrice?: number;
+    vatRate?: number;
+    category?: "labour" | "materials" | "equipment" | "other";
+  }>;
+  notes?: string;
+  assumptions?: string[];
+  warnings?: string[];
+};
+
+type ImagePreview = {
+  file: File;
+  url: string;
+};
+
+type JobStatus =
+  | "enquiry"
+  | "quoted"
+  | "scheduled"
+  | "in_progress"
+  | "completed"
+  | "cancelled";
+
+type JobPriority = "low" | "normal" | "high" | "urgent";
+
+type JobRecord = {
+  id: string;
+  jobNumber: string;
+  title: string;
+  customerName: string;
+  customerCompany: string;
+  customerEmail: string;
+  customerPhone: string;
+  address: string;
+  status: JobStatus;
+  priority: JobPriority;
+  scheduledDate: string;
+  scheduledTime: string;
+  estimatedHours: number;
+  assignedTo: string;
+  description: string;
+  internalNotes: string;
+  quotedValue: number;
+  invoiceNumber: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string | null;
+  sourceQuoteId?: string;
+  sourceQuoteNumber?: string;
 };
 
 const QUOTES_STORAGE_KEY = "beacon-business-quotes";
+const JOBS_STORAGE_KEY = "beacon-business-jobs";
+const MAX_IMAGES = 6;
+const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
 
 const emptyCustomer: QuoteCustomer = {
   name: "",
@@ -124,26 +197,143 @@ function parseStoredQuotes(raw: string | null): QuoteRecord[] {
       return [];
     }
 
-    return parsed.filter((quote): quote is QuoteRecord => {
-      if (!quote || typeof quote !== "object") {
+    return parsed
+      .filter((quote): quote is QuoteRecord => {
+        if (!quote || typeof quote !== "object") {
+          return false;
+        }
+
+        const candidate = quote as Partial<QuoteRecord>;
+
+        return (
+          typeof candidate.id === "string" &&
+          typeof candidate.quoteNumber === "string" &&
+          typeof candidate.issueDate === "string" &&
+          typeof candidate.expiryDate === "string" &&
+          typeof candidate.status === "string" &&
+          Array.isArray(candidate.items) &&
+          typeof candidate.customer === "object"
+        );
+      })
+      .map((quote) => ({
+        ...quote,
+        aiGenerated: Boolean(quote.aiGenerated),
+        workDescription:
+          typeof quote.workDescription === "string"
+            ? quote.workDescription
+            : "",
+        imageNames: Array.isArray(quote.imageNames)
+          ? quote.imageNames.filter(
+              (name): name is string => typeof name === "string",
+            )
+          : [],
+        assumptions: Array.isArray(quote.assumptions)
+          ? quote.assumptions.filter(
+              (value): value is string => typeof value === "string",
+            )
+          : [],
+        warnings: Array.isArray(quote.warnings)
+          ? quote.warnings.filter(
+              (value): value is string => typeof value === "string",
+            )
+          : [],
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function parseStoredJobs(raw: string | null): JobRecord[] {
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.filter((job): job is JobRecord => {
+      if (!job || typeof job !== "object") {
         return false;
       }
 
-      const candidate = quote as Partial<QuoteRecord>;
+      const candidate = job as Partial<JobRecord>;
 
       return (
         typeof candidate.id === "string" &&
-        typeof candidate.quoteNumber === "string" &&
-        typeof candidate.issueDate === "string" &&
-        typeof candidate.expiryDate === "string" &&
+        typeof candidate.jobNumber === "string" &&
+        typeof candidate.title === "string" &&
         typeof candidate.status === "string" &&
-        Array.isArray(candidate.items) &&
-        typeof candidate.customer === "object"
+        typeof candidate.priority === "string"
       );
     });
   } catch {
     return [];
   }
+}
+
+function nextJobSequence(jobs: JobRecord[]) {
+  const year = new Date().getFullYear();
+  const prefix = `BJ-${year}-`;
+
+  const highest = jobs.reduce((currentHighest, job) => {
+    if (!job.jobNumber.startsWith(prefix)) {
+      return currentHighest;
+    }
+
+    const value = Number(job.jobNumber.slice(prefix.length));
+
+    return Number.isFinite(value)
+      ? Math.max(currentHighest, value)
+      : currentHighest;
+  }, 0);
+
+  return highest + 1;
+}
+
+function quoteJobTitle(quote: QuoteRecord) {
+  const description = quote.workDescription.trim();
+
+  if (description) {
+    const firstLine = description.split(/\r?\n/)[0].trim();
+
+    if (firstLine.length <= 90) {
+      return firstLine;
+    }
+
+    return `${firstLine.slice(0, 87).trim()}...`;
+  }
+
+  const firstItem = quote.items.find((item) => item.description.trim());
+
+  if (firstItem) {
+    return firstItem.description.trim().slice(0, 90);
+  }
+
+  return `Job from ${quote.quoteNumber}`;
+}
+
+function quoteJobDescription(quote: QuoteRecord) {
+  const itemSummary = quote.items
+    .filter((item) => item.description.trim())
+    .map(
+      (item) =>
+        `${item.quantity} × ${item.description.trim()} at ${formatCurrency(
+          item.unitPrice,
+        )} + ${item.vatRate}% VAT`,
+    )
+    .join("\n");
+
+  return [
+    quote.workDescription.trim(),
+    itemSummary ? `Quoted work:\n${itemSummary}` : "",
+    quote.notes.trim() ? `Quote notes:\n${quote.notes.trim()}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 function calculateQuote(quote: QuoteRecord) {
@@ -175,7 +365,32 @@ function calculateQuote(quote: QuoteRecord) {
   };
 }
 
-function createNewQuote(sequence: number): QuoteRecord {
+function nextQuoteSequence(quotes: QuoteRecord[]) {
+  const year = new Date().getFullYear();
+  const prefix = `BQ-${year}-`;
+
+  const highest = quotes.reduce((currentHighest, quote) => {
+    if (!quote.quoteNumber.startsWith(prefix)) {
+      return currentHighest;
+    }
+
+    const value = Number(quote.quoteNumber.slice(prefix.length));
+
+    return Number.isFinite(value)
+      ? Math.max(currentHighest, value)
+      : currentHighest;
+  }, 0);
+
+  return highest + 1;
+}
+
+function createNewQuote(
+  sequence: number,
+  options?: {
+    workDescription?: string;
+    imageNames?: string[];
+  },
+): QuoteRecord {
   const now = new Date().toISOString();
 
   return {
@@ -193,23 +408,53 @@ function createNewQuote(sequence: number): QuoteRecord {
         quantity: 1,
         unitPrice: 0,
         vatRate: 20,
+        category: "other",
       },
     ],
     discountType: "fixed",
     discountValue: 0,
     notes: "",
     terms:
-      "This quotation is valid until the expiry date shown. Work will begin once the quotation is accepted and any agreed deposit is received.",
+      "This quotation is valid until the expiry date shown. Work will begin once the quotation is accepted and any agreed deposit is received. Final pricing remains subject to an on-site inspection where required.",
     updatedAt: now,
+    aiGenerated: false,
+    workDescription: options?.workDescription ?? "",
+    imageNames: options?.imageNames ?? [],
+    assumptions: [],
+    warnings: [],
   };
 }
 
+function normaliseAiItems(items: AiQuoteResponse["items"]): QuoteItem[] {
+  if (!Array.isArray(items) || items.length === 0) {
+    return [];
+  }
+
+  return items
+    .filter((item) => item && typeof item.description === "string")
+    .map((item) => ({
+      id: createId("item"),
+      description: item.description?.trim() || "Quoted work",
+      quantity: Math.max(0, Number(item.quantity) || 1),
+      unitPrice: Math.max(0, Number(item.unitPrice) || 0),
+      vatRate: Math.max(0, Number(item.vatRate) || 0),
+      category: item.category ?? "other",
+    }));
+}
+
 export default function BusinessQuotesPage() {
+  const router = useRouter();
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
   const [activeQuote, setActiveQuote] = useState<QuoteRecord | null>(null);
   const [search, setSearch] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
+
+  const [workDescription, setWorkDescription] = useState("");
+  const [imagePreviews, setImagePreviews] = useState<ImagePreview[]>([]);
+  const [generating, setGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const stored = parseStoredQuotes(
@@ -237,6 +482,12 @@ export default function BusinessQuotesPage() {
     return () => window.clearTimeout(timer);
   }, [savedMessage]);
 
+  useEffect(() => {
+    return () => {
+      imagePreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
+    };
+  }, [imagePreviews]);
+
   const filteredQuotes = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -249,6 +500,7 @@ export default function BusinessQuotesPage() {
         quote.customer.name,
         quote.customer.company,
         quote.customer.email,
+        quote.workDescription,
       ]
         .join(" ")
         .toLowerCase();
@@ -279,8 +531,30 @@ export default function BusinessQuotesPage() {
     [activeQuote],
   );
 
+  function clearImagePreviews() {
+    setImagePreviews((current) => {
+      current.forEach((preview) => URL.revokeObjectURL(preview.url));
+      return [];
+    });
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
   function startNewQuote() {
-    setActiveQuote(createNewQuote(quotes.length + 1));
+    setActiveQuote(null);
+    setWorkDescription("");
+    clearImagePreviews();
+    setGenerationError(null);
+    setSavedMessage(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function startManualQuote() {
+    const quote = createNewQuote(nextQuoteSequence(quotes));
+    setActiveQuote(quote);
+    setGenerationError(null);
     setSavedMessage(null);
   }
 
@@ -295,6 +569,143 @@ export default function BusinessQuotesPage() {
         updatedAt: new Date().toISOString(),
       });
     });
+  }
+
+  function handleImageSelection(event: ChangeEvent<HTMLInputElement>) {
+    setGenerationError(null);
+
+    const selected = Array.from(event.target.files ?? []);
+
+    if (selected.length === 0) {
+      return;
+    }
+
+    const remainingSpaces = Math.max(0, MAX_IMAGES - imagePreviews.length);
+    const accepted = selected.slice(0, remainingSpaces);
+
+    const invalidFile = accepted.find(
+      (file) =>
+        !file.type.startsWith("image/") || file.size > MAX_IMAGE_SIZE_BYTES,
+    );
+
+    if (invalidFile) {
+      setGenerationError(
+        "Each upload must be an image smaller than 8 MB.",
+      );
+      event.target.value = "";
+      return;
+    }
+
+    if (selected.length > remainingSpaces) {
+      setGenerationError(`You can upload up to ${MAX_IMAGES} images.`);
+    }
+
+    setImagePreviews((current) => [
+      ...current,
+      ...accepted.map((file) => ({
+        file,
+        url: URL.createObjectURL(file),
+      })),
+    ]);
+
+    event.target.value = "";
+  }
+
+  function removeImage(index: number) {
+    setImagePreviews((current) => {
+      const target = current[index];
+
+      if (target) {
+        URL.revokeObjectURL(target.url);
+      }
+
+      return current.filter((_, currentIndex) => currentIndex !== index);
+    });
+  }
+
+  async function generateQuote(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const description = workDescription.trim();
+
+    if (description.length < 20) {
+      setGenerationError(
+        "Describe the work in a little more detail before generating the quote.",
+      );
+      return;
+    }
+
+    setGenerating(true);
+    setGenerationError(null);
+    setSavedMessage(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("description", description);
+
+      imagePreviews.forEach(({ file }) => {
+        formData.append("images", file);
+      });
+
+      const response = await fetch("/api/business/quotes/generate", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = (await response.json().catch(() => null)) as
+        | (AiQuoteResponse & { error?: string })
+        | null;
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error ??
+            "Beacon could not generate this quote. Please try again.",
+        );
+      }
+
+      const items = normaliseAiItems(data?.items);
+
+      if (items.length === 0) {
+        throw new Error(
+          "Beacon could not identify enough information to create line items. Add more detail or clearer images.",
+        );
+      }
+
+      const quote = createNewQuote(nextQuoteSequence(quotes), {
+        workDescription: description,
+        imageNames: imagePreviews.map(({ file }) => file.name),
+      });
+
+      quote.items = items;
+      quote.aiGenerated = true;
+      quote.notes =
+        data?.notes?.trim() ||
+        "AI-generated draft based on the supplied description and images. Review labour, materials, quantities and prices before sending.";
+      quote.assumptions = Array.isArray(data?.assumptions)
+        ? data.assumptions.filter(
+            (value): value is string => typeof value === "string",
+          )
+        : [];
+      quote.warnings = Array.isArray(data?.warnings)
+        ? data.warnings.filter(
+            (value): value is string => typeof value === "string",
+          )
+        : [];
+      quote.updatedAt = new Date().toISOString();
+
+      setActiveQuote(quote);
+      setSavedMessage(
+        "AI draft generated. Review every item and price before saving.",
+      );
+    } catch (error) {
+      setGenerationError(
+        error instanceof Error
+          ? error.message
+          : "Beacon could not generate this quote.",
+      );
+    } finally {
+      setGenerating(false);
+    }
   }
 
   function saveQuote() {
@@ -353,7 +764,7 @@ export default function BusinessQuotesPage() {
       ...quote,
       id: createId("quote"),
       quoteNumber: `BQ-${new Date().getFullYear()}-${String(
-        quotes.length + 1,
+        nextQuoteSequence(quotes),
       ).padStart(4, "0")}`,
       status: "draft",
       issueDate: todayIso(),
@@ -380,6 +791,7 @@ export default function BusinessQuotesPage() {
           quantity: 1,
           unitPrice: 0,
           vatRate: 20,
+          category: "other",
         },
       ],
     }));
@@ -407,13 +819,103 @@ export default function BusinessQuotesPage() {
           ? {
               ...item,
               [field]:
-                field === "description"
+                field === "description" || field === "category"
                   ? value
                   : Math.max(0, Number(value) || 0),
             }
           : item,
       ),
     }));
+  }
+
+  function convertQuoteToJob() {
+    if (!activeQuote) {
+      return;
+    }
+
+    if (activeQuote.status !== "accepted") {
+      setSavedMessage(
+        "Mark the quote as accepted before converting it into a job.",
+      );
+      return;
+    }
+
+    const storedJobs = parseStoredJobs(
+      window.localStorage.getItem(JOBS_STORAGE_KEY),
+    );
+
+    const existingJob = storedJobs.find(
+      (job) => job.sourceQuoteId === activeQuote.id,
+    );
+
+    if (existingJob) {
+      setSavedMessage(
+        `${activeQuote.quoteNumber} has already been converted to ${existingJob.jobNumber}.`,
+      );
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const totals = calculateQuote(activeQuote);
+    const labourHours = activeQuote.items
+      .filter((item) => item.category === "labour")
+      .reduce((sum, item) => sum + Math.max(0, item.quantity), 0);
+
+    const job: JobRecord = {
+      id: createId("job"),
+      jobNumber: `BJ-${new Date().getFullYear()}-${String(
+        nextJobSequence(storedJobs),
+      ).padStart(4, "0")}`,
+      title: quoteJobTitle(activeQuote),
+      customerName: activeQuote.customer.name.trim(),
+      customerCompany: activeQuote.customer.company.trim(),
+      customerEmail: activeQuote.customer.email.trim(),
+      customerPhone: activeQuote.customer.phone.trim(),
+      address: activeQuote.customer.address.trim(),
+      status: "scheduled",
+      priority: "normal",
+      scheduledDate: todayIso(),
+      scheduledTime: "09:00",
+      estimatedHours: labourHours > 0 ? labourHours : 1,
+      assignedTo: "",
+      description: quoteJobDescription(activeQuote),
+      internalNotes: [
+        `Created automatically from accepted quote ${activeQuote.quoteNumber}.`,
+        activeQuote.assumptions.length
+          ? `Assumptions:\n${activeQuote.assumptions
+              .map((item) => `- ${item}`)
+              .join("\n")}`
+          : "",
+        activeQuote.warnings.length
+          ? `Warnings and checks:\n${activeQuote.warnings
+              .map((item) => `- ${item}`)
+              .join("\n")}`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+      quotedValue: totals.total,
+      invoiceNumber: "",
+      createdAt: now,
+      updatedAt: now,
+      completedAt: null,
+      sourceQuoteId: activeQuote.id,
+      sourceQuoteNumber: activeQuote.quoteNumber,
+    };
+
+    window.localStorage.setItem(
+      JOBS_STORAGE_KEY,
+      JSON.stringify([job, ...storedJobs]),
+    );
+
+    saveQuote();
+    setSavedMessage(
+      `${activeQuote.quoteNumber} converted to ${job.jobNumber}. Opening Jobs...`,
+    );
+
+    window.setTimeout(() => {
+      router.push("/business/jobs");
+    }, 700);
   }
 
   function printQuote() {
@@ -445,14 +947,15 @@ export default function BusinessQuotesPage() {
           <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm font-extrabold uppercase tracking-[0.28em] text-blue-200">
-                Beacon Quote
+                Beacon AI Quotes
               </p>
               <h1 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl">
-                Create professional quotes with confidence.
+                Describe the work. Add photos. Generate the quote.
               </h1>
               <p className="mt-5 max-w-3xl text-lg leading-8 text-blue-100">
-                Build, save and manage clear quotations with line items,
-                discounts, VAT, expiry dates and customer details.
+                Beacon analyses the job description and supporting images,
+                prepares editable labour and material line items, and flags
+                anything that still needs an on-site check.
               </p>
             </div>
 
@@ -469,7 +972,7 @@ export default function BusinessQuotesPage() {
                 onClick={startNewQuote}
                 type="button"
               >
-                + New Quote
+                + New AI Quote
               </button>
             </div>
           </div>
@@ -517,6 +1020,31 @@ export default function BusinessQuotesPage() {
           {activeQuote ? (
             <div className="grid gap-8 xl:grid-cols-[1.1fr_0.9fr]">
               <section className="space-y-6 print:hidden">
+                {activeQuote.aiGenerated ? (
+                  <article className="rounded-[2rem] border border-amber-300 bg-amber-50 p-6 shadow-sm">
+                    <div className="flex items-start gap-4">
+                      <span
+                        aria-hidden="true"
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-400 text-2xl"
+                      >
+                        ✨
+                      </span>
+
+                      <div>
+                        <p className="font-black text-slate-950">
+                          AI-generated draft
+                        </p>
+                        <p className="mt-2 leading-7 text-slate-700">
+                          Beacon has prepared this quote from the supplied
+                          description and images. Review all quantities, labour,
+                          material prices, VAT and exclusions before sending it
+                          to the customer.
+                        </p>
+                      </div>
+                    </div>
+                  </article>
+                ) : null}
+
                 <div className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-xl">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
@@ -599,6 +1127,39 @@ export default function BusinessQuotesPage() {
                   </div>
                 </div>
 
+                {activeQuote.workDescription ? (
+                  <div className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-xl">
+                    <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-blue-900">
+                      Source Information
+                    </p>
+                    <h2 className="mt-3 text-3xl font-black">
+                      What Beacon analysed.
+                    </h2>
+
+                    <p className="mt-5 whitespace-pre-line rounded-2xl bg-slate-50 p-5 leading-7 text-slate-700">
+                      {activeQuote.workDescription}
+                    </p>
+
+                    {activeQuote.imageNames.length > 0 ? (
+                      <div className="mt-5">
+                        <p className="text-sm font-bold text-slate-600">
+                          Images supplied
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {activeQuote.imageNames.map((name) => (
+                            <span
+                              className="rounded-full bg-blue-100 px-4 py-2 text-sm font-bold text-blue-900"
+                              key={name}
+                            >
+                              {name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 <div className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-xl">
                   <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-blue-900">
                     Customer
@@ -664,10 +1225,10 @@ export default function BusinessQuotesPage() {
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                       <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-blue-900">
-                        Line Items
+                        AI Quote Items
                       </p>
                       <h2 className="mt-3 text-3xl font-black">
-                        Labour, materials and services.
+                        Review labour, materials and services.
                       </h2>
                     </div>
 
@@ -700,7 +1261,29 @@ export default function BusinessQuotesPage() {
                           </button>
                         </div>
 
-                        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_110px_150px_110px]">
+                        <div className="mt-4 grid gap-4 xl:grid-cols-[140px_minmax(0,1fr)_100px_145px_100px]">
+                          <label className="space-y-2">
+                            <span className="text-sm font-bold text-slate-700">
+                              Category
+                            </span>
+                            <select
+                              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+                              onChange={(event) =>
+                                updateItem(
+                                  item.id,
+                                  "category",
+                                  event.target.value,
+                                )
+                              }
+                              value={item.category ?? "other"}
+                            >
+                              <option value="labour">Labour</option>
+                              <option value="materials">Materials</option>
+                              <option value="equipment">Equipment</option>
+                              <option value="other">Other</option>
+                            </select>
+                          </label>
+
                           <label className="space-y-2">
                             <span className="text-sm font-bold text-slate-700">
                               Description
@@ -714,7 +1297,7 @@ export default function BusinessQuotesPage() {
                                   event.target.value,
                                 )
                               }
-                              placeholder="e.g. Labour, materials or service"
+                              placeholder="Labour, materials or service"
                               value={item.description}
                             />
                           </label>
@@ -788,6 +1371,57 @@ export default function BusinessQuotesPage() {
                     ))}
                   </div>
                 </div>
+
+                {activeQuote.assumptions.length > 0 ||
+                activeQuote.warnings.length > 0 ? (
+                  <div className="grid gap-5 lg:grid-cols-2">
+                    <article className="rounded-[2rem] border border-blue-200 bg-blue-50 p-6">
+                      <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-blue-900">
+                        AI Assumptions
+                      </p>
+                      <ul className="mt-4 space-y-3">
+                        {activeQuote.assumptions.length > 0 ? (
+                          activeQuote.assumptions.map((assumption) => (
+                            <li
+                              className="flex gap-3 leading-7 text-slate-700"
+                              key={assumption}
+                            >
+                              <span aria-hidden="true">•</span>
+                              <span>{assumption}</span>
+                            </li>
+                          ))
+                        ) : (
+                          <li className="text-slate-600">
+                            No assumptions were returned.
+                          </li>
+                        )}
+                      </ul>
+                    </article>
+
+                    <article className="rounded-[2rem] border border-amber-300 bg-amber-50 p-6">
+                      <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-amber-900">
+                        Checks Required
+                      </p>
+                      <ul className="mt-4 space-y-3">
+                        {activeQuote.warnings.length > 0 ? (
+                          activeQuote.warnings.map((warning) => (
+                            <li
+                              className="flex gap-3 leading-7 text-slate-700"
+                              key={warning}
+                            >
+                              <span aria-hidden="true">⚠</span>
+                              <span>{warning}</span>
+                            </li>
+                          ))
+                        ) : (
+                          <li className="text-slate-600">
+                            No additional checks were returned.
+                          </li>
+                        )}
+                      </ul>
+                    </article>
+                  </div>
+                ) : null}
 
                 <div className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-xl">
                   <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-blue-900">
@@ -891,11 +1525,21 @@ export default function BusinessQuotesPage() {
                   </button>
 
                   <button
-                    className="inline-flex flex-1 cursor-not-allowed items-center justify-center rounded-2xl bg-slate-200 px-6 py-4 font-extrabold text-slate-500"
-                    disabled
+                    className={`inline-flex flex-1 items-center justify-center rounded-2xl px-6 py-4 font-extrabold transition ${
+                      activeQuote.status === "accepted"
+                        ? "bg-emerald-600 text-white hover:bg-emerald-500"
+                        : "cursor-not-allowed bg-slate-200 text-slate-500"
+                    }`}
+                    disabled={activeQuote.status !== "accepted"}
+                    onClick={convertQuoteToJob}
+                    title={
+                      activeQuote.status === "accepted"
+                        ? "Create a scheduled job from this quote"
+                        : "Mark this quote as accepted first"
+                    }
                     type="button"
                   >
-                    Convert to Invoice
+                    Convert to Job
                   </button>
                 </div>
 
@@ -1058,10 +1702,211 @@ export default function BusinessQuotesPage() {
               </aside>
             </div>
           ) : (
-            <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] print:hidden">
-              <section className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-xl">
+            <div className="grid gap-8 xl:grid-cols-[1.05fr_0.95fr] print:hidden">
+              <section className="space-y-8">
+                <form
+                  className="rounded-[2rem] border border-blue-200 bg-white p-7 shadow-2xl sm:p-9"
+                  onSubmit={generateQuote}
+                >
+                  <div className="flex items-start gap-4">
+                    <span
+                      aria-hidden="true"
+                      className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-950 text-2xl text-white"
+                    >
+                      ✨
+                    </span>
+
+                    <div>
+                      <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-blue-900">
+                        AI Quote Generator
+                      </p>
+                      <h2 className="mt-2 text-3xl font-black tracking-tight">
+                        Tell Beacon what work is needed.
+                      </h2>
+                    </div>
+                  </div>
+
+                  <label className="mt-8 block space-y-3">
+                    <span className="font-black text-slate-800">
+                      Describe the job
+                    </span>
+                    <textarea
+                      className="min-h-52 w-full rounded-2xl border border-slate-300 px-5 py-4 text-base leading-7 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
+                      onChange={(event) =>
+                        setWorkDescription(event.target.value)
+                      }
+                      placeholder="Example: Remove the damaged plaster from a 3 metre by 2.4 metre bedroom wall, repair the cracked section, apply two coats of plaster, protect the flooring and remove all waste. Access is through one flight of stairs."
+                      value={workDescription}
+                    />
+                  </label>
+
+                  <div className="mt-7">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                      <div>
+                        <p className="font-black text-slate-800">
+                          Add photos of the work
+                        </p>
+                        <p className="mt-1 text-sm leading-6 text-slate-600">
+                          Upload up to {MAX_IMAGES} clear images. Each image must
+                          be smaller than 8 MB.
+                        </p>
+                      </div>
+
+                      <button
+                        className="inline-flex items-center justify-center rounded-2xl border-2 border-blue-950 px-5 py-3 font-extrabold text-blue-950 transition hover:bg-blue-950 hover:text-white"
+                        onClick={() => fileInputRef.current?.click()}
+                        type="button"
+                      >
+                        + Add images
+                      </button>
+                    </div>
+
+                    <input
+                      accept="image/*"
+                      className="sr-only"
+                      multiple
+                      onChange={handleImageSelection}
+                      ref={fileInputRef}
+                      type="file"
+                    />
+
+                    {imagePreviews.length > 0 ? (
+                      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {imagePreviews.map((preview, index) => (
+                          <div
+                            className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-100"
+                            key={`${preview.file.name}-${index}`}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              alt={`Work upload ${index + 1}`}
+                              className="h-40 w-full object-cover"
+                              src={preview.url}
+                            />
+                            <div className="flex items-center justify-between gap-3 p-3">
+                              <p className="min-w-0 truncate text-sm font-bold text-slate-700">
+                                {preview.file.name}
+                              </p>
+                              <button
+                                className="shrink-0 text-sm font-extrabold text-rose-700 hover:text-rose-900"
+                                onClick={() => removeImage(index)}
+                                type="button"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <button
+                        className="mt-5 flex min-h-40 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 text-center transition hover:border-blue-400 hover:bg-blue-50"
+                        onClick={() => fileInputRef.current?.click()}
+                        type="button"
+                      >
+                        <span aria-hidden="true" className="text-3xl">
+                          📷
+                        </span>
+                        <span className="mt-3 font-black text-slate-800">
+                          Upload images of the work area
+                        </span>
+                        <span className="mt-1 text-sm text-slate-600">
+                          Images are optional, but they help Beacon identify
+                          visible damage, access issues and likely materials.
+                        </span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="mt-7 rounded-2xl border border-amber-300 bg-amber-50 p-5">
+                    <p className="font-black text-amber-950">
+                      AI quotes must be reviewed
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-700">
+                      Photos cannot reveal hidden damage, exact measurements,
+                      structural issues or local material prices. Beacon creates
+                      an editable draft—not a guaranteed final price.
+                    </p>
+                  </div>
+
+                  {generationError ? (
+                    <p
+                      className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 font-bold text-rose-800"
+                      role="alert"
+                    >
+                      {generationError}
+                    </p>
+                  ) : null}
+
+                  <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                    <button
+                      className="inline-flex flex-1 items-center justify-center rounded-2xl bg-blue-950 px-7 py-4 text-lg font-extrabold text-white shadow-lg transition hover:bg-blue-900 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={generating}
+                      type="submit"
+                    >
+                      {generating
+                        ? "Beacon is analysing the job..."
+                        : "Generate AI Quote"}
+                    </button>
+
+                    <button
+                      className="inline-flex items-center justify-center rounded-2xl border-2 border-slate-300 px-6 py-4 font-extrabold text-slate-700 transition hover:border-blue-500 hover:text-blue-950"
+                      disabled={generating}
+                      onClick={startManualQuote}
+                      type="button"
+                    >
+                      Create manually
+                    </button>
+                  </div>
+                </form>
+
+                <section className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-xl">
+                  <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-blue-900">
+                    How it works
+                  </p>
+                  <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                    {[
+                      {
+                        number: "1",
+                        title: "Describe",
+                        description:
+                          "Explain the work, measurements, access and finish required.",
+                      },
+                      {
+                        number: "2",
+                        title: "Upload",
+                        description:
+                          "Add clear images showing the work area and visible damage.",
+                      },
+                      {
+                        number: "3",
+                        title: "Review",
+                        description:
+                          "Check Beacon's labour, materials, assumptions and price.",
+                      },
+                    ].map((step) => (
+                      <article
+                        className="rounded-2xl bg-slate-50 p-5"
+                        key={step.number}
+                      >
+                        <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-950 font-black text-white">
+                          {step.number}
+                        </span>
+                        <p className="mt-4 font-black text-slate-950">
+                          {step.title}
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-slate-600">
+                          {step.description}
+                        </p>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              </section>
+
+              <section className="h-fit rounded-[2rem] border border-slate-200 bg-white p-7 shadow-xl xl:sticky xl:top-6">
                 <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-blue-900">
-                  Your Quotes
+                  Saved Quotes
                 </p>
                 <h2 className="mt-3 text-3xl font-black">
                   Find and manage every quotation.
@@ -1070,11 +1915,11 @@ export default function BusinessQuotesPage() {
                 <input
                   className="mt-7 w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none transition focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search quote number, customer or status"
+                  placeholder="Search quote, customer, job or status"
                   value={search}
                 />
 
-                <div className="mt-6 space-y-4">
+                <div className="mt-6 max-h-[760px] space-y-4 overflow-y-auto pr-1">
                   {filteredQuotes.length > 0 ? (
                     filteredQuotes.map((quote) => {
                       const totals = calculateQuote(quote);
@@ -1097,12 +1942,18 @@ export default function BusinessQuotesPage() {
                                 >
                                   {statusLabel(quote.status)}
                                 </span>
+                                {quote.aiGenerated ? (
+                                  <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-black uppercase tracking-wide text-violet-800">
+                                    AI
+                                  </span>
+                                ) : null}
                               </div>
 
                               <p className="mt-2 font-bold text-slate-700">
                                 {quote.customer.name ||
                                   quote.customer.company ||
-                                  "Unnamed customer"}
+                                  quote.workDescription.slice(0, 70) ||
+                                  "Unnamed quote"}
                               </p>
                               <p className="mt-1 text-sm text-slate-500">
                                 Updated {formatDate(quote.updatedAt)}
@@ -1146,42 +1997,11 @@ export default function BusinessQuotesPage() {
                         No quotes found.
                       </p>
                       <p className="mt-2 text-slate-600">
-                        Create your first professional quotation.
+                        Describe your first job and let Beacon prepare the draft.
                       </p>
                     </div>
                   )}
                 </div>
-              </section>
-
-              <section className="rounded-[2rem] border border-blue-200 bg-blue-950 p-8 text-white shadow-2xl">
-                <span
-                  aria-hidden="true"
-                  className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 text-3xl"
-                >
-                  📋
-                </span>
-
-                <p className="mt-6 text-sm font-extrabold uppercase tracking-[0.25em] text-blue-200">
-                  Beacon Quote Builder
-                </p>
-
-                <h2 className="mt-4 text-4xl font-black tracking-tight">
-                  Turn enquiries into professional opportunities.
-                </h2>
-
-                <p className="mt-5 max-w-2xl text-lg leading-8 text-blue-100">
-                  Add customers, labour, materials, VAT, discounts, notes and
-                  terms. Save every quote and print a polished customer-ready
-                  version.
-                </p>
-
-                <button
-                  className="mt-8 inline-flex rounded-2xl bg-amber-400 px-7 py-4 text-lg font-extrabold text-slate-950 transition hover:bg-amber-300"
-                  onClick={startNewQuote}
-                  type="button"
-                >
-                  Create New Quote
-                </button>
               </section>
             </div>
           )}
