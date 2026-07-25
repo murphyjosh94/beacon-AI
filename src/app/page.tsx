@@ -293,7 +293,9 @@ export default function Home() {
       <main className="min-h-screen bg-slate-50">
         <Navbar />
         <AmazonSubscriptionBanner />
-        <BeaconHero />
+        <div id="ask-beacon" className="scroll-mt-28">
+          <BeaconHero />
+        </div>
 
         <section
           className="px-6 pb-10 pt-4 sm:pb-14"
@@ -334,20 +336,18 @@ export default function Home() {
                     Ask once. Let Beacon guide the search.
                   </h3>
                   <p className="mt-5 text-lg leading-8 text-slate-600">
-                    Shopping, travel, entertainment, vehicles, local discovery
-                    and intelligent assistance all begin in Ask Beacon. There
-                    are no extra tools to learn and no separate local or
-                    assistant pages to navigate.
+                    Use Beacon AI for shopping recommendations, holidays and
+                    getaways, entertainment, vehicle parts and general AI
+                    guidance — all from one clear personal experience.
                   </p>
 
                   <div className="mt-7 grid gap-3 sm:grid-cols-2">
                     {[
                       "Shopping recommendations",
-                      "Travel planning",
-                      "Vehicle and parts guidance",
-                      "Entertainment discovery",
-                      "Local discovery",
-                      "Intelligent assistance",
+                      "Holidays and getaways",
+                      "Entertainment",
+                      "Vehicle parts",
+                      "General AI guidance",
                     ].map((item) => (
                       <div
                         key={item}
@@ -359,10 +359,10 @@ export default function Home() {
                   </div>
 
                   <Link
-                    href="#how-beacon-helps"
+                    href="#ask-beacon"
                     className="mt-8 inline-flex items-center rounded-2xl bg-blue-900 px-7 py-4 font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-800"
                   >
-                    Explore Beacon Personal
+                    Continue to Personal Beacon
                     <span aria-hidden="true" className="ml-2">
                       →
                     </span>
@@ -390,24 +390,30 @@ export default function Home() {
                     Build your online presence with confidence.
                   </h3>
                   <p className="mt-5 text-lg leading-8 text-blue-100">
-                    See your new business website before you pay, then manage
-                    quotations, branding, templates, analytics, SEO and future
-                    growth tools from one trusted platform.
+                    Professional website builds, AI-powered business websites,
+                    online shops, membership areas and affordable Beacon
+                    Business maintenance plans — all from one trusted platform.
                   </p>
 
-                  <div className="mt-7 rounded-2xl border border-white/15 bg-white/10 p-5 backdrop-blur">
-                    <p className="font-black text-white">
-                      See your new business website before you pay.
-                    </p>
-                    <p className="mt-2 leading-7 text-blue-100">
-                      Review an interactive preview, request changes and only
-                      confirm payment when you are happy to move into the
-                      professional build stage.
-                    </p>
+                  <div className="mt-7 grid gap-3 sm:grid-cols-2">
+                    {[
+                      "Professional website builds",
+                      "AI-powered business websites",
+                      "Online shops",
+                      "Membership areas",
+                      "Beacon Business maintenance plans",
+                    ].map((item) => (
+                      <div
+                        key={item}
+                        className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 font-bold text-white backdrop-blur"
+                      >
+                        ✓ {item}
+                      </div>
+                    ))}
                   </div>
 
                   <Link
-                    href="#beacon-business"
+                    href="/business"
                     className="mt-8 inline-flex items-center rounded-2xl bg-white px-7 py-4 font-extrabold text-blue-950 shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-50"
                   >
                     Explore Beacon Business
