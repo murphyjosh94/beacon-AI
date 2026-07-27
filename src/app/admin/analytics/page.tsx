@@ -700,6 +700,117 @@ export default async function AdminAnalyticsPage() {
             )}
           </AnalyticsSection>
 
+          <AnalyticsSection
+            eyebrow="Beacon Business"
+            title="Business analytics readiness"
+            description="What can be measured today and what still requires server-side persistence."
+          >
+            <div
+              id="business"
+              className="scroll-mt-28"
+            >
+              <MetricGrid>
+                <MetricCard
+                  label="Platform status"
+                  value="Live"
+                  detail="Beacon Business pages and shared workspace are deployed."
+                  accentClass="from-blue-700 to-blue-950"
+                />
+
+                <MetricCard
+                  label="Membership plans"
+                  value="2"
+                  detail="Business and Business Pro use live Stripe checkout."
+                  accentClass="from-amber-600 to-orange-900"
+                />
+
+                <MetricCard
+                  label="Core modules"
+                  value="8"
+                  detail="The production workspace includes eight primary modules."
+                  accentClass="from-violet-700 to-indigo-950"
+                />
+
+                <MetricCard
+                  label="Database reporting"
+                  value="Pending"
+                  detail="Business records are not yet stored in central analytics tables."
+                  accentClass="from-slate-600 to-slate-950"
+                />
+              </MetricGrid>
+
+              <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                <section className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-6">
+                  <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-emerald-800">
+                    Available now
+                  </p>
+
+                  <h3 className="mt-3 text-xl font-black text-emerald-950">
+                    Platform and commercial status
+                  </h3>
+
+                  <div className="mt-5 grid gap-3 text-sm font-semibold leading-6 text-emerald-950">
+                    <p>✓ Business and Business Pro checkout routes are live.</p>
+                    <p>✓ Website, quotes, customers, jobs and document tools are live.</p>
+                    <p>✓ Business analytics can be expanded without changing this admin layout.</p>
+                    <p>✓ Stripe remains the source of truth for payment and subscription revenue.</p>
+                  </div>
+                </section>
+
+                <section className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-6">
+                  <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-amber-800">
+                    Data limitation
+                  </p>
+
+                  <h3 className="mt-3 text-xl font-black text-amber-950">
+                    User activity is currently browser-local
+                  </h3>
+
+                  <p className="mt-4 text-sm font-semibold leading-7 text-amber-950">
+                    Website briefs, projects, quotes, customers, jobs, Brand Kit
+                    records and membership summaries are stored in each user&apos;s
+                    browser. A server-rendered admin page cannot read or aggregate
+                    that private local storage, so displaying totals here would be
+                    inaccurate.
+                  </p>
+                </section>
+              </div>
+
+              <div className="mt-6 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-6">
+                <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-slate-500">
+                  Required for live Business metrics
+                </p>
+
+                <h3 className="mt-3 text-xl font-black text-slate-950">
+                  Persist Business records against authenticated users
+                </h3>
+
+                <p className="mt-3 max-w-5xl text-sm font-semibold leading-7 text-slate-600">
+                  Once Business memberships, websites, quotes, documents,
+                  customers and jobs are saved to database tables, this section
+                  can report active businesses, conversion, module usage and
+                  growth without estimates or duplicated data.
+                </p>
+
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <Link
+                    href="/admin/stripe"
+                    className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-extrabold text-white transition hover:bg-slate-800"
+                  >
+                    View Stripe data
+                  </Link>
+
+                  <Link
+                    href="/business/dashboard"
+                    className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-extrabold text-slate-800 transition hover:border-blue-300 hover:text-blue-950"
+                  >
+                    Open Business workspace
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </AnalyticsSection>
+
           <section className="rounded-[2rem] border border-blue-200 bg-blue-50 p-6 shadow-sm sm:p-8">
             <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-800">
               Revenue note

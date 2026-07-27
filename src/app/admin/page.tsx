@@ -652,10 +652,8 @@ export default async function AdminPage({
             </h1>
 
             <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-200">
-              Manage Beacon AI users,
-              memberships, account roles,
-              purchased credits and platform
-              activity.
+              Manage Beacon AI accounts, Beacon+ access, purchased credits,
+              platform activity and the growing Beacon Business workspace.
             </p>
 
             <div className="mt-5 flex flex-wrap gap-2">
@@ -780,6 +778,97 @@ export default async function AdminPage({
                   detail={`${searchFailurePercentage}% of all recorded searches`}
                   accentClass="from-amber-600 to-orange-800"
                 />
+              </div>
+            </section>
+
+            <section
+              id="business"
+              className="mt-8 overflow-hidden rounded-[2rem] border border-blue-200 bg-white shadow-sm"
+            >
+              <div className="border-b border-blue-100 bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-950 px-6 py-7 text-white sm:px-8">
+                <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-amber-200">
+                  Beacon Ecosystem
+                </p>
+
+                <div className="mt-2 flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
+                  <div>
+                    <h2 className="text-3xl font-black">
+                      Beacon Business
+                    </h2>
+
+                    <p className="mt-3 max-w-3xl text-sm font-semibold leading-7 text-blue-100">
+                      Operational visibility for the Business platform, its live
+                      modules and the data required for central analytics.
+                    </p>
+                  </div>
+
+                  <Link
+                    href="/business"
+                    className="inline-flex w-fit rounded-xl bg-amber-300 px-5 py-3 text-sm font-extrabold text-blue-950 transition hover:bg-amber-200"
+                  >
+                    Open Beacon Business
+                  </Link>
+                </div>
+              </div>
+
+              <div className="grid gap-5 p-6 sm:grid-cols-2 sm:p-8 2xl:grid-cols-4">
+                <BusinessStatusCard
+                  label="Platform"
+                  value="Live"
+                  detail="The public Business platform and shared workspace are available."
+                  tone="emerald"
+                />
+
+                <BusinessStatusCard
+                  label="Membership plans"
+                  value="2"
+                  detail="Beacon Business and Beacon Business Pro are available through Stripe."
+                  tone="blue"
+                />
+
+                <BusinessStatusCard
+                  label="Core modules"
+                  value="8"
+                  detail="Websites, quotes, customers, jobs, templates, Brand Kit, analytics and memberships."
+                  tone="violet"
+                />
+
+                <BusinessStatusCard
+                  label="Central reporting"
+                  value="Not connected"
+                  detail="Most Business workspace records currently remain in browser storage."
+                  tone="amber"
+                />
+              </div>
+
+              <div className="border-t border-slate-200 bg-slate-50 px-6 py-6 sm:px-8">
+                <p className="text-sm font-extrabold text-slate-950">
+                  Why detailed Business totals are not shown yet
+                </p>
+
+                <p className="mt-2 max-w-5xl text-sm font-semibold leading-7 text-slate-600">
+                  Website briefs, quotes, customers, jobs, Brand Kit records and
+                  membership summaries are currently stored within each user&apos;s
+                  browser. The server cannot count that private browser data from
+                  the admin dashboard. Accurate totals will become available when
+                  those records are moved into authenticated database tables.
+                </p>
+
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <Link
+                    href="/admin/analytics#business"
+                    className="rounded-xl bg-blue-950 px-5 py-3 text-sm font-extrabold text-white transition hover:bg-blue-900"
+                  >
+                    View Business analytics readiness
+                  </Link>
+
+                  <Link
+                    href="/admin/stripe"
+                    className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-extrabold text-slate-800 transition hover:border-blue-300 hover:text-blue-950"
+                  >
+                    Open Stripe controls
+                  </Link>
+                </div>
               </div>
             </section>
 
@@ -1188,6 +1277,24 @@ function AdminSidebar() {
                   "#overview",
                 label:
                   "Overview",
+              },
+            ]}
+          />
+
+          <AdminNavigationGroup
+            title="Beacon Business"
+            links={[
+              {
+                href:
+                  "#business",
+                label:
+                  "Platform Status",
+              },
+              {
+                href:
+                  "/admin/analytics#business",
+                label:
+                  "Analytics Readiness",
               },
             ]}
           />
@@ -1737,6 +1844,56 @@ function AdminMetric({
           {detail}
         </p>
       </div>
+    </article>
+  );
+}
+
+type BusinessStatusCardProps = {
+  label: string;
+  value: string;
+  detail: string;
+  tone:
+    | "emerald"
+    | "blue"
+    | "violet"
+    | "amber";
+};
+
+function BusinessStatusCard({
+  label,
+  value,
+  detail,
+  tone,
+}: BusinessStatusCardProps) {
+  const toneClasses = {
+    emerald:
+      "border-emerald-200 bg-emerald-50 text-emerald-900",
+    blue:
+      "border-blue-200 bg-blue-50 text-blue-950",
+    violet:
+      "border-violet-200 bg-violet-50 text-violet-950",
+    amber:
+      "border-amber-200 bg-amber-50 text-amber-950",
+  } satisfies Record<
+    BusinessStatusCardProps["tone"],
+    string
+  >;
+
+  return (
+    <article
+      className={`rounded-[1.5rem] border p-6 ${toneClasses[tone]}`}
+    >
+      <p className="text-xs font-extrabold uppercase tracking-[0.18em] opacity-70">
+        {label}
+      </p>
+
+      <p className="mt-3 text-3xl font-black">
+        {value}
+      </p>
+
+      <p className="mt-3 text-sm font-semibold leading-6 opacity-80">
+        {detail}
+      </p>
     </article>
   );
 }
