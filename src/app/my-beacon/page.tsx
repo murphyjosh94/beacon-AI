@@ -9,6 +9,7 @@ import {
 
 import BeaconFooter from "@/components/BeaconFooter";
 import Navbar from "@/components/Navbar";
+import { authClient } from "@/lib/auth/AuthClient";
 
 type VehicleSummary = {
   id: string;
@@ -41,7 +42,23 @@ type VehicleGarageState = {
   defaultVehicle: VehicleSummary | null;
 };
 
-const quickActions = [
+type QuickAction = {
+  title: string;
+  description: string;
+  href: string;
+  signedInHref?: string;
+  icon: string;
+};
+
+const quickActions: QuickAction[] = [
+  {
+    title: "Account & Sign In",
+    description:
+      "Sign in, open your account or manage your Beacon access.",
+    href: "/signin",
+    signedInHref: "/dashboard",
+    icon: "👤",
+  },
   {
     title: "Ask Beacon",
     description:
@@ -117,6 +134,15 @@ async function readJsonResponse<T>(
 }
 
 export default function MyBeaconPage() {
+  const {
+    data: session,
+    isPending: sessionPending,
+  } = authClient.useSession();
+
+  const isSignedIn = Boolean(
+    session?.user
+  );
+
   const [
     vehicleGarage,
     setVehicleGarage,
@@ -239,7 +265,40 @@ export default function MyBeaconPage() {
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-3xl bg-white p-7 shadow-lg">
               <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-slate-500">
-                Membership
+                Account
+              </p>
+
+              <p className="mt-3 text-3xl font-black text-slate-950">
+                {sessionPending
+                  ? "Checking..."
+                  : isSignedIn
+                    ? "Signed In"
+                    : "Guest"}
+              </p>
+
+              <p className="mt-2 text-sm text-slate-500">
+                {isSignedIn
+                  ? "Your Beacon account is connected."
+                  : "Sign in to save searches, vehicles and preferences."}
+              </p>
+
+              <Link
+                href={
+                  isSignedIn
+                    ? "/dashboard"
+                    : "/signin"
+                }
+                className="mt-5 inline-flex rounded-xl bg-slate-950 px-5 py-3 font-extrabold text-white transition hover:bg-slate-800"
+              >
+                {isSignedIn
+                  ? "Open Account"
+                  : "Sign In"}
+              </Link>
+            </div>
+
+            <div className="rounded-3xl bg-white p-7 shadow-lg">
+              <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-slate-500">
+                Current Access
               </p>
 
               <p className="mt-3 text-3xl font-black text-slate-950">
@@ -247,7 +306,7 @@ export default function MyBeaconPage() {
               </p>
 
               <p className="mt-2 text-sm text-slate-500">
-                Five searches available each day.
+                Five searches are available each day.
               </p>
             </div>
 
@@ -265,34 +324,25 @@ export default function MyBeaconPage() {
               </p>
             </div>
 
-            <div className="rounded-3xl bg-white p-7 shadow-lg">
-              <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-slate-500">
-                Saved Items
-              </p>
-
-              <p className="mt-3 text-3xl font-black text-slate-950">
-                0
-              </p>
-
-              <p className="mt-2 text-sm text-slate-500">
-                Recommendations you save will appear here.
-              </p>
-            </div>
-
-            <div className="rounded-3xl bg-blue-950 p-7 text-white shadow-xl">
-              <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-blue-200">
+            <div className="rounded-3xl bg-gradient-to-br from-blue-950 to-indigo-950 p-7 text-white shadow-xl">
+              <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-amber-200">
                 Beacon+
               </p>
 
               <p className="mt-3 text-3xl font-black">
-                Coming Soon
+                Available Now
+              </p>
+
+              <p className="mt-2 text-sm leading-6 text-blue-100">
+                Unlock more searches and premium Beacon features with a live
+                Beacon+ membership.
               </p>
 
               <Link
                 href="/membership"
-                className="mt-4 inline-flex font-extrabold text-blue-100 underline decoration-blue-300 underline-offset-4"
+                className="mt-5 inline-flex rounded-xl bg-amber-300 px-5 py-3 font-extrabold text-blue-950 transition hover:bg-amber-200"
               >
-                Explore membership
+                View Beacon+
               </Link>
             </div>
           </div>
@@ -319,7 +369,10 @@ export default function MyBeaconPage() {
                     action.title
                   }
                   href={
-                    action.href
+                    isSignedIn &&
+                    action.signedInHref
+                      ? action.signedInHref
+                      : action.href
                   }
                   className="group rounded-3xl border border-slate-200 bg-white p-7 shadow-lg transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl"
                 >
@@ -397,12 +450,13 @@ export default function MyBeaconPage() {
 
           <div className="mt-8 rounded-[2rem] bg-blue-950 p-8 text-white shadow-xl sm:p-10">
             <h3 className="text-3xl font-black">
-              Price and holiday alerts are coming with Beacon+.
+              Price and holiday alerts are included in the Beacon+ roadmap.
             </h3>
 
             <p className="mt-4 max-w-3xl leading-8 text-blue-100">
-              Save a search and Beacon will monitor trusted partners for price
-              drops, better matches and new availability.
+              Beacon+ is live today, with expanded searches and premium account
+              benefits available through the membership page. Automated alerts will
+              be added as the monitoring feature is completed.
             </p>
 
             <Link
