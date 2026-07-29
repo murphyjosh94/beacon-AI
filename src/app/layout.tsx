@@ -15,6 +15,7 @@ import {
   absoluteUrl,
   siteConfig,
 } from "@/lib/seo/SiteConfig";
+import MotionBridge from "@/app/studio/_bridge/MotionBridge";
 
 const inter = Inter({
   subsets: [
@@ -234,6 +235,8 @@ export default function RootLayout({
       <body
         className={`${inter.variable} min-h-screen bg-slate-50 font-sans antialiased`}
       >
+         <MotionBridge />
+         
         <AnalyticsProvider>
           {children}
 

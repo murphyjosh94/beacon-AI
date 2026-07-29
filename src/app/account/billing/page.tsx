@@ -222,11 +222,11 @@ function readCreditPackId(
 ): CreditPackId | null {
   if (
     value ===
-      CREDIT_PACK_IDS.SMALL ||
+      CREDIT_PACK_IDS.CREDITS_5 ||
     value ===
-      CREDIT_PACK_IDS.MEDIUM ||
+      CREDIT_PACK_IDS.CREDITS_15 ||
     value ===
-      CREDIT_PACK_IDS.LARGE
+      CREDIT_PACK_IDS.CREDITS_25
   ) {
     return value;
   }

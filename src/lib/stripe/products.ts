@@ -17,9 +17,9 @@ export type BeaconPlusBillingInterval =
   (typeof BEACON_PLUS_BILLING_INTERVALS)[keyof typeof BEACON_PLUS_BILLING_INTERVALS];
 
 export const CREDIT_PACK_IDS = {
-  SMALL: "credits_small",
-  MEDIUM: "credits_medium",
-  LARGE: "credits_large",
+  CREDITS_5: "credits_5",
+  CREDITS_15: "credits_15",
+  CREDITS_25: "credits_25",
 } as const;
 
 export type CreditPackId =
@@ -29,7 +29,8 @@ export type BeaconPlusSubscriptionPlan = {
   id: BeaconPlusBillingInterval;
   name: string;
   description: string;
-  purchaseType: typeof STRIPE_PURCHASE_TYPES.SUBSCRIPTION;
+  purchaseType:
+    typeof STRIPE_PURCHASE_TYPES.SUBSCRIPTION;
   billingInterval: "month" | "year";
   priceId: string | undefined;
   features: readonly string[];
@@ -39,9 +40,12 @@ export type BeaconCreditPack = {
   id: CreditPackId;
   name: string;
   description: string;
-  purchaseType: typeof STRIPE_PURCHASE_TYPES.CREDIT_TOP_UP;
+  purchaseType:
+    typeof STRIPE_PURCHASE_TYPES.CREDIT_TOP_UP;
   priceId: string | undefined;
   credits: number;
+  priceInPence: number;
+  displayPrice: string;
 };
 
 const beaconPlusFeatures = [
@@ -59,10 +63,11 @@ export const beaconPlusPlans = {
     name: "Beacon+ Monthly",
     description:
       "Full access to Beacon+ with flexible monthly billing.",
-    purchaseType: STRIPE_PURCHASE_TYPES.SUBSCRIPTION,
+    purchaseType:
+      STRIPE_PURCHASE_TYPES.SUBSCRIPTION,
     billingInterval: "month",
     priceId:
-      process.env.STRIPE_BEACON_PLUS_MONTHLY_PRICE_ID,
+      process.env.STRIPE_PRICE_BEACON_PLUS,
     features: beaconPlusFeatures,
   },
 
@@ -71,10 +76,11 @@ export const beaconPlusPlans = {
     name: "Beacon+ Annual",
     description:
       "Full access to Beacon+ with annual billing.",
-    purchaseType: STRIPE_PURCHASE_TYPES.SUBSCRIPTION,
+    purchaseType:
+      STRIPE_PURCHASE_TYPES.SUBSCRIPTION,
     billingInterval: "year",
     priceId:
-      process.env.STRIPE_BEACON_PLUS_ANNUAL_PRICE_ID,
+      process.env.STRIPE_PRICE_BEACON_PLUS_ANNUAL,
     features: beaconPlusFeatures,
   },
 } satisfies Record<
@@ -83,46 +89,46 @@ export const beaconPlusPlans = {
 >;
 
 export const beaconCreditPacks = {
-  credits_small: {
-    id: CREDIT_PACK_IDS.SMALL,
-    name: "Small Credit Top-Up",
+  credits_5: {
+    id: CREDIT_PACK_IDS.CREDITS_5,
+    name: "5 Beacon Credits",
     description:
-      "Add extra Beacon-AI credits to your account.",
-    purchaseType: STRIPE_PURCHASE_TYPES.CREDIT_TOP_UP,
+      "Add 5 extra Beacon-AI credits to your account.",
+    purchaseType:
+      STRIPE_PURCHASE_TYPES.CREDIT_TOP_UP,
     priceId:
-      process.env.STRIPE_CREDITS_SMALL_PRICE_ID,
-    credits: readPositiveInteger(
-      process.env.STRIPE_CREDITS_SMALL_AMOUNT,
-      100
-    ),
+      process.env.STRIPE_PRICE_CREDITS_5,
+    credits: 5,
+    priceInPence: 500,
+    displayPrice: "£5",
   },
 
-  credits_medium: {
-    id: CREDIT_PACK_IDS.MEDIUM,
-    name: "Medium Credit Top-Up",
+  credits_15: {
+    id: CREDIT_PACK_IDS.CREDITS_15,
+    name: "15 Beacon Credits",
     description:
-      "Add extra Beacon-AI credits to your account.",
-    purchaseType: STRIPE_PURCHASE_TYPES.CREDIT_TOP_UP,
+      "Add 15 extra Beacon-AI credits to your account.",
+    purchaseType:
+      STRIPE_PURCHASE_TYPES.CREDIT_TOP_UP,
     priceId:
-      process.env.STRIPE_CREDITS_MEDIUM_PRICE_ID,
-    credits: readPositiveInteger(
-      process.env.STRIPE_CREDITS_MEDIUM_AMOUNT,
-      500
-    ),
+      process.env.STRIPE_PRICE_CREDITS_15,
+    credits: 15,
+    priceInPence: 1_000,
+    displayPrice: "£10",
   },
 
-  credits_large: {
-    id: CREDIT_PACK_IDS.LARGE,
-    name: "Large Credit Top-Up",
+  credits_25: {
+    id: CREDIT_PACK_IDS.CREDITS_25,
+    name: "25 Beacon Credits",
     description:
-      "Add extra Beacon-AI credits to your account.",
-    purchaseType: STRIPE_PURCHASE_TYPES.CREDIT_TOP_UP,
+      "Add 25 extra Beacon-AI credits to your account.",
+    purchaseType:
+      STRIPE_PURCHASE_TYPES.CREDIT_TOP_UP,
     priceId:
-      process.env.STRIPE_CREDITS_LARGE_PRICE_ID,
-    credits: readPositiveInteger(
-      process.env.STRIPE_CREDITS_LARGE_AMOUNT,
-      1_000
-    ),
+      process.env.STRIPE_PRICE_CREDITS_25,
+    credits: 25,
+    priceInPence: 1_500,
+    displayPrice: "£15",
   },
 } satisfies Record<
   CreditPackId,
@@ -143,14 +149,18 @@ export function getBeaconPlusPlan(
 export function getBeaconPlusPriceId(
   interval: BeaconPlusBillingInterval
 ): string {
-  const plan = getBeaconPlusPlan(interval);
+  const plan =
+    getBeaconPlusPlan(interval);
+
+  const environmentVariableName =
+    interval ===
+    BEACON_PLUS_BILLING_INTERVALS.MONTHLY
+      ? "STRIPE_PRICE_BEACON_PLUS"
+      : "STRIPE_PRICE_BEACON_PLUS_ANNUAL";
 
   return requireStripePriceId(
     plan.priceId,
-    interval ===
-      BEACON_PLUS_BILLING_INTERVALS.MONTHLY
-      ? "STRIPE_BEACON_PLUS_MONTHLY_PRICE_ID"
-      : "STRIPE_BEACON_PLUS_ANNUAL_PRICE_ID"
+    environmentVariableName
   );
 }
 
@@ -163,18 +173,21 @@ export function getCreditPack(
 export function getCreditPackPriceId(
   packId: CreditPackId
 ): string {
-  const pack = getCreditPack(packId);
+  const pack =
+    getCreditPack(packId);
 
   const environmentVariableNames: Record<
     CreditPackId,
     string
   > = {
-    credits_small:
-      "STRIPE_CREDITS_SMALL_PRICE_ID",
-    credits_medium:
-      "STRIPE_CREDITS_MEDIUM_PRICE_ID",
-    credits_large:
-      "STRIPE_CREDITS_LARGE_PRICE_ID",
+    credits_5:
+      "STRIPE_PRICE_CREDITS_5",
+
+    credits_15:
+      "STRIPE_PRICE_CREDITS_15",
+
+    credits_25:
+      "STRIPE_PRICE_CREDITS_25",
   };
 
   return requireStripePriceId(
@@ -197,7 +210,9 @@ export function isBeaconPlusBillingInterval(
 export function isCreditPackId(
   value: unknown
 ): value is CreditPackId {
-  return Object.values(CREDIT_PACK_IDS).includes(
+  return Object.values(
+    CREDIT_PACK_IDS
+  ).includes(
     value as CreditPackId
   );
 }
@@ -209,8 +224,11 @@ export function isBeaconPlusPriceId(
     return false;
   }
 
-  return Object.values(beaconPlusPlans).some(
-    (plan) => plan.priceId === priceId
+  return Object.values(
+    beaconPlusPlans
+  ).some(
+    (plan) =>
+      plan.priceId === priceId
   );
 }
 
@@ -218,8 +236,11 @@ export function findBeaconPlusPlanByPriceId(
   priceId: string
 ): BeaconPlusSubscriptionPlan | null {
   return (
-    Object.values(beaconPlusPlans).find(
-      (plan) => plan.priceId === priceId
+    Object.values(
+      beaconPlusPlans
+    ).find(
+      (plan) =>
+        plan.priceId === priceId
     ) ?? null
   );
 }
@@ -228,8 +249,11 @@ export function findCreditPackByPriceId(
   priceId: string
 ): BeaconCreditPack | null {
   return (
-    Object.values(beaconCreditPacks).find(
-      (pack) => pack.priceId === priceId
+    Object.values(
+      beaconCreditPacks
+    ).find(
+      (pack) =>
+        pack.priceId === priceId
     ) ?? null
   );
 }
@@ -241,9 +265,17 @@ export function createSubscriptionMetadata(
   return {
     purchaseType:
       STRIPE_PURCHASE_TYPES.SUBSCRIPTION,
-    product: "beacon_plus",
-    billingInterval: interval,
+
+    product:
+      "beacon_plus",
+
+    billingInterval:
+      interval,
+
     userId,
+
+    beaconUserId:
+      userId,
   };
 }
 
@@ -251,15 +283,26 @@ export function createCreditTopUpMetadata(
   packId: CreditPackId,
   userId: string
 ): Record<string, string> {
-  const pack = getCreditPack(packId);
+  const pack =
+    getCreditPack(packId);
 
   return {
     purchaseType:
       STRIPE_PURCHASE_TYPES.CREDIT_TOP_UP,
-    product: "beacon_credits",
-    creditPackId: pack.id,
-    credits: String(pack.credits),
+
+    product:
+      "beacon_credits",
+
+    creditPackId:
+      pack.id,
+
+    credits:
+      String(pack.credits),
+
     userId,
+
+    beaconUserId:
+      userId,
   };
 }
 
@@ -267,40 +310,24 @@ function requireStripePriceId(
   priceId: string | undefined,
   environmentVariableName: string
 ): string {
-  if (!priceId) {
+  const normalisedPriceId =
+    priceId?.trim();
+
+  if (!normalisedPriceId) {
     throw new Error(
       `Missing ${environmentVariableName} environment variable.`
     );
   }
 
-  if (!priceId.startsWith("price_")) {
+  if (
+    !normalisedPriceId.startsWith(
+      "price_"
+    )
+  ) {
     throw new Error(
       `${environmentVariableName} must contain a valid Stripe Price ID beginning with "price_".`
     );
   }
 
-  return priceId;
-}
-
-function readPositiveInteger(
-  value: string | undefined,
-  fallback: number
-): number {
-  if (!value) {
-    return fallback;
-  }
-
-  const parsedValue = Number.parseInt(
-    value,
-    10
-  );
-
-  if (
-    !Number.isSafeInteger(parsedValue) ||
-    parsedValue <= 0
-  ) {
-    return fallback;
-  }
-
-  return parsedValue;
+  return normalisedPriceId;
 }
