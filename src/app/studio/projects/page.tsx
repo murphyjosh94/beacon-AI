@@ -191,7 +191,7 @@ export default function StudioProjectsPage() {
 
       try {
         const response = await fetch(
-          "/api/motion/projects",
+          "/api/studio/projects",
           {
             method: "GET",
             cache: "no-store",
@@ -318,7 +318,7 @@ export default function StudioProjectsPage() {
 
     try {
       const response = await fetch(
-        "/api/motion/projects",
+        "/api/studio/projects",
         {
           method: "POST",
           headers: {
@@ -330,7 +330,7 @@ export default function StudioProjectsPage() {
             title:
               "Untitled website video",
             description:
-              "A new Beacon Studio website motion project.",
+              "A new Beacon Studio project.",
             sourceUrl: "/",
             aspectRatio: "16:9",
             device: "desktop",
@@ -387,7 +387,7 @@ export default function StudioProjectsPage() {
 
     try {
       const response = await fetch(
-        `/api/motion/projects/${encodeURIComponent(
+        `/api/studio/projects/${encodeURIComponent(
           projectId,
         )}`,
         {
@@ -426,7 +426,7 @@ export default function StudioProjectsPage() {
 
     try {
       const response = await fetch(
-        "/api/motion/projects",
+        "/api/studio/projects",
         {
           method: "POST",
           headers: {
@@ -493,7 +493,7 @@ export default function StudioProjectsPage() {
 
     try {
       const response = await fetch(
-        `/api/motion/projects/${encodeURIComponent(
+        `/api/studio/projects/${encodeURIComponent(
           project.id,
         )}`,
         {

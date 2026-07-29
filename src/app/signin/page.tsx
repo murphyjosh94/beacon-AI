@@ -8,7 +8,6 @@ import {
 import {
   FormEvent,
   Suspense,
-  useEffect,
   useState,
 } from "react";
 
@@ -28,14 +27,16 @@ function readAuthError(
   ) {
     if (
       "message" in error &&
-      typeof error.message === "string"
+      typeof error.message === "string" &&
+      error.message.trim()
     ) {
       return error.message;
     }
 
     if (
       "statusText" in error &&
-      typeof error.statusText === "string"
+      typeof error.statusText === "string" &&
+      error.statusText.trim()
     ) {
       return error.statusText;
     }
@@ -65,12 +66,6 @@ function SignInForm() {
   const searchParams =
     useSearchParams();
 
-  const {
-    data: session,
-    isPending: sessionPending,
-  } =
-    authClient.useSession();
-
   const [email, setEmail] =
     useState("");
 
@@ -90,22 +85,6 @@ function SignInForm() {
     readSafeDestination(
       searchParams.get("next")
     );
-
-  useEffect(() => {
-    if (
-      !sessionPending &&
-      session?.user
-    ) {
-      router.replace(
-        destination
-      );
-    }
-  }, [
-    destination,
-    router,
-    session,
-    sessionPending,
-  ]);
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
@@ -140,9 +119,7 @@ function SignInForm() {
     setSubmitting(true);
 
     try {
-      const {
-        error: signInError,
-      } =
+      const result =
         await authClient.signIn.email({
           email:
             cleanedEmail,
@@ -155,16 +132,28 @@ function SignInForm() {
             destination,
         });
 
-      if (signInError) {
-        throw signInError;
+      if (result.error) {
+        setError(
+          readAuthError(
+            result.error
+          )
+        );
+
+        setSubmitting(false);
+        return;
       }
 
-      router.push(
+      router.replace(
         destination
       );
 
       router.refresh();
     } catch (caughtError) {
+      console.error(
+        "Beacon sign-in failed:",
+        caughtError
+      );
+
       setError(
         readAuthError(
           caughtError
@@ -284,20 +273,18 @@ function SignInForm() {
 
         <button
           type="submit"
-          disabled={
-            submitting ||
-            sessionPending
-          }
+          disabled={submitting}
           className="w-full rounded-2xl bg-blue-900 px-5 py-4 font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting
-            ? "Signing In..."
-            : "Sign In to Beacon"}
+            ? "Signing in..."
+            : "Sign in to Beacon"}
         </button>
       </form>
 
       <p className="mt-7 text-center text-sm text-slate-600">
         New to Beacon?{" "}
+
         <Link
           href="/signup"
           className="font-extrabold text-blue-800 hover:underline"

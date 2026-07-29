@@ -36,7 +36,7 @@ type StudioProject = {
   thumbnailUrl?: string;
 };
 
-type ProjectApiResponse =
+type StudioProjectsResponse =
   | StudioProject[]
   | {
       projects?: StudioProject[];
@@ -90,7 +90,7 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 });
 
-function normaliseProjects(payload: ProjectApiResponse): StudioProject[] {
+function normaliseProjects(payload: StudioProjectsResponse): StudioProject[] {
   if (Array.isArray(payload)) {
     return payload;
   }
@@ -110,7 +110,7 @@ function normaliseProjects(payload: ProjectApiResponse): StudioProject[] {
   return [];
 }
 
-function projectIdFromResponse(payload: ProjectApiResponse): string | null {
+function projectIdFromResponse(payload: StudioProjectsResponse): string | null {
   if (Array.isArray(payload)) {
     return payload[0]?.id ?? null;
   }
@@ -153,7 +153,7 @@ export default function StudioDashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [showCreatePanel, setShowCreatePanel] = useState(false);
-  const [projectName, setProjectName] = useState("Untitled website video");
+  const [projectName, setProjectName] = useState("Untitled Studio Project");
   const [sourceUrl, setSourceUrl] = useState("/");
   const [description, setDescription] = useState(
     "A live website motion project created in Beacon Studio.",
@@ -173,7 +173,7 @@ export default function StudioDashboardPage() {
         throw new Error("Could not load your Studio projects.");
       }
 
-      const payload = (await response.json()) as ProjectApiResponse;
+      const payload = (await response.json()) as StudioProjectsResponse;
       setProjects(normaliseProjects(payload));
     } catch (loadError) {
       setError(
@@ -268,7 +268,7 @@ export default function StudioDashboardPage() {
         );
       }
 
-      const payload = (await response.json()) as ProjectApiResponse;
+      const payload = (await response.json()) as StudioProjectsResponse;
       const id = projectIdFromResponse(payload);
 
       if (!id) {

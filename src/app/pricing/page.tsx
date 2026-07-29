@@ -1,9 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  useState,
-} from "react";
+import { useState } from "react";
 
 import Navbar from "@/components/Navbar";
 import BeaconFooter from "@/components/BeaconFooter";
@@ -12,64 +10,68 @@ type BillingInterval =
   | "monthly"
   | "annual";
 
+type CreditPackId =
+  | "credits_5"
+  | "credits_15"
+  | "credits_25";
+
 type CheckoutRequest =
   | {
-      purchaseType:
-        "subscription";
-      billingInterval:
-        BillingInterval;
+      purchaseType: "subscription";
+      billingInterval: BillingInterval;
     }
   | {
-      purchaseType:
-        "credit_top_up";
-      creditPackId:
-        "credits_small"
-        | "credits_medium"
-        | "credits_large";
+      purchaseType: "credit_top_up";
+      creditPackId: CreditPackId;
     };
 
 type CheckoutResponse = {
   checkoutUrl?: string;
   success?: boolean;
-  error?: {
-    code?: string;
-    message?: string;
-  };
+  error?:
+    | string
+    | {
+        code?: string;
+        message?: string;
+      };
 };
 
 type ActiveCheckout =
   | BillingInterval
-  | "credits_small"
-  | "credits_medium"
-  | "credits_large"
+  | CreditPackId
   | null;
 
-const creditPacks = [
+type CreditPack = {
+  id: CreditPackId;
+  name: string;
+  price: string;
+  description: string;
+  creditsLabel: string;
+};
+
+const creditPacks: readonly CreditPack[] = [
   {
-    id:
-      "credits_small" as const,
-    name:
-      "Small credit pack",
+    id: "credits_5",
+    name: "5 Beacon Credits",
+    price: "£5",
     description:
       "A useful top-up for occasional extra Beacon activity.",
     creditsLabel:
       "Small top-up",
   },
   {
-    id:
-      "credits_medium" as const,
-    name:
-      "Medium credit pack",
+    id: "credits_15",
+    name: "15 Beacon Credits",
+    price: "£10",
     description:
       "A larger balance for regular use across Beacon tools.",
     creditsLabel:
       "Popular top-up",
   },
   {
-    id:
-      "credits_large" as const,
-    name:
-      "Large credit pack",
+    id: "credits_25",
+    name: "25 Beacon Credits",
+    price: "£15",
     description:
       "The largest one-off credit option for frequent Beacon use.",
     creditsLabel:
@@ -80,10 +82,36 @@ const creditPacks = [
 function readCheckoutError(
   response: CheckoutResponse
 ): string {
-  return (
-    response.error?.message ||
-    "Checkout could not be started. Please try again."
-  );
+  if (
+    typeof response.error ===
+    "string"
+  ) {
+    return response.error;
+  }
+
+  if (
+    response.error &&
+    typeof response.error ===
+      "object" &&
+    response.error.message
+  ) {
+    return response.error.message;
+  }
+
+  return "Checkout could not be started. Please try again.";
+}
+
+async function readCheckoutResponse(
+  response: Response
+): Promise<CheckoutResponse> {
+  try {
+    return (await response.json()) as CheckoutResponse;
+  } catch {
+    return {
+      error:
+        "Beacon received an invalid response while starting checkout.",
+    };
+  }
 }
 
 export default function PricingPage() {
@@ -104,10 +132,11 @@ export default function PricingPage() {
     );
 
   async function startCheckout(
-    requestBody:
-      CheckoutRequest,
-    checkoutId:
-      ActiveCheckout
+    requestBody: CheckoutRequest,
+    checkoutId: Exclude<
+      ActiveCheckout,
+      null
+    >
   ): Promise<void> {
     if (activeCheckout) {
       return;
@@ -126,13 +155,15 @@ export default function PricingPage() {
         await fetch(
           "/api/stripe/checkout",
           {
-            method:
-              "POST",
+            method: "POST",
 
             headers: {
               "Content-Type":
                 "application/json",
             },
+
+            credentials:
+              "include",
 
             body:
               JSON.stringify(
@@ -142,7 +173,9 @@ export default function PricingPage() {
         );
 
       const data =
-        (await response.json()) as CheckoutResponse;
+        await readCheckoutResponse(
+          response
+        );
 
       if (
         response.status === 401
@@ -160,13 +193,20 @@ export default function PricingPage() {
       }
 
       if (
-        !response.ok ||
-        !data.checkoutUrl
+        !response.ok
       ) {
         throw new Error(
           readCheckoutError(
             data
           )
+        );
+      }
+
+      if (
+        !data.checkoutUrl
+      ) {
+        throw new Error(
+          "Stripe did not return a checkout link. Please try again."
         );
       }
 
@@ -208,9 +248,7 @@ export default function PricingPage() {
 
   function startCreditPurchase(
     creditPackId:
-      | "credits_small"
-      | "credits_medium"
-      | "credits_large"
+      CreditPackId
   ): void {
     void startCheckout(
       {
@@ -246,11 +284,11 @@ export default function PricingPage() {
           </h1>
 
           <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-blue-100">
-            Use Beacon&apos;s
-            core experience, upgrade
-            to Beacon+ or purchase
-            extra credits whenever
-            you need them.
+            Use Beacon&apos;s core
+            experience, upgrade to
+            Beacon+ or purchase extra
+            credits whenever you need
+            them.
           </p>
 
           <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
@@ -588,9 +626,7 @@ export default function PricingPage() {
               {creditPacks.map(
                 (pack) => (
                   <article
-                    key={
-                      pack.id
-                    }
+                    key={pack.id}
                     className="flex flex-col rounded-[2rem] border border-slate-200 bg-white p-7 shadow-sm"
                   >
                     <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-blue-800">
@@ -602,6 +638,10 @@ export default function PricingPage() {
                     <h3 className="mt-3 text-2xl font-black text-slate-950">
                       {pack.name}
                     </h3>
+
+                    <p className="mt-4 text-4xl font-black tracking-tight text-slate-950">
+                      {pack.price}
+                    </p>
 
                     <p className="mt-4 flex-1 leading-7 text-slate-600">
                       {
@@ -625,7 +665,7 @@ export default function PricingPage() {
                       {activeCheckout ===
                       pack.id
                         ? "Opening checkout…"
-                        : "Buy credit pack"}
+                        : `Buy ${pack.name}`}
                     </button>
                   </article>
                 )
