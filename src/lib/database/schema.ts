@@ -997,6 +997,518 @@ export const creditLedger =
     ]
   );
 
+
+/*
+ * Beacon Studio projects, generations and assets
+ *
+ * A Studio project owns the user's brief and latest campaign plan.
+ * Generation records provide an auditable history of AI work, while
+ * assets store generated or uploaded media associated with a project.
+ */
+
+export const studioProjectStatus =
+  pgEnum(
+    "studio_project_status",
+    [
+      "draft",
+      "generating",
+      "ready",
+      "failed",
+      "archived",
+    ]
+  );
+
+export const studioGenerationStatus =
+  pgEnum(
+    "studio_generation_status",
+    [
+      "queued",
+      "processing",
+      "completed",
+      "failed",
+    ]
+  );
+
+export const studioAssetType =
+  pgEnum(
+    "studio_asset_type",
+    [
+      "image",
+      "video",
+      "audio",
+      "document",
+      "other",
+    ]
+  );
+
+export const studioAssetStatus =
+  pgEnum(
+    "studio_asset_status",
+    [
+      "pending",
+      "ready",
+      "failed",
+      "deleted",
+    ]
+  );
+
+export const studioProject =
+  pgTable(
+    "studio_project",
+    {
+      id:
+        uuid("id")
+          .defaultRandom()
+          .primaryKey(),
+
+      userId:
+        text("user_id")
+          .notNull()
+          .references(
+            () => user.id,
+            {
+              onDelete:
+                "cascade",
+            }
+          ),
+
+      title:
+        text("title")
+          .notNull(),
+
+      description:
+        text("description"),
+
+      status:
+        studioProjectStatus(
+          "status"
+        )
+          .notNull()
+          .default(
+            "draft"
+          ),
+
+      brief:
+        jsonb("brief")
+          .$type<
+            Record<
+              string,
+              unknown
+            >
+          >()
+          .notNull()
+          .default({}),
+
+      campaignPlan:
+        jsonb(
+          "campaign_plan"
+        )
+          .$type<
+            Record<
+              string,
+              unknown
+            > |
+            null
+          >(),
+
+      selectedVariantId:
+        text(
+          "selected_variant_id"
+        ),
+
+      thumbnailUrl:
+        text(
+          "thumbnail_url"
+        ),
+
+      lastOpenedAt:
+        timestamp(
+          "last_opened_at",
+          {
+            withTimezone: true,
+          }
+        ),
+
+      createdAt:
+        timestamp(
+          "created_at",
+          {
+            withTimezone: true,
+          }
+        )
+          .notNull()
+          .defaultNow(),
+
+      updatedAt:
+        timestamp(
+          "updated_at",
+          {
+            withTimezone: true,
+          }
+        )
+          .notNull()
+          .defaultNow(),
+
+      deletedAt:
+        timestamp(
+          "deleted_at",
+          {
+            withTimezone: true,
+          }
+        ),
+    },
+    (table) => [
+      index(
+        "studio_project_user_id_idx"
+      ).on(
+        table.userId
+      ),
+
+      index(
+        "studio_project_status_idx"
+      ).on(
+        table.status
+      ),
+
+      index(
+        "studio_project_updated_at_idx"
+      ).on(
+        table.updatedAt
+      ),
+
+      index(
+        "studio_project_user_status_idx"
+      ).on(
+        table.userId,
+        table.status
+      ),
+    ]
+  );
+
+export const studioGeneration =
+  pgTable(
+    "studio_generation",
+    {
+      id:
+        uuid("id")
+          .defaultRandom()
+          .primaryKey(),
+
+      projectId:
+        uuid("project_id")
+          .notNull()
+          .references(
+            () => studioProject.id,
+            {
+              onDelete:
+                "cascade",
+            }
+          ),
+
+      userId:
+        text("user_id")
+          .notNull()
+          .references(
+            () => user.id,
+            {
+              onDelete:
+                "cascade",
+            }
+          ),
+
+      status:
+        studioGenerationStatus(
+          "status"
+        )
+          .notNull()
+          .default(
+            "queued"
+          ),
+
+      creditCost:
+        integer(
+          "credit_cost"
+        )
+          .notNull()
+          .default(0),
+
+      administratorBypass:
+        boolean(
+          "administrator_bypass"
+        )
+          .notNull()
+          .default(false),
+
+      model:
+        text("model"),
+
+      inputTokens:
+        integer(
+          "input_tokens"
+        ),
+
+      outputTokens:
+        integer(
+          "output_tokens"
+        ),
+
+      requestPayload:
+        jsonb(
+          "request_payload"
+        )
+          .$type<
+            Record<
+              string,
+              unknown
+            >
+          >()
+          .notNull()
+          .default({}),
+
+      responsePayload:
+        jsonb(
+          "response_payload"
+        )
+          .$type<
+            Record<
+              string,
+              unknown
+            > |
+            null
+          >(),
+
+      errorMessage:
+        text(
+          "error_message"
+        ),
+
+      startedAt:
+        timestamp(
+          "started_at",
+          {
+            withTimezone: true,
+          }
+        ),
+
+      completedAt:
+        timestamp(
+          "completed_at",
+          {
+            withTimezone: true,
+          }
+        ),
+
+      createdAt:
+        timestamp(
+          "created_at",
+          {
+            withTimezone: true,
+          }
+        )
+          .notNull()
+          .defaultNow(),
+    },
+    (table) => [
+      index(
+        "studio_generation_project_id_idx"
+      ).on(
+        table.projectId
+      ),
+
+      index(
+        "studio_generation_user_id_idx"
+      ).on(
+        table.userId
+      ),
+
+      index(
+        "studio_generation_status_idx"
+      ).on(
+        table.status
+      ),
+
+      index(
+        "studio_generation_created_at_idx"
+      ).on(
+        table.createdAt
+      ),
+    ]
+  );
+
+export const studioAsset =
+  pgTable(
+    "studio_asset",
+    {
+      id:
+        uuid("id")
+          .defaultRandom()
+          .primaryKey(),
+
+      projectId:
+        uuid("project_id")
+          .notNull()
+          .references(
+            () => studioProject.id,
+            {
+              onDelete:
+                "cascade",
+            }
+          ),
+
+      generationId:
+        uuid(
+          "generation_id"
+        )
+          .references(
+            () => studioGeneration.id,
+            {
+              onDelete:
+                "set null",
+            }
+          ),
+
+      userId:
+        text("user_id")
+          .notNull()
+          .references(
+            () => user.id,
+            {
+              onDelete:
+                "cascade",
+            }
+          ),
+
+      type:
+        studioAssetType(
+          "type"
+        )
+          .notNull(),
+
+      status:
+        studioAssetStatus(
+          "status"
+        )
+          .notNull()
+          .default(
+            "pending"
+          ),
+
+      name:
+        text("name")
+          .notNull(),
+
+      mimeType:
+        text(
+          "mime_type"
+        ),
+
+      storageKey:
+        text(
+          "storage_key"
+        ),
+
+      url:
+        text("url"),
+
+      sizeBytes:
+        integer(
+          "size_bytes"
+        ),
+
+      width:
+        integer("width"),
+
+      height:
+        integer("height"),
+
+      durationMs:
+        integer(
+          "duration_ms"
+        ),
+
+      metadata:
+        jsonb(
+          "metadata"
+        )
+          .$type<
+            Record<
+              string,
+              string |
+                number |
+                boolean |
+                null
+            >
+          >()
+          .notNull()
+          .default({}),
+
+      createdAt:
+        timestamp(
+          "created_at",
+          {
+            withTimezone: true,
+          }
+        )
+          .notNull()
+          .defaultNow(),
+
+      updatedAt:
+        timestamp(
+          "updated_at",
+          {
+            withTimezone: true,
+          }
+        )
+          .notNull()
+          .defaultNow(),
+
+      deletedAt:
+        timestamp(
+          "deleted_at",
+          {
+            withTimezone: true,
+          }
+        ),
+    },
+    (table) => [
+      index(
+        "studio_asset_project_id_idx"
+      ).on(
+        table.projectId
+      ),
+
+      index(
+        "studio_asset_generation_id_idx"
+      ).on(
+        table.generationId
+      ),
+
+      index(
+        "studio_asset_user_id_idx"
+      ).on(
+        table.userId
+      ),
+
+      index(
+        "studio_asset_type_idx"
+      ).on(
+        table.type
+      ),
+
+      index(
+        "studio_asset_status_idx"
+      ).on(
+        table.status
+      ),
+
+      uniqueIndex(
+        "studio_asset_storage_key_unique"
+      ).on(
+        table.storageKey
+      ),
+    ]
+  );
+
 /*
  * Beacon Studio credit ledger
  *
@@ -1101,6 +1613,30 @@ export const studioCreditLedger =
           "stripe_subscription_id"
         ),
 
+      studioProjectId:
+        uuid(
+          "studio_project_id"
+        )
+          .references(
+            () => studioProject.id,
+            {
+              onDelete:
+                "set null",
+            }
+          ),
+
+      studioGenerationId:
+        uuid(
+          "studio_generation_id"
+        )
+          .references(
+            () => studioGeneration.id,
+            {
+              onDelete:
+                "set null",
+            }
+          ),
+
       metadata:
         jsonb(
           "metadata"
@@ -1144,6 +1680,18 @@ export const studioCreditLedger =
         "studio_credit_ledger_subscription_idx"
       ).on(
         table.stripeSubscriptionId
+      ),
+
+      index(
+        "studio_credit_ledger_project_idx"
+      ).on(
+        table.studioProjectId
+      ),
+
+      index(
+        "studio_credit_ledger_generation_idx"
+      ).on(
+        table.studioGenerationId
       ),
 
       uniqueIndex(
@@ -1675,6 +2223,21 @@ export const userRelations =
           studioCreditLedger
         ),
 
+      studioProjects:
+        many(
+          studioProject
+        ),
+
+      studioGenerations:
+        many(
+          studioGeneration
+        ),
+
+      studioAssets:
+        many(
+          studioAsset
+        ),
+
       searchHistory:
         many(
           searchHistory
@@ -1766,6 +2329,115 @@ export const creditLedgerRelations =
     })
   );
 
+export const studioProjectRelations =
+  relations(
+    studioProject,
+    ({ one, many }) => ({
+      user:
+        one(user, {
+          fields: [
+            studioProject.userId,
+          ],
+
+          references: [
+            user.id,
+          ],
+        }),
+
+      generations:
+        many(
+          studioGeneration
+        ),
+
+      assets:
+        many(
+          studioAsset
+        ),
+
+      creditLedgerEntries:
+        many(
+          studioCreditLedger
+        ),
+    })
+  );
+
+export const studioGenerationRelations =
+  relations(
+    studioGeneration,
+    ({ one, many }) => ({
+      project:
+        one(studioProject, {
+          fields: [
+            studioGeneration.projectId,
+          ],
+
+          references: [
+            studioProject.id,
+          ],
+        }),
+
+      user:
+        one(user, {
+          fields: [
+            studioGeneration.userId,
+          ],
+
+          references: [
+            user.id,
+          ],
+        }),
+
+      assets:
+        many(
+          studioAsset
+        ),
+
+      creditLedgerEntries:
+        many(
+          studioCreditLedger
+        ),
+    })
+  );
+
+export const studioAssetRelations =
+  relations(
+    studioAsset,
+    ({ one }) => ({
+      project:
+        one(studioProject, {
+          fields: [
+            studioAsset.projectId,
+          ],
+
+          references: [
+            studioProject.id,
+          ],
+        }),
+
+      generation:
+        one(studioGeneration, {
+          fields: [
+            studioAsset.generationId,
+          ],
+
+          references: [
+            studioGeneration.id,
+          ],
+        }),
+
+      user:
+        one(user, {
+          fields: [
+            studioAsset.userId,
+          ],
+
+          references: [
+            user.id,
+          ],
+        }),
+    })
+  );
+
 export const studioCreditLedgerRelations =
   relations(
     studioCreditLedger,
@@ -1778,6 +2450,28 @@ export const studioCreditLedgerRelations =
 
           references: [
             user.id,
+          ],
+        }),
+
+      project:
+        one(studioProject, {
+          fields: [
+            studioCreditLedger.studioProjectId,
+          ],
+
+          references: [
+            studioProject.id,
+          ],
+        }),
+
+      generation:
+        one(studioGeneration, {
+          fields: [
+            studioCreditLedger.studioGenerationId,
+          ],
+
+          references: [
+            studioGeneration.id,
           ],
         }),
     })
@@ -1873,6 +2567,24 @@ export type NewUserVehicleProfile =
 
 export type CreditLedgerEntry =
   typeof creditLedger.$inferSelect;
+
+export type StudioProject =
+  typeof studioProject.$inferSelect;
+
+export type NewStudioProject =
+  typeof studioProject.$inferInsert;
+
+export type StudioGeneration =
+  typeof studioGeneration.$inferSelect;
+
+export type NewStudioGeneration =
+  typeof studioGeneration.$inferInsert;
+
+export type StudioAsset =
+  typeof studioAsset.$inferSelect;
+
+export type NewStudioAsset =
+  typeof studioAsset.$inferInsert;
 
 export type StudioCreditLedgerEntry =
   typeof studioCreditLedger.$inferSelect;

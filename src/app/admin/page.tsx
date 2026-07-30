@@ -1,6 +1,4 @@
 import Link from "next/link";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 
 import {
   count,
@@ -22,7 +20,7 @@ import {
   updateUserRole,
 } from "@/app/admin/actions";
 
-import { auth } from "@/lib/auth/Auth";
+import { requireAdministratorAccount } from "@/lib/auth/AdminAccess";
 import { database } from "@/lib/database/Database";
 
 import {
@@ -180,54 +178,8 @@ function readSearchParameter(
 export default async function AdminPage({
   searchParams,
 }: AdminPageProps) {
-  const requestHeaders =
-    await headers();
-
-  const session =
-    await auth.api.getSession({
-      headers:
-        requestHeaders,
-    });
-
-  if (!session?.user?.id) {
-    redirect(
-      "/signin?next=/admin"
-    );
-  }
-
-  const adminRows =
-    await database
-      .select({
-        id:
-          user.id,
-
-        name:
-          user.name,
-
-        email:
-          user.email,
-
-        role:
-          user.role,
-      })
-      .from(user)
-      .where(
-        eq(
-          user.id,
-          session.user.id
-        )
-      )
-      .limit(1);
-
   const adminAccount =
-    adminRows[0];
-
-  if (
-    !adminAccount ||
-    adminAccount.role !== "admin"
-  ) {
-    redirect("/dashboard");
-  }
+    await requireAdministratorAccount();
 
   const resolvedSearchParams =
     searchParams

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Suspense, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type ToolId =
   | "marketing"
@@ -14,7 +14,7 @@ type ToolId =
   | "audio"
   | "custom";
 
-type Quality = "standard" | "high" | "ultra";
+type Quality = "draft" | "standard" | "high" | "maximum";
 type AspectRatio = "1:1" | "4:5" | "9:16" | "16:9";
 type OutputCount = 1 | 2 | 4;
 
@@ -103,15 +103,17 @@ const tools: ToolOption[] = [
 ];
 
 const qualityMultipliers: Record<Quality, number> = {
-  standard: 1,
+  draft: 0.75,
+  standard: 1.25,
   high: 1.8,
-  ultra: 3.2,
+  maximum: 3.2,
 };
 
 const qualityLabels: Record<Quality, string> = {
+  draft: "Draft",
   standard: "Standard",
   high: "High",
-  ultra: "Ultra",
+  maximum: "Maximum",
 };
 
 const outputMultipliers: Record<OutputCount, number> = {
@@ -120,31 +122,127 @@ const outputMultipliers: Record<OutputCount, number> = {
   4: 3.4,
 };
 
-const recentGenerations = [
-  {
-    name: "Summer Product Hero",
-    tool: "Images",
-    created: "29 Jul 2026",
-    credits: 18,
-    status: "Complete",
-  },
-  {
-    name: "Beacon Partner Deck",
-    tool: "Writing",
-    created: "28 Jul 2026",
-    credits: 96,
-    status: "Complete",
-  },
-  {
-    name: "Launch Reel",
-    tool: "Short-form Video",
-    created: "28 Jul 2026",
-    credits: 420,
-    status: "Processing",
-  },
-] as const;
+const recentGenerations: Array<{
+  name: string;
+  tool: string;
+  created: string;
+  credits: number;
+  status: "Complete" | "Processing";
+}> = [];
+
+
+type StudioOutputFormatId =
+  | "instagram-reel"
+  | "facebook-reel"
+  | "tiktok"
+  | "youtube-short"
+  | "instagram-story"
+  | "facebook-story"
+  | "instagram-post"
+  | "facebook-post"
+  | "linkedin-post"
+  | "linkedin-video"
+  | "x-post"
+  | "youtube-thumbnail"
+  | "web-banner"
+  | "display-banner"
+  | "poster"
+  | "flyer"
+  | "meme"
+  | "square-ad"
+  | "landscape-video"
+  | "portrait-video";
+
+type GenerateSuccessResponse = {
+  projectId: string;
+  generationId: string;
+  creditCost: number;
+};
+
+type GenerateErrorResponse = {
+  error?: string;
+  code?: string;
+  requiredCredits?: number;
+  availableCredits?: number;
+};
+
+function getFormatsForSelection(
+  tool: ToolId,
+  aspectRatio: AspectRatio,
+): StudioOutputFormatId[] {
+  if (tool === "short-video") {
+    return aspectRatio === "16:9"
+      ? ["landscape-video"]
+      : ["instagram-reel"];
+  }
+
+  if (tool === "long-video") {
+    return aspectRatio === "9:16"
+      ? ["portrait-video"]
+      : ["landscape-video"];
+  }
+
+  if (tool === "images") {
+    if (aspectRatio === "1:1") {
+      return ["square-ad"];
+    }
+
+    if (aspectRatio === "4:5") {
+      return ["instagram-post"];
+    }
+
+    if (aspectRatio === "9:16") {
+      return ["instagram-story"];
+    }
+
+    return ["web-banner"];
+  }
+
+  if (tool === "memes") {
+    return ["meme"];
+  }
+
+  if (tool === "marketing") {
+    if (aspectRatio === "1:1") {
+      return ["square-ad"];
+    }
+
+    if (aspectRatio === "4:5") {
+      return ["instagram-post"];
+    }
+
+    if (aspectRatio === "9:16") {
+      return ["instagram-story"];
+    }
+
+    return ["web-banner"];
+  }
+
+  if (tool === "writing") {
+    return ["linkedin-post"];
+  }
+
+  if (tool === "audio") {
+    return ["landscape-video"];
+  }
+
+  if (aspectRatio === "1:1") {
+    return ["square-ad"];
+  }
+
+  if (aspectRatio === "4:5") {
+    return ["instagram-post"];
+  }
+
+  if (aspectRatio === "9:16") {
+    return ["portrait-video"];
+  }
+
+  return ["landscape-video"];
+}
 
 function StudioCreateContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const requestedTool = searchParams.get("tool") as ToolId | null;
   const initialTool = tools.some((tool) => tool.id === requestedTool)
@@ -169,6 +267,9 @@ function StudioCreateContent() {
   const [brandKit, setBrandKit] = useState("none");
   const [project, setProject] = useState("Beacon Studio");
   const [saveToLibrary, setSaveToLibrary] = useState(true);
+  const [showReview, setShowReview] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   const selectedToolDetails =
     tools.find((tool) => tool.id === selectedTool) ?? tools[0];
@@ -200,14 +301,14 @@ function StudioCreateContent() {
 
   const estimatedWait = useMemo(() => {
     if (selectedTool === "long-video") {
-      return quality === "ultra" ? "15–30 minutes" : "8–20 minutes";
+      return quality === "maximum" ? "15–30 minutes" : "8–20 minutes";
     }
 
     if (selectedTool === "short-video") {
-      return quality === "ultra" ? "6–12 minutes" : "3–8 minutes";
+      return quality === "maximum" ? "6–12 minutes" : "3–8 minutes";
     }
 
-    return quality === "ultra" ? "2–5 minutes" : "Under 2 minutes";
+    return quality === "maximum" ? "2–5 minutes" : "Under 2 minutes";
   }, [quality, selectedTool]);
 
   function selectTool(tool: ToolOption) {
@@ -225,6 +326,91 @@ function StudioCreateContent() {
     if (tool.id === "long-video") {
       setAspectRatio("16:9");
       setDuration(60);
+    }
+  }
+
+  async function generateCampaign() {
+    if (!prompt.trim() || isGenerating) {
+      return;
+    }
+
+    setIsGenerating(true);
+    setGenerationError(null);
+
+    try {
+      const response = await fetch("/api/studio/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt: prompt.trim(),
+          formats: getFormatsForSelection(selectedTool, aspectRatio),
+          audience: audience.trim() || undefined,
+          tone,
+          style,
+          colours: colours
+            .split(",")
+            .map((colour) => colour.trim())
+            .filter(Boolean),
+          sourceUrl: reference.trim() || undefined,
+          notes: [
+            notes.trim(),
+            brandKit !== "none" ? `Use saved brand kit: ${brandKit}.` : "",
+            saveToLibrary ? "Save this generation to the project library." : "",
+            `Creation workflow: ${selectedToolDetails.name}.`,
+            `Requested aspect ratio: ${aspectRatio}.`,
+          ]
+            .filter(Boolean)
+            .join(" "),
+          durationMs: isVideo ? duration * 1_000 : undefined,
+          quality,
+          outputCount: outputs,
+          projectTitle: project,
+          confirmedCreditCost: estimatedCredits,
+        }),
+      });
+
+      const data = (await response.json()) as
+        | GenerateSuccessResponse
+        | GenerateErrorResponse;
+
+      if (!response.ok) {
+        const errorData = data as GenerateErrorResponse;
+
+        if (
+          response.status === 402 &&
+          typeof errorData.requiredCredits === "number" &&
+          typeof errorData.availableCredits === "number"
+        ) {
+          throw new Error(
+            `You need ${errorData.requiredCredits} Studio Credits, but only ${errorData.availableCredits} are available.`,
+          );
+        }
+
+        throw new Error(
+          errorData.error || "Beacon Studio could not generate the campaign.",
+        );
+      }
+
+      const successData = data as GenerateSuccessResponse;
+
+      if (!successData.projectId) {
+        throw new Error(
+          "Beacon Studio created the campaign but did not return a project ID.",
+        );
+      }
+
+      router.push(`/studio/editor/${successData.projectId}`);
+    } catch (error) {
+      setGenerationError(
+        error instanceof Error
+          ? error.message
+          : "Beacon Studio could not generate the campaign.",
+      );
+      setShowReview(false);
+    } finally {
+      setIsGenerating(false);
     }
   }
 
@@ -282,15 +468,17 @@ function StudioCreateContent() {
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
                   Studio Credits
                 </p>
-                <p className="mt-2 text-2xl font-black text-blue-950">487</p>
+                <p className="mt-2 text-xl font-black text-blue-950">
+                  Checked live at generation
+                </p>
               </div>
 
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
                   Membership
                 </p>
-                <p className="mt-2 text-2xl font-black text-blue-950">
-                  Studio Business
+                <p className="mt-2 text-xl font-black text-blue-950">
+                  Account-linked
                 </p>
               </div>
 
@@ -298,8 +486,8 @@ function StudioCreateContent() {
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
                   Queue Priority
                 </p>
-                <p className="mt-2 text-2xl font-black text-blue-950">
-                  Priority
+                <p className="mt-2 text-xl font-black text-blue-950">
+                  Live queue
                 </p>
               </div>
             </div>
@@ -519,9 +707,10 @@ function StudioCreateContent() {
                         }
                         className="min-h-12 rounded-2xl border border-slate-300 bg-white px-4 py-3 font-bold outline-none transition focus:border-blue-700 focus:ring-4 focus:ring-blue-100"
                       >
+                        <option value="draft">Draft</option>
                         <option value="standard">Standard</option>
                         <option value="high">High</option>
-                        <option value="ultra">Ultra</option>
+                        <option value="maximum">Maximum</option>
                       </select>
                     </label>
 
@@ -731,12 +920,25 @@ function StudioCreateContent() {
                 calculator before any generation begins.
               </p>
 
+              {generationError && (
+                <div
+                  role="alert"
+                  className="mt-6 rounded-2xl border border-red-300/30 bg-red-400/10 p-4 text-sm font-bold leading-6 text-red-100"
+                >
+                  {generationError}
+                </div>
+              )}
+
               <button
                 type="button"
-                disabled={!prompt.trim()}
+                onClick={() => {
+                  setGenerationError(null);
+                  setShowReview(true);
+                }}
+                disabled={!prompt.trim() || isGenerating}
                 className="mt-7 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-amber-300 px-6 py-4 text-lg font-black text-blue-950 transition hover:-translate-y-0.5 hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-blue-950 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
               >
-                Review and Generate
+                {isGenerating ? "Generating…" : "Review and Generate"}
               </button>
 
               <p className="mt-4 text-center text-xs font-bold leading-5 text-blue-100/60">
@@ -853,57 +1055,172 @@ function StudioCreateContent() {
               </thead>
 
               <tbody>
-                {recentGenerations.map((generation) => (
-                  <tr
-                    key={generation.name}
-                    className="border-b border-slate-100 last:border-b-0"
-                  >
-                    <td className="px-3 py-4 font-black text-slate-900">
-                      {generation.name}
-                    </td>
-                    <td className="px-3 py-4 font-semibold text-slate-600">
-                      {generation.tool}
-                    </td>
-                    <td className="px-3 py-4 font-semibold text-slate-600">
-                      {generation.created}
-                    </td>
-                    <td className="px-3 py-4 font-semibold text-slate-600">
-                      {generation.credits}
-                    </td>
-                    <td className="px-3 py-4">
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-black ${
-                          generation.status === "Complete"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-amber-100 text-amber-800"
-                        }`}
-                      >
-                        {generation.status}
-                      </span>
-                    </td>
-                    <td className="px-3 py-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-black text-slate-700 transition hover:bg-slate-50"
+                {recentGenerations.length > 0 ? (
+                  recentGenerations.map((generation) => (
+                    <tr
+                      key={generation.name}
+                      className="border-b border-slate-100 last:border-b-0"
+                    >
+                      <td className="px-3 py-4 font-black text-slate-900">
+                        {generation.name}
+                      </td>
+                      <td className="px-3 py-4 font-semibold text-slate-600">
+                        {generation.tool}
+                      </td>
+                      <td className="px-3 py-4 font-semibold text-slate-600">
+                        {generation.created}
+                      </td>
+                      <td className="px-3 py-4 font-semibold text-slate-600">
+                        {generation.credits}
+                      </td>
+                      <td className="px-3 py-4">
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-black ${
+                            generation.status === "Complete"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-amber-100 text-amber-800"
+                          }`}
                         >
-                          Duplicate
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded-xl bg-blue-950 px-3 py-2 text-sm font-black text-white transition hover:bg-blue-900"
-                        >
-                          Download
-                        </button>
-                      </div>
+                          {generation.status}
+                        </span>
+                      </td>
+                      <td className="px-3 py-4 text-right">
+                        <span className="text-sm font-bold text-slate-400">
+                          Open from project library
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="px-3 py-10 text-center"
+                    >
+                      <p className="font-black text-slate-900">
+                        No Studio generations yet.
+                      </p>
+                      <p className="mt-2 font-medium text-slate-500">
+                        Your completed campaigns will appear here after generation.
+                      </p>
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
         </div>
       </section>
+
+      {showReview && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="studio-review-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-5 backdrop-blur-sm"
+        >
+          <div className="w-full max-w-2xl rounded-[1.75rem] border border-white/10 bg-white p-6 shadow-2xl sm:p-8">
+            <div className="flex items-start justify-between gap-5">
+              <div>
+                <p className="text-sm font-black uppercase tracking-[0.18em] text-blue-700">
+                  Final Review
+                </p>
+                <h2
+                  id="studio-review-title"
+                  className="mt-2 text-3xl font-black tracking-tight text-slate-950"
+                >
+                  Confirm this Studio generation.
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowReview(false)}
+                disabled={isGenerating}
+                aria-label="Close review"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 text-xl font-black text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mt-7 grid gap-3 rounded-2xl bg-slate-50 p-5 sm:grid-cols-2">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                  Creation type
+                </p>
+                <p className="mt-1 font-black text-slate-950">
+                  {selectedToolDetails.name}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                  Quality
+                </p>
+                <p className="mt-1 font-black text-slate-950">
+                  {qualityLabels[quality]}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                  Outputs
+                </p>
+                <p className="mt-1 font-black text-slate-950">
+                  {outputs}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                  Confirmed cost
+                </p>
+                <p className="mt-1 text-xl font-black text-blue-950">
+                  {estimatedCredits} Studio Credits
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-slate-200 p-5">
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                Prompt
+              </p>
+              <p className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap font-medium leading-7 text-slate-700">
+                {prompt.trim()}
+              </p>
+            </div>
+
+            <p className="mt-5 text-sm font-semibold leading-6 text-slate-600">
+              Credits are charged only when generation completes successfully.
+              If generation fails, the project is recorded as failed and no
+              Studio Credits are deducted.
+            </p>
+
+            <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setShowReview(false)}
+                disabled={isGenerating}
+                className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-300 px-5 py-3 font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Go Back
+              </button>
+
+              <button
+                type="button"
+                onClick={generateCampaign}
+                disabled={isGenerating}
+                className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-blue-950 px-6 py-3 font-black text-white transition hover:bg-blue-900 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isGenerating
+                  ? "Creating Campaign…"
+                  : `Confirm ${estimatedCredits} Credits`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -1,6 +1,5 @@
 "use server";
 
-import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 
 import {
@@ -10,17 +9,16 @@ import {
   sql,
 } from "drizzle-orm";
 
-import { auth } from "@/lib/auth/Auth";
+import {
+  requireAdministratorAccount,
+} from "@/lib/auth/AdminAccess";
+
 import { database } from "@/lib/database/Database";
 
 import {
   creditLedger,
   user,
 } from "@/lib/database/schema";
-
-type AdminAccount = {
-  id: string;
-};
 
 type TargetAccount = {
   id: string;
@@ -35,7 +33,7 @@ const MAXIMUM_CREDIT_ADJUSTMENT =
   100_000;
 
 function readRequiredString(
-  value: FormDataEntryValue | null
+  value: FormDataEntryValue | null,
 ): string {
   if (typeof value !== "string") {
     return "";
@@ -45,7 +43,7 @@ function readRequiredString(
 }
 
 function readBooleanValue(
-  value: FormDataEntryValue | null
+  value: FormDataEntryValue | null,
 ): boolean | null {
   if (value === "true") {
     return true;
@@ -59,7 +57,7 @@ function readBooleanValue(
 }
 
 function readRole(
-  value: FormDataEntryValue | null
+  value: FormDataEntryValue | null,
 ): "user" | "admin" | null {
   if (
     value === "user" ||
@@ -72,7 +70,7 @@ function readRole(
 }
 
 function readCreditAdjustment(
-  value: FormDataEntryValue | null
+  value: FormDataEntryValue | null,
 ): number | null {
   if (typeof value !== "string") {
     return null;
@@ -88,7 +86,7 @@ function readCreditAdjustment(
   const parsed =
     Number.parseInt(
       cleaned,
-      10
+      10,
     );
 
   if (
@@ -103,57 +101,8 @@ function readCreditAdjustment(
   return parsed;
 }
 
-async function requireAdministrator(): Promise<AdminAccount> {
-  const session =
-    await auth.api.getSession({
-      headers:
-        await headers(),
-    });
-
-  if (!session?.user?.id) {
-    throw new Error(
-      "You must be signed in to perform this action."
-    );
-  }
-
-  const administratorRows =
-    await database
-      .select({
-        id:
-          user.id,
-
-        role:
-          user.role,
-      })
-      .from(user)
-      .where(
-        eq(
-          user.id,
-          session.user.id
-        )
-      )
-      .limit(1);
-
-  const administrator =
-    administratorRows[0];
-
-  if (
-    !administrator ||
-    administrator.role !== "admin"
-  ) {
-    throw new Error(
-      "Administrator access is required."
-    );
-  }
-
-  return {
-    id:
-      administrator.id,
-  };
-}
-
 async function getTargetAccount(
-  userId: string
+  userId: string,
 ): Promise<TargetAccount> {
   const accountRows =
     await database
@@ -180,8 +129,8 @@ async function getTargetAccount(
       .where(
         eq(
           user.id,
-          userId
-        )
+          userId,
+        ),
       )
       .limit(1);
 
@@ -190,7 +139,7 @@ async function getTargetAccount(
 
   if (!account) {
     throw new Error(
-      "The selected Beacon account could not be found."
+      "The selected Beacon account could not be found.",
     );
   }
 
@@ -199,37 +148,37 @@ async function getTargetAccount(
 
 function refreshAdminPages(): void {
   revalidatePath(
-    "/admin"
+    "/admin",
   );
 
   revalidatePath(
-    "/dashboard"
+    "/dashboard",
   );
 }
 
 export async function updateUserMembership(
-  formData: FormData
+  formData: FormData,
 ): Promise<void> {
   const administrator =
-    await requireAdministrator();
+    await requireAdministratorAccount();
 
   const userId =
     readRequiredString(
       formData.get(
-        "userId"
-      )
+        "userId",
+      ),
     );
 
   const beaconPlusActive =
     readBooleanValue(
       formData.get(
-        "beaconPlusActive"
-      )
+        "beaconPlusActive",
+      ),
     );
 
   if (!userId) {
     throw new Error(
-      "A user ID is required."
+      "A user ID is required.",
     );
   }
 
@@ -237,13 +186,13 @@ export async function updateUserMembership(
     beaconPlusActive === null
   ) {
     throw new Error(
-      "A valid membership status is required."
+      "A valid membership status is required.",
     );
   }
 
   const account =
     await getTargetAccount(
-      userId
+      userId,
     );
 
   if (
@@ -264,8 +213,8 @@ export async function updateUserMembership(
     .where(
       eq(
         user.id,
-        userId
-      )
+        userId,
+      ),
     );
 
   console.info(
@@ -281,47 +230,47 @@ export async function updateUserMembership(
         account.email,
 
       beaconPlusActive,
-    }
+    },
   );
 
   refreshAdminPages();
 }
 
 export async function updateUserRole(
-  formData: FormData
+  formData: FormData,
 ): Promise<void> {
   const administrator =
-    await requireAdministrator();
+    await requireAdministratorAccount();
 
   const userId =
     readRequiredString(
       formData.get(
-        "userId"
-      )
+        "userId",
+      ),
     );
 
   const requestedRole =
     readRole(
       formData.get(
-        "role"
-      )
+        "role",
+      ),
     );
 
   if (!userId) {
     throw new Error(
-      "A user ID is required."
+      "A user ID is required.",
     );
   }
 
   if (!requestedRole) {
     throw new Error(
-      "A valid account role is required."
+      "A valid account role is required.",
     );
   }
 
   const account =
     await getTargetAccount(
-      userId
+      userId,
     );
 
   if (
@@ -330,7 +279,7 @@ export async function updateUserRole(
     requestedRole !== "admin"
   ) {
     throw new Error(
-      "You cannot remove your own administrator access."
+      "You cannot remove your own administrator access.",
     );
   }
 
@@ -353,8 +302,8 @@ export async function updateUserRole(
     .where(
       eq(
         user.id,
-        userId
-      )
+        userId,
+      ),
     );
 
   console.info(
@@ -373,57 +322,57 @@ export async function updateUserRole(
         account.role,
 
       requestedRole,
-    }
+    },
   );
 
   refreshAdminPages();
 }
 
 export async function adjustUserCredits(
-  formData: FormData
+  formData: FormData,
 ): Promise<void> {
   const administrator =
-    await requireAdministrator();
+    await requireAdministratorAccount();
 
   const userId =
     readRequiredString(
       formData.get(
-        "userId"
-      )
+        "userId",
+      ),
     );
 
   const adjustment =
     readCreditAdjustment(
       formData.get(
-        "adjustment"
-      )
+        "adjustment",
+      ),
     );
 
   const reason =
     readRequiredString(
       formData.get(
-        "reason"
-      )
+        "reason",
+      ),
     ).slice(
       0,
-      300
+      300,
     );
 
   if (!userId) {
     throw new Error(
-      "A user ID is required."
+      "A user ID is required.",
     );
   }
 
   if (adjustment === null) {
     throw new Error(
-      `Enter a whole-number credit adjustment between -${MAXIMUM_CREDIT_ADJUSTMENT} and ${MAXIMUM_CREDIT_ADJUSTMENT}, excluding zero.`
+      `Enter a whole-number credit adjustment between -${MAXIMUM_CREDIT_ADJUSTMENT} and ${MAXIMUM_CREDIT_ADJUSTMENT}, excluding zero.`,
     );
   }
 
   const account =
     await getTargetAccount(
-      userId
+      userId,
     );
 
   const description =
@@ -432,13 +381,13 @@ export async function adjustUserCredits(
       adjustment > 0
         ? `Administrator added ${adjustment} purchased credits.`
         : `Administrator removed ${Math.abs(
-            adjustment
+            adjustment,
           )} purchased credits.`
     );
 
   await database.transaction(
     async (
-      transaction
+      transaction,
     ) => {
       const updatedRows =
         adjustment > 0
@@ -454,8 +403,8 @@ export async function adjustUserCredits(
               .where(
                 eq(
                   user.id,
-                  userId
-                )
+                  userId,
+                ),
               )
               .returning({
                 purchasedCredits:
@@ -474,16 +423,16 @@ export async function adjustUserCredits(
                 and(
                   eq(
                     user.id,
-                    userId
+                    userId,
                   ),
 
                   gte(
                     user.purchasedCredits,
                     Math.abs(
-                      adjustment
-                    )
-                  )
-                )
+                      adjustment,
+                    ),
+                  ),
+                ),
               )
               .returning({
                 purchasedCredits:
@@ -495,13 +444,13 @@ export async function adjustUserCredits(
 
       if (!updatedAccount) {
         throw new Error(
-          "The credit adjustment would make the account balance negative."
+          "The credit adjustment would make the account balance negative.",
         );
       }
 
       await transaction
         .insert(
-          creditLedger
+          creditLedger,
         )
         .values({
           userId,
@@ -531,7 +480,7 @@ export async function adjustUserCredits(
             adjustment,
           },
         });
-    }
+    },
   );
 
   console.info(
@@ -550,7 +499,7 @@ export async function adjustUserCredits(
         account.purchasedCredits,
 
       adjustment,
-    }
+    },
   );
 
   refreshAdminPages();

@@ -1,8 +1,6 @@
 import type { ReactNode } from "react";
 
 import Link from "next/link";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 
 import {
   count,
@@ -14,7 +12,7 @@ import BeaconFooter from "@/components/BeaconFooter";
 import Navbar from "@/components/Navbar";
 import DashboardSignOutButton from "@/components/dashboard/DashboardSignOutButton";
 
-import { auth } from "@/lib/auth/Auth";
+import { requireAdministratorAccount } from "@/lib/auth/AdminAccess";
 import { database } from "@/lib/database/Database";
 
 import {
@@ -294,74 +292,6 @@ function statusClasses(
   return "bg-slate-100 text-slate-700";
 }
 
-async function requireAdministrator(): Promise<{
-  id: string;
-  name: string;
-  email: string;
-}> {
-  const session =
-    await auth.api.getSession({
-      headers:
-        await headers(),
-    });
-
-  if (
-    !session?.user?.id
-  ) {
-    redirect(
-      "/signin?next=/admin/system"
-    );
-  }
-
-  const rows =
-    await database
-      .select({
-        id:
-          user.id,
-
-        name:
-          user.name,
-
-        email:
-          user.email,
-
-        role:
-          user.role,
-      })
-      .from(user)
-      .where(
-        eq(
-          user.id,
-          session.user.id
-        )
-      )
-      .limit(1);
-
-  const administrator =
-    rows[0];
-
-  if (
-    !administrator ||
-    administrator.role !==
-      "admin"
-  ) {
-    redirect(
-      "/dashboard"
-    );
-  }
-
-  return {
-    id:
-      administrator.id,
-
-    name:
-      administrator.name,
-
-    email:
-      administrator.email,
-  };
-}
-
 async function probeDatabase(): Promise<DatabaseProbe> {
   const startedAt =
     performance.now();
@@ -630,7 +560,7 @@ async function readSystemData() {
 
 export default async function AdminSystemPage() {
   const administrator =
-    await requireAdministrator();
+    await requireAdministratorAccount();
 
   const system =
     await readSystemData();

@@ -1,4 +1,18 @@
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+
+import {
+  getAccessErrorStatus,
+  hasUnrestrictedBeaconAccess,
+  requireSignedInAccount,
+} from "@/lib/auth/AdminAccess";
+import { database } from "@/lib/database/Database";
+import {
+  studioCreditLedger,
+  studioGeneration,
+  studioProject,
+  user,
+} from "@/lib/database/schema";
 
 import {
   buildStudioSystemPrompt,
@@ -841,10 +855,236 @@ function normaliseCampaignPlan(
   };
 }
 
+type StudioCreditBalances = {
+  purchased: number;
+  studioMembership: number;
+  business: number;
+};
+
+class InsufficientStudioCreditsError extends Error {
+  readonly status = 402;
+
+  constructor(
+    readonly required: number,
+    readonly available: number,
+  ) {
+    super(
+      `This generation requires ${required} Studio Credits, but only ${available} are available.`,
+    );
+
+    this.name =
+      "InsufficientStudioCreditsError";
+  }
+}
+
+function safeInteger(
+  value: unknown,
+  fallback = 0,
+): number {
+  if (
+    typeof value !== "number" ||
+    !Number.isFinite(value)
+  ) {
+    return fallback;
+  }
+
+  return Math.max(
+    0,
+    Math.round(value),
+  );
+}
+
+function calculateStudioCreditCost(
+  rawBody: Record<string, unknown>,
+  brief: StudioGenerationBrief,
+): number {
+  const confirmedCost =
+    safeInteger(
+      rawBody.confirmedCreditCost,
+    );
+
+  if (confirmedCost > 0) {
+    return Math.min(
+      confirmedCost,
+      100_000,
+    );
+  }
+
+  const qualityMultiplier =
+  brief.quality === "maximum"
+    ? 3.2
+    : brief.quality === "high"
+      ? 1.8
+      : brief.quality === "standard"
+        ? 1.25
+        : 1;
+
+  const outputCount =
+    Math.min(
+      Math.max(
+        safeInteger(
+          brief.outputCount,
+          1,
+        ),
+        1,
+      ),
+      20,
+    );
+
+  const outputMultiplier =
+    outputCount >= 4
+      ? 3.4
+      : outputCount >= 2
+        ? 1.85
+        : 1;
+
+  const formatMultiplier =
+    Math.max(
+      1,
+      brief.formats.length,
+    );
+
+  return Math.max(
+    1,
+    Math.ceil(
+      6 *
+        qualityMultiplier *
+        outputMultiplier *
+        formatMultiplier,
+    ),
+  );
+}
+
+function getProjectTitle(
+  rawBody: Record<string, unknown>,
+  brief: StudioGenerationBrief,
+): string {
+  const requestedTitle =
+    cleanString(
+      rawBody.project,
+    ) ??
+    cleanString(
+      rawBody.projectTitle,
+    );
+
+  if (requestedTitle) {
+    return requestedTitle.slice(
+      0,
+      140,
+    );
+  }
+
+  return brief.prompt
+    .slice(
+      0,
+      90,
+    )
+    .trim() ||
+    "Beacon Studio campaign";
+}
+
+function getTotalBalance(
+  balances: StudioCreditBalances,
+): number {
+  return (
+    balances.purchased +
+    balances.studioMembership +
+    balances.business
+  );
+}
+
+function deductStudioCredits(
+  balances: StudioCreditBalances,
+  creditCost: number,
+): StudioCreditBalances {
+  let remaining =
+    creditCost;
+
+  const businessUsed =
+    Math.min(
+      balances.business,
+      remaining,
+    );
+
+  remaining -=
+    businessUsed;
+
+  const studioMembershipUsed =
+    Math.min(
+      balances.studioMembership,
+      remaining,
+    );
+
+  remaining -=
+    studioMembershipUsed;
+
+  const purchasedUsed =
+    Math.min(
+      balances.purchased,
+      remaining,
+    );
+
+  remaining -=
+    purchasedUsed;
+
+  if (remaining > 0) {
+    throw new InsufficientStudioCreditsError(
+      creditCost,
+      getTotalBalance(
+        balances,
+      ),
+    );
+  }
+
+  return {
+    business:
+      balances.business -
+      businessUsed,
+
+    studioMembership:
+      balances.studioMembership -
+      studioMembershipUsed,
+
+    purchased:
+      balances.purchased -
+      purchasedUsed,
+  };
+}
+
+function asJsonRecord(
+  value: unknown,
+): Record<string, unknown> {
+  if (isRecord(value)) {
+    return value;
+  }
+
+  return {
+    value,
+  };
+}
+
 export async function POST(
   request: Request,
 ): Promise<Response> {
+  let projectId:
+    | string
+    | null =
+    null;
+
+  let generationId:
+    | string
+    | null =
+    null;
+
   try {
+    const account =
+      await requireSignedInAccount();
+
+    const administratorBypass =
+      hasUnrestrictedBeaconAccess(
+        account,
+      );
+
     const contentType =
       request.headers.get(
         "content-type",
@@ -905,6 +1145,204 @@ export async function POST(
       );
     }
 
+    const creditCost =
+      administratorBypass
+        ? 0
+        : calculateStudioCreditCost(
+            rawBody,
+            brief,
+          );
+
+    if (
+      !administratorBypass
+    ) {
+      const balances =
+        await database
+          .select({
+            purchased:
+              user.studioPurchasedCredits,
+
+            studioMembership:
+              user.studioMembershipCreditsAllowance,
+
+            business:
+              user.businessStudioCreditsAllowance,
+          })
+          .from(user)
+          .where(
+            eq(
+              user.id,
+              account.id,
+            ),
+          )
+          .limit(1);
+
+      const current =
+        balances[0];
+
+      if (!current) {
+        return jsonError(
+          "Your Beacon account could not be loaded.",
+          404,
+        );
+      }
+
+      const available =
+        getTotalBalance({
+          purchased:
+            current.purchased,
+
+          studioMembership:
+            current.studioMembership,
+
+          business:
+            current.business,
+        });
+
+      if (
+        available <
+        creditCost
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              `This generation requires ${creditCost} Studio Credits, but only ${available} are available.`,
+
+            code:
+              "INSUFFICIENT_STUDIO_CREDITS",
+
+            requiredCredits:
+              creditCost,
+
+            availableCredits:
+              available,
+          },
+          {
+            status: 402,
+            headers: {
+              "Cache-Control":
+                "no-store",
+            },
+          },
+        );
+      }
+    }
+
+    const now =
+      new Date();
+
+    const created =
+      await database.transaction(
+        async (tx) => {
+          const projects =
+            await tx
+              .insert(
+                studioProject,
+              )
+              .values({
+                userId:
+                  account.id,
+
+                title:
+                  getProjectTitle(
+                    rawBody,
+                    brief,
+                  ),
+
+                description:
+                  brief.prompt,
+
+                status:
+                  "generating",
+
+                brief:
+                  asJsonRecord(
+                    brief,
+                  ),
+
+                createdAt:
+                  now,
+
+                updatedAt:
+                  now,
+              })
+              .returning({
+                id:
+                  studioProject.id,
+              });
+
+          const project =
+            projects[0];
+
+          if (!project) {
+            throw new Error(
+              "Beacon Studio could not create the project.",
+            );
+          }
+
+          const generations =
+            await tx
+              .insert(
+                studioGeneration,
+              )
+              .values({
+                projectId:
+                  project.id,
+
+                userId:
+                  account.id,
+
+                status:
+                  "processing",
+
+                creditCost,
+
+                administratorBypass,
+
+                model:
+                  getOpenAIModel(),
+
+                requestPayload:
+                  asJsonRecord(
+                    brief,
+                  ),
+
+                startedAt:
+                  now,
+
+                createdAt:
+                  now,
+              })
+              .returning({
+                id:
+                  studioGeneration.id,
+              });
+
+          const generation =
+            generations[0];
+
+          if (!generation) {
+            throw new Error(
+              "Beacon Studio could not create the generation record.",
+            );
+          }
+
+          return {
+            projectId:
+              project.id,
+
+            generationId:
+              generation.id,
+          };
+        },
+      );
+
+    projectId =
+      created.projectId;
+
+    generationId =
+      created.generationId;
+
     const client =
       getOpenAIClient();
 
@@ -942,9 +1380,8 @@ export async function POST(
       response.output_text?.trim();
 
     if (!outputText) {
-      return jsonError(
+      throw new Error(
         "OpenAI returned an empty Studio campaign.",
-        502,
       );
     }
 
@@ -952,11 +1389,12 @@ export async function POST(
 
     try {
       rawPlan =
-        JSON.parse(outputText);
+        JSON.parse(
+          outputText,
+        );
     } catch {
-      return jsonError(
+      throw new Error(
         "OpenAI returned an invalid Studio campaign.",
-        502,
       );
     }
 
@@ -966,11 +1404,266 @@ export async function POST(
         brief,
       );
 
+    const completedAt =
+      new Date();
+
+    const balancesAfter =
+      await database.transaction(
+        async (tx) => {
+          let purchasedAfter =
+            0;
+
+          let studioMembershipAfter =
+            0;
+
+          let businessAfter =
+            0;
+
+          if (
+            !administratorBypass
+          ) {
+            const accountRows =
+              await tx
+                .select({
+                  purchased:
+                    user.studioPurchasedCredits,
+
+                  studioMembership:
+                    user.studioMembershipCreditsAllowance,
+
+                  business:
+                    user.businessStudioCreditsAllowance,
+                })
+                .from(user)
+                .where(
+                  eq(
+                    user.id,
+                    account.id,
+                  ),
+                )
+                .limit(1)
+                .for(
+                  "update",
+                );
+
+            const current =
+              accountRows[0];
+
+            if (!current) {
+              throw new Error(
+                "Your Beacon account could not be loaded.",
+              );
+            }
+
+            const next =
+              deductStudioCredits(
+                {
+                  purchased:
+                    current.purchased,
+
+                  studioMembership:
+                    current.studioMembership,
+
+                  business:
+                    current.business,
+                },
+                creditCost,
+              );
+
+            purchasedAfter =
+              next.purchased;
+
+            studioMembershipAfter =
+              next.studioMembership;
+
+            businessAfter =
+              next.business;
+
+            await tx
+              .update(user)
+              .set({
+                studioPurchasedCredits:
+                  purchasedAfter,
+
+                studioMembershipCreditsAllowance:
+                  studioMembershipAfter,
+
+                businessStudioCreditsAllowance:
+                  businessAfter,
+
+                updatedAt:
+                  completedAt,
+              })
+              .where(
+                eq(
+                  user.id,
+                  account.id,
+                ),
+              );
+
+            await tx
+              .insert(
+                studioCreditLedger,
+              )
+              .values({
+                userId:
+                  account.id,
+
+                type:
+                  "generation",
+
+                amount:
+                  -creditCost,
+
+                purchasedBalanceAfter:
+                  purchasedAfter,
+
+                studioMembershipAllowanceAfter:
+                  studioMembershipAfter,
+
+                businessAllowanceAfter:
+                  businessAfter,
+
+                totalAvailableAfter:
+                  purchasedAfter +
+                  studioMembershipAfter +
+                  businessAfter,
+
+                description:
+                  `Beacon Studio generation: ${plan.title}`,
+
+                studioProjectId:
+                  projectId,
+
+                studioGenerationId:
+                  generationId,
+
+                metadata: {
+                  model:
+                    getOpenAIModel(),
+
+                  quality:
+                    brief.quality,
+
+                  outputCount:
+                    brief.outputCount,
+
+                  formatCount:
+                    brief.formats.length,
+                },
+
+                createdAt:
+                  completedAt,
+              });
+          }
+
+          await tx
+            .update(
+              studioProject,
+            )
+            .set({
+              title:
+                plan.title,
+
+              description:
+                plan.summary,
+
+              status:
+                "ready",
+
+              campaignPlan:
+                asJsonRecord(
+                  plan,
+                ),
+
+              selectedVariantId:
+                plan.variants[0]
+                  ?.id ??
+                null,
+
+              updatedAt:
+                completedAt,
+
+              lastOpenedAt:
+                completedAt,
+            })
+            .where(
+              eq(
+                studioProject.id,
+                projectId!,
+              ),
+            );
+
+          await tx
+            .update(
+              studioGeneration,
+            )
+            .set({
+              status:
+                "completed",
+
+              inputTokens:
+                response.usage
+                  ?.input_tokens ??
+                null,
+
+              outputTokens:
+                response.usage
+                  ?.output_tokens ??
+                null,
+
+              responsePayload:
+                asJsonRecord(
+                  plan,
+                ),
+
+              completedAt,
+            })
+            .where(
+              eq(
+                studioGeneration.id,
+                generationId!,
+              ),
+            );
+
+          return {
+            purchased:
+              purchasedAfter,
+
+            studioMembership:
+              studioMembershipAfter,
+
+            business:
+              businessAfter,
+          };
+        },
+      );
+
     return NextResponse.json(
       {
+        projectId,
+
+        generationId,
+
         plan,
 
         assets: [],
+
+        creditCost,
+
+        administratorBypass,
+
+        balances:
+          administratorBypass
+            ? null
+            : {
+                ...balancesAfter,
+
+                total:
+                  getTotalBalance(
+                    balancesAfter,
+                  ),
+              },
 
         usage: {
           inputTokens:
@@ -980,10 +1673,13 @@ export async function POST(
           outputTokens:
             response.usage
               ?.output_tokens,
+
+          estimatedCredits:
+            creditCost,
         },
       },
       {
-        status: 200,
+        status: 201,
         headers: {
           "Cache-Control":
             "no-store",
@@ -995,6 +1691,112 @@ export async function POST(
       "[studio-generate:post]",
       error,
     );
+
+    if (
+      projectId &&
+      generationId
+    ) {
+      const failedAt =
+        new Date();
+
+      try {
+        await database.transaction(
+          async (tx) => {
+            await tx
+              .update(
+                studioProject,
+              )
+              .set({
+                status:
+                  "failed",
+
+                updatedAt:
+                  failedAt,
+              })
+              .where(
+                eq(
+                  studioProject.id,
+                  projectId!,
+                ),
+              );
+
+            await tx
+              .update(
+                studioGeneration,
+              )
+              .set({
+                status:
+                  "failed",
+
+                errorMessage:
+                  error instanceof Error
+                    ? error.message
+                    : "Beacon Studio generation failed.",
+
+                completedAt:
+                  failedAt,
+              })
+              .where(
+                eq(
+                  studioGeneration.id,
+                  generationId!,
+                ),
+              );
+          },
+        );
+      } catch (
+        persistenceError
+      ) {
+        console.error(
+          "[studio-generate:failure-persistence]",
+          persistenceError,
+        );
+      }
+    }
+
+    const accessStatus =
+      getAccessErrorStatus(
+        error,
+      );
+
+    if (accessStatus) {
+      return jsonError(
+        error instanceof Error
+          ? error.message
+          : "Access denied.",
+        accessStatus,
+      );
+    }
+
+    if (
+      error instanceof
+      InsufficientStudioCreditsError
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            error.message,
+
+          code:
+            "INSUFFICIENT_STUDIO_CREDITS",
+
+          requiredCredits:
+            error.required,
+
+          availableCredits:
+            error.available,
+        },
+        {
+          status:
+            error.status,
+
+          headers: {
+            "Cache-Control":
+              "no-store",
+          },
+        },
+      );
+    }
 
     return jsonError(
       error instanceof Error

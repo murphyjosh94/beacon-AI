@@ -1,5 +1,6 @@
-"use client";
-
+import Link from "next/link";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import {
   ArrowRight,
   BriefcaseBusiness,
@@ -10,7 +11,6 @@ import {
   FolderOpen,
   Image as ImageIcon,
   Laugh,
-  Loader2,
   MessageSquareText,
   Music2,
   Search,
@@ -19,41 +19,81 @@ import {
   Video,
   WandSparkles,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+  and,
+  desc,
+  eq,
+  inArray,
+  isNull,
+} from "drizzle-orm";
 
-type StudioProject = {
-  id: string;
-  name: string;
-  description?: string;
-  sourceUrl?: string;
-  durationMs?: number;
-  aspectRatio?: string;
-  updatedAt?: string;
-  createdAt?: string;
-  thumbnailUrl?: string;
+import {
+  hasUnrestrictedBeaconAccess,
+  requireSignedInAccount,
+} from "@/lib/auth/AdminAccess";
+import { database } from "@/lib/database/Database";
+import {
+  studioGeneration,
+  studioProject,
+} from "@/lib/database/schema";
+import type {
+  StudioCampaignPlan,
+  StudioCampaignVariant,
+} from "@/app/studio/_engine/ScenePlanner";
+import type {
+  StudioOutputFormatId,
+} from "@/app/studio/_engine/PromptBuilder";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+type StudioDashboardPageProps = {
+  searchParams?: Promise<{
+    search?: string;
+    status?: string;
+  }>;
 };
 
-type StudioProjectsResponse =
-  | StudioProject[]
-  | {
-      projects?: StudioProject[];
-      data?: StudioProject[];
-      project?: StudioProject;
-      id?: string;
-    };
-
 type CreationType = {
-  id: string;
+  id:
+    | "marketing"
+    | "short-video"
+    | "long-video"
+    | "images"
+    | "writing"
+    | "memes"
+    | "audio"
+    | "custom";
   title: string;
   description: string;
   icon: typeof Sparkles;
   examples: string[];
+};
+
+type CampaignPlanSummary = Pick<
+  StudioCampaignPlan,
+  "durationMs" | "backgroundColor"
+> & {
+  variants: Array<
+    Pick<
+      StudioCampaignVariant,
+      | "id"
+      | "format"
+      | "title"
+      | "aspectRatio"
+      | "width"
+      | "height"
+      | "durationMs"
+      | "backgroundColor"
+    >
+  >;
+};
+
+type ProjectBrief = {
+  prompt?: string;
+  quality?: string;
+  outputCount?: number;
+  formats?: StudioOutputFormatId[];
 };
 
 const CREATION_TYPES: CreationType[] = [
@@ -129,48 +169,46 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 });
 
-function normaliseProjects(payload: StudioProjectsResponse): StudioProject[] {
-  if (Array.isArray(payload)) {
-    return payload;
+function isCampaignPlanSummary(
+  value: unknown,
+): value is CampaignPlanSummary {
+  if (!value || typeof value !== "object") {
+    return false;
   }
 
-  if (Array.isArray(payload.projects)) {
-    return payload.projects;
-  }
+  const plan = value as Partial<CampaignPlanSummary>;
 
-  if (Array.isArray(payload.data)) {
-    return payload.data;
-  }
-
-  if (payload.project) {
-    return [payload.project];
-  }
-
-  return [];
+  return (
+    typeof plan.durationMs === "number" &&
+    typeof plan.backgroundColor === "string" &&
+    Array.isArray(plan.variants)
+  );
 }
 
-function formatProjectDate(project: StudioProject): string {
-  const rawDate = project.updatedAt ?? project.createdAt;
-
-  if (!rawDate) {
-    return "Recently created";
+function readBrief(value: unknown): ProjectBrief {
+  if (!value || typeof value !== "object") {
+    return {};
   }
 
-  const date = new Date(rawDate);
+  return value as ProjectBrief;
+}
 
-  if (Number.isNaN(date.getTime())) {
-    return "Recently updated";
-  }
-
-  return `Updated ${DATE_FORMATTER.format(date)}`;
+function formatProjectDate(
+  updatedAt: Date | null,
+  createdAt: Date,
+): string {
+  return `Updated ${DATE_FORMATTER.format(updatedAt ?? createdAt)}`;
 }
 
 function formatDuration(durationMs?: number): string {
   if (!durationMs || durationMs <= 0) {
-    return "Project";
+    return "Campaign";
   }
 
-  const totalSeconds = Math.max(1, Math.round(durationMs / 1000));
+  const totalSeconds = Math.max(
+    1,
+    Math.round(durationMs / 1_000),
+  );
 
   if (totalSeconds < 60) {
     return `${totalSeconds} sec`;
@@ -179,451 +217,713 @@ function formatDuration(durationMs?: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
 
-  return seconds === 0 ? `${minutes} min` : `${minutes}m ${seconds}s`;
+  return seconds === 0
+    ? `${minutes} min`
+    : `${minutes}m ${seconds}s`;
 }
 
-export default function StudioDashboardPage() {
-  const router = useRouter();
-
-  const [projects, setProjects] = useState<StudioProject[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [idea, setIdea] = useState("");
-  const [selectedType, setSelectedType] = useState("marketing");
-  const [isLoading, setIsLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadProjects = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/motion/projects", {
-        method: "GET",
-        cache: "no-store",
-      });
-
-      if (!response.ok) {
-        throw new Error("Could not load your Studio projects.");
-      }
-
-      const payload = (await response.json()) as StudioProjectsResponse;
-      setProjects(normaliseProjects(payload));
-    } catch (loadError) {
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : "Could not load your Studio projects.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadProjects();
-  }, [loadProjects]);
-
-  const filteredProjects = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-
-    if (!query) {
-      return projects;
-    }
-
-    return projects.filter((project) => {
-      const searchable = [
-        project.name,
-        project.description,
-        project.sourceUrl,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      return searchable.includes(query);
-    });
-  }, [projects, searchQuery]);
-
-  const activeCreationType =
-    CREATION_TYPES.find((item) => item.id === selectedType) ??
-    CREATION_TYPES[0];
-
-  function beginCreation(typeId = selectedType) {
-    const params = new URLSearchParams();
-    params.set("type", typeId);
-
-    const trimmedIdea = idea.trim();
-
-    if (trimmedIdea) {
-      params.set("prompt", trimmedIdea);
-    }
-
-    router.push(`/studio/create?${params.toString()}`);
+function statusLabel(status: string): string {
+  if (status === "ready") {
+    return "Ready";
   }
 
-  const deleteProject = async (projectId: string) => {
-    if (deletingId) {
-      return;
-    }
+  if (status === "generating") {
+    return "Generating";
+  }
 
-    const confirmed = window.confirm(
-      "Delete this Studio project? This cannot be undone.",
-    );
+  if (status === "failed") {
+    return "Failed";
+  }
 
-    if (!confirmed) {
-      return;
-    }
+  return "Draft";
+}
 
-    setDeletingId(projectId);
-    setError(null);
+function statusClasses(status: string): string {
+  if (status === "ready") {
+    return "border-emerald-300/30 bg-emerald-300/10 text-emerald-200";
+  }
 
-    try {
-      const response = await fetch(
-        `/api/motion/projects/${encodeURIComponent(projectId)}`,
-        {
-          method: "DELETE",
-        },
+  if (status === "generating") {
+    return "border-amber-300/30 bg-amber-300/10 text-amber-100";
+  }
+
+  if (status === "failed") {
+    return "border-red-300/30 bg-red-300/10 text-red-100";
+  }
+
+  return "border-slate-300/20 bg-white/5 text-slate-300";
+}
+
+function formatOutputName(format: string): string {
+  return format
+    .split("-")
+    .map(
+      (part) =>
+        part.charAt(0).toUpperCase() +
+        part.slice(1),
+    )
+    .join(" ");
+}
+
+function matchesSearch(
+  title: string,
+  description: string | null,
+  brief: ProjectBrief,
+  query: string,
+): boolean {
+  if (!query) {
+    return true;
+  }
+
+  return [
+    title,
+    description,
+    brief.prompt,
+    brief.quality,
+    ...(brief.formats ?? []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+    .includes(query);
+}
+
+async function deleteStudioProject(
+  formData: FormData,
+): Promise<void> {
+  "use server";
+
+  const account =
+    await requireSignedInAccount();
+
+  if (!account?.id) {
+    redirect("/sign-in");
+  }
+
+  const projectId =
+    formData.get("projectId");
+
+  if (
+    typeof projectId !== "string" ||
+    !projectId.trim()
+  ) {
+    return;
+  }
+
+  const [project] = await database
+    .select({
+      id: studioProject.id,
+      userId: studioProject.userId,
+    })
+    .from(studioProject)
+    .where(
+      and(
+        eq(studioProject.id, projectId),
+        isNull(studioProject.deletedAt),
+      ),
+    )
+    .limit(1);
+
+  if (!project) {
+    return;
+  }
+
+  if (
+    project.userId !== account.id &&
+    !hasUnrestrictedBeaconAccess(account)
+  ) {
+    return;
+  }
+
+  const deletedAt = new Date();
+
+  await database
+    .update(studioProject)
+    .set({
+      deletedAt,
+      updatedAt: deletedAt,
+    })
+    .where(eq(studioProject.id, project.id));
+
+  revalidatePath("/studio");
+  revalidatePath("/studio/projects");
+}
+
+export default async function StudioDashboardPage({
+  searchParams,
+}: StudioDashboardPageProps) {
+  const account =
+    await requireSignedInAccount();
+
+  if (!account?.id) {
+    redirect("/sign-in");
+  }
+
+  const resolvedSearchParams =
+    searchParams
+      ? await searchParams
+      : undefined;
+
+  const searchQuery =
+    resolvedSearchParams?.search
+      ?.trim()
+      .toLowerCase() ?? "";
+
+  const requestedStatus =
+    resolvedSearchParams?.status
+      ?.trim()
+      .toLowerCase() ?? "all";
+
+  const projects = await database
+    .select()
+    .from(studioProject)
+    .where(
+      and(
+        eq(studioProject.userId, account.id),
+        isNull(studioProject.deletedAt),
+      ),
+    )
+    .orderBy(
+      desc(studioProject.updatedAt),
+      desc(studioProject.createdAt),
+    )
+    .limit(60);
+
+  const projectIds =
+    projects.map((project) => project.id);
+
+  const generations =
+    projectIds.length > 0
+      ? await database
+          .select()
+          .from(studioGeneration)
+          .where(
+            inArray(
+              studioGeneration.projectId,
+              projectIds,
+            ),
+          )
+          .orderBy(
+            desc(studioGeneration.createdAt),
+          )
+      : [];
+
+  const latestGenerationByProject =
+    new Map<
+      string,
+      (typeof generations)[number]
+    >();
+
+  for (const generation of generations) {
+    if (
+      !latestGenerationByProject.has(
+        generation.projectId,
+      )
+    ) {
+      latestGenerationByProject.set(
+        generation.projectId,
+        generation,
       );
-
-      if (!response.ok) {
-        throw new Error("Could not delete the project.");
-      }
-
-      setProjects((current) =>
-        current.filter((project) => project.id !== projectId),
-      );
-    } catch (deleteError) {
-      setError(
-        deleteError instanceof Error
-          ? deleteError.message
-          : "Could not delete the project.",
-      );
-    } finally {
-      setDeletingId(null);
     }
-  };
+  }
+
+  const visibleProjects =
+    projects.filter((project) => {
+      const brief =
+        readBrief(project.brief);
+
+      const matchesStatus =
+        requestedStatus === "all" ||
+        project.status === requestedStatus;
+
+      return (
+        matchesStatus &&
+        matchesSearch(
+          project.title,
+          project.description,
+          brief,
+          searchQuery,
+        )
+      );
+    });
+
+  const readyCount =
+    projects.filter(
+      (project) => project.status === "ready",
+    ).length;
+
+  const generatingCount =
+    projects.filter(
+      (project) =>
+        project.status === "generating",
+    ).length;
+
+  const failedCount =
+    projects.filter(
+      (project) => project.status === "failed",
+    ).length;
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#050b18] text-white">
-        <div className="pointer-events-none fixed inset-0 overflow-hidden">
-          <div className="absolute left-[-10rem] top-[-12rem] h-[30rem] w-[30rem] rounded-full bg-blue-600/15 blur-[120px]" />
-          <div className="absolute right-[-8rem] top-[12rem] h-[28rem] w-[28rem] rounded-full bg-cyan-400/10 blur-[120px]" />
-          <div className="absolute bottom-[-12rem] left-[35%] h-[26rem] w-[26rem] rounded-full bg-amber-400/10 blur-[120px]" />
-        </div>
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute left-[-10rem] top-[-12rem] h-[30rem] w-[30rem] rounded-full bg-blue-600/15 blur-[120px]" />
+        <div className="absolute right-[-8rem] top-[12rem] h-[28rem] w-[28rem] rounded-full bg-cyan-400/10 blur-[120px]" />
+        <div className="absolute bottom-[-12rem] left-[35%] h-[26rem] w-[26rem] rounded-full bg-amber-400/10 blur-[120px]" />
+      </div>
 
-        <div className="relative mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-          <section className="overflow-hidden rounded-[2.25rem] border border-white/10 bg-gradient-to-br from-blue-700/30 via-slate-950/95 to-cyan-500/10 p-6 shadow-[0_35px_100px_rgba(0,0,0,0.35)] sm:p-8 lg:p-10">
-            <div className="mx-auto max-w-4xl text-center">
-              <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-amber-100">
-                <Sparkles className="h-4 w-4" />
-                Beacon Studio
+      <div className="relative mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+        <section className="overflow-hidden rounded-[2.25rem] border border-white/10 bg-gradient-to-br from-blue-700/30 via-slate-950/95 to-cyan-500/10 p-6 shadow-[0_35px_100px_rgba(0,0,0,0.35)] sm:p-8 lg:p-10">
+          <div className="mx-auto max-w-4xl text-center">
+            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-amber-100">
+              <Sparkles className="h-4 w-4" />
+              Beacon Studio
+            </div>
+
+            <h1 className="mt-6 text-4xl font-black leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+              What would you like to create?
+            </h1>
+
+            <p className="mx-auto mt-4 max-w-3xl text-sm font-medium leading-7 text-slate-300 sm:text-base">
+              Turn an idea, script or business brief into marketing content,
+              social posts, images, short clips or complete AI-generated
+              campaigns.
+            </p>
+
+            <form
+              action="/studio/create"
+              className="mx-auto mt-8 max-w-3xl rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-3 shadow-2xl"
+            >
+              <textarea
+                name="prompt"
+                className="min-h-32 w-full resize-none bg-transparent px-3 py-3 text-base font-semibold leading-7 text-white outline-none placeholder:text-slate-600 sm:text-lg"
+                placeholder="Example: Create a 30-second Instagram Reel promoting my plumbing business, using a professional British voice-over and a clear call to action."
+              />
+
+              <div className="flex flex-col gap-3 border-t border-white/10 px-1 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                <select
+                  name="tool"
+                  defaultValue="marketing"
+                  className="h-11 rounded-full border border-white/10 bg-slate-900 px-4 text-sm font-black text-slate-200 outline-none"
+                >
+                  {CREATION_TYPES.map((type) => (
+                    <option
+                      key={type.id}
+                      value={type.id}
+                    >
+                      {type.title}
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-cyan-400 px-6 text-sm font-black text-white shadow-[0_15px_45px_rgba(37,99,235,0.28)] transition hover:scale-[1.02]"
+                  type="submit"
+                >
+                  Continue to creator
+                  <ArrowRight className="h-4 w-4" />
+                </button>
               </div>
+            </form>
 
-              <h1 className="mt-6 text-4xl font-black leading-tight tracking-tight sm:text-5xl lg:text-6xl">
-                What would you like to create?
-              </h1>
+            <p className="mt-4 text-xs font-semibold text-slate-500">
+              Studio confirms the credit cost before generation and only
+              deducts credits after a successful result.
+            </p>
+          </div>
+        </section>
 
-              <p className="mx-auto mt-4 max-w-3xl text-sm font-medium leading-7 text-slate-300 sm:text-base">
-                Turn an idea, script or business brief into marketing content,
-                social media posts, images, short clips or complete AI-generated
-                videos.
-              </p>
+        <section className="py-8">
+          <h2 className="text-2xl font-black">
+            Choose a creation type
+          </h2>
 
-              <div className="mx-auto mt-8 max-w-3xl rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-3 shadow-2xl">
-                <textarea
-                  className="min-h-32 w-full resize-none bg-transparent px-3 py-3 text-base font-semibold leading-7 text-white outline-none placeholder:text-slate-600 sm:text-lg"
-                  onChange={(event) => setIdea(event.target.value)}
-                  placeholder="Example: Create a 30-second Instagram Reel promoting my plumbing business, using a professional British voice-over and a clear call to action."
-                  value={idea}
-                />
+          <p className="mt-2 text-sm font-medium text-slate-500">
+            Pick a starting point. Beacon can combine formats when your idea
+            needs more than one type of content.
+          </p>
 
-                <div className="flex flex-col gap-3 border-t border-white/10 px-1 pt-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-2 text-left text-xs font-bold text-slate-500">
-                    <activeCreationType.icon className="h-4 w-4 text-cyan-200" />
-                    <span>{activeCreationType.title}</span>
+          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {CREATION_TYPES.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <Link
+                  key={item.id}
+                  href={`/studio/create?tool=${encodeURIComponent(
+                    item.id,
+                  )}`}
+                  className="group rounded-[1.75rem] border border-white/10 bg-white/[0.035] p-5 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/25 hover:bg-white/[0.055]"
+                >
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-slate-300">
+                    <Icon className="h-5 w-5" />
                   </div>
 
-                  <button
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-cyan-400 px-6 text-sm font-black text-white shadow-[0_15px_45px_rgba(37,99,235,0.28)] transition hover:scale-[1.02]"
-                    onClick={() => beginCreation()}
-                    type="button"
-                  >
-                    Continue to creator
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
+                  <h3 className="mt-5 text-lg font-black">
+                    {item.title}
+                  </h3>
 
-              <p className="mt-4 text-xs font-semibold text-slate-500">
-                Your live cost calculator will confirm credits and estimated AI
-                cost before anything is rendered.
-              </p>
-            </div>
-          </section>
+                  <p className="mt-2 min-h-16 text-sm font-medium leading-6 text-slate-500">
+                    {item.description}
+                  </p>
 
-          <section className="py-8">
-            <div>
-              <h2 className="text-2xl font-black">Choose a creation type</h2>
-              <p className="mt-2 text-sm font-medium text-slate-500">
-                Pick a starting point. Beacon can combine formats when your idea
-                needs more than one type of content.
-              </p>
-            </div>
-
-            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {CREATION_TYPES.map((item) => {
-                const Icon = item.icon;
-                const active = selectedType === item.id;
-
-                return (
-                  <button
-                    aria-pressed={active}
-                    className={`group rounded-[1.75rem] border p-5 text-left transition hover:-translate-y-0.5 ${
-                      active
-                        ? "border-cyan-300/35 bg-cyan-300/10 shadow-[0_20px_55px_rgba(34,211,238,0.08)]"
-                        : "border-white/10 bg-white/[0.035] hover:border-cyan-300/20 hover:bg-white/[0.055]"
-                    }`}
-                    key={item.id}
-                    onClick={() => setSelectedType(item.id)}
-                    onDoubleClick={() => beginCreation(item.id)}
-                    type="button"
-                  >
-                    <div
-                      className={`flex h-12 w-12 items-center justify-center rounded-2xl border ${
-                        active
-                          ? "border-cyan-300/30 bg-cyan-300/15 text-cyan-100"
-                          : "border-white/10 bg-white/5 text-slate-300"
-                      }`}
-                    >
-                      <Icon className="h-5 w-5" />
-                    </div>
-
-                    <h3 className="mt-5 text-lg font-black">{item.title}</h3>
-
-                    <p className="mt-2 min-h-16 text-sm font-medium leading-6 text-slate-500">
-                      {item.description}
-                    </p>
-
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {item.examples.map((example) => (
-                        <span
-                          className="rounded-full border border-white/10 bg-slate-950/50 px-2.5 py-1 text-[0.65rem] font-bold text-slate-400"
-                          key={example}
-                        >
-                          {example}
-                        </span>
-                      ))}
-                    </div>
-
-                    <span className="mt-5 inline-flex items-center gap-2 text-sm font-black text-cyan-200">
-                      Select
-                      <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          {error ? (
-            <div className="mb-6 flex items-start justify-between gap-4 rounded-2xl border border-red-300/20 bg-red-400/10 px-4 py-3 text-sm font-bold text-red-100">
-              <span>{error}</span>
-              <button
-                className="shrink-0 text-xs font-black uppercase tracking-wider text-red-200 hover:text-white"
-                onClick={() => setError(null)}
-                type="button"
-              >
-                Dismiss
-              </button>
-            </div>
-          ) : null}
-
-          <section className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-5 shadow-[0_30px_90px_rgba(0,0,0,0.25)] sm:p-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <FolderOpen className="h-5 w-5 text-cyan-200" />
-                  <h2 className="text-xl font-black">Your projects</h2>
-                </div>
-                <p className="mt-1 text-sm font-medium text-slate-500">
-                  Continue a draft, review a render or reuse an earlier project.
-                </p>
-              </div>
-
-              <label className="flex h-11 w-full items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 sm:max-w-sm">
-                <Search className="h-4 w-4 text-slate-500" />
-                <input
-                  className="w-full bg-transparent text-sm font-semibold text-white outline-none placeholder:text-slate-600"
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search projects"
-                  type="search"
-                  value={searchQuery}
-                />
-              </label>
-            </div>
-
-            <div className="mt-6">
-              {isLoading ? (
-                <div className="flex min-h-56 items-center justify-center rounded-3xl border border-dashed border-white/10 bg-white/[0.02]">
-                  <div className="text-center">
-                    <Loader2 className="mx-auto h-7 w-7 animate-spin text-cyan-300" />
-                    <p className="mt-3 text-sm font-bold text-slate-400">
-                      Loading Studio projects
-                    </p>
-                  </div>
-                </div>
-              ) : filteredProjects.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {filteredProjects.map((project) => (
-                    <article
-                      className="group overflow-hidden rounded-3xl border border-white/10 bg-white/[0.035] transition hover:-translate-y-0.5 hover:border-cyan-300/25 hover:bg-white/[0.055]"
-                      key={project.id}
-                    >
-                      <button
-                        className="block w-full text-left"
-                        onClick={() =>
-                          router.push(
-                            `/studio/editor/${encodeURIComponent(project.id)}`,
-                          )
-                        }
-                        type="button"
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {item.examples.map((example) => (
+                      <span
+                        key={example}
+                        className="rounded-full border border-white/10 bg-slate-950/50 px-2.5 py-1 text-[0.65rem] font-bold text-slate-400"
                       >
-                        <div className="relative flex aspect-video items-center justify-center overflow-hidden border-b border-white/10 bg-gradient-to-br from-blue-700/30 via-slate-900 to-cyan-500/10">
-                          {project.thumbnailUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              alt=""
-                              className="h-full w-full object-cover"
-                              src={project.thumbnailUrl}
-                            />
-                          ) : (
-                            <>
-                              <div className="absolute inset-5 rounded-2xl border border-white/10 bg-slate-950/70 shadow-2xl" />
-                              <Film className="relative h-9 w-9 text-cyan-200" />
-                            </>
-                          )}
+                        {example}
+                      </span>
+                    ))}
+                  </div>
+
+                  <span className="mt-5 inline-flex items-center gap-2 text-sm font-black text-cyan-200">
+                    Create
+                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-5 shadow-[0_30px_90px_rgba(0,0,0,0.25)] sm:p-6">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <FolderOpen className="h-5 w-5 text-cyan-200" />
+                <h2 className="text-xl font-black">
+                  Your projects
+                </h2>
+              </div>
+
+              <p className="mt-1 text-sm font-medium text-slate-500">
+                Continue a campaign, review its timeline or reopen an earlier
+                generation.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+              {[
+                ["all", "All", projects.length],
+                ["ready", "Ready", readyCount],
+                ["generating", "Generating", generatingCount],
+                ["failed", "Failed", failedCount],
+              ].map(([value, label, count]) => (
+                <Link
+                  key={String(value)}
+                  href={`/studio?status=${value}${
+                    searchQuery
+                      ? `&search=${encodeURIComponent(
+                          searchQuery,
+                        )}`
+                      : ""
+                  }`}
+                  className={`rounded-full border px-4 py-2 text-xs font-black transition ${
+                    requestedStatus === value
+                      ? "border-cyan-300/40 bg-cyan-300/15 text-cyan-100"
+                      : "border-white/10 bg-white/5 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {label} {count}
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <form
+            action="/studio"
+            className="mt-5 flex flex-col gap-3 sm:flex-row"
+          >
+            <input
+              type="hidden"
+              name="status"
+              value={requestedStatus}
+            />
+
+            <label className="flex h-11 flex-1 items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4">
+              <Search className="h-4 w-4 text-slate-500" />
+              <input
+                name="search"
+                defaultValue={
+                  resolvedSearchParams?.search ?? ""
+                }
+                className="w-full bg-transparent text-sm font-semibold text-white outline-none placeholder:text-slate-600"
+                placeholder="Search projects"
+                type="search"
+              />
+            </label>
+
+            <button
+              type="submit"
+              className="h-11 rounded-full bg-blue-600 px-5 text-sm font-black text-white transition hover:bg-blue-500"
+            >
+              Search
+            </button>
+          </form>
+
+          <div className="mt-6">
+            {visibleProjects.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {visibleProjects.map((project) => {
+                  const campaignPlan =
+                    isCampaignPlanSummary(
+                      project.campaignPlan,
+                    )
+                      ? project.campaignPlan
+                      : null;
+
+                  const brief =
+                    readBrief(project.brief);
+
+                  const latestGeneration =
+                    latestGenerationByProject.get(
+                      project.id,
+                    );
+
+                  const primaryVariant =
+                    campaignPlan?.variants.find(
+                      (variant) =>
+                        variant.id ===
+                        project.selectedVariantId,
+                    ) ??
+                    campaignPlan?.variants[0];
+
+                  const formats =
+                    campaignPlan?.variants
+                      .map(
+                        (variant) =>
+                          variant.format,
+                      )
+                      .filter(
+                        (
+                          format,
+                          index,
+                          all,
+                        ) =>
+                          all.indexOf(format) ===
+                          index,
+                      ) ??
+                    brief.formats ??
+                    [];
+
+                  const creditText =
+                    latestGeneration
+                      ?.administratorBypass
+                      ? "Admin bypass"
+                      : `${
+                          latestGeneration
+                            ?.creditCost ?? 0
+                        } credits`;
+
+                  return (
+                    <article
+                      key={project.id}
+                      className="group overflow-hidden rounded-3xl border border-white/10 bg-white/[0.035] transition hover:-translate-y-0.5 hover:border-cyan-300/25 hover:bg-white/[0.055]"
+                    >
+                      <Link
+                        href={`/studio/editor/${project.id}`}
+                        className="block"
+                      >
+                        <div
+                          className="relative flex aspect-video items-center justify-center overflow-hidden border-b border-white/10"
+                          style={{
+                            backgroundColor:
+                              primaryVariant
+                                ?.backgroundColor ??
+                              campaignPlan
+                                ?.backgroundColor ??
+                              "#0f172a",
+                          }}
+                        >
+                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.35),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(34,211,238,0.18),transparent_35%)]" />
+
+                          <div className="relative max-w-[80%] text-center">
+                            {project.status ===
+                            "generating" ? (
+                              <Sparkles className="mx-auto h-10 w-10 animate-pulse text-amber-200" />
+                            ) : (
+                              <Film className="mx-auto h-10 w-10 text-cyan-200" />
+                            )}
+
+                            <p className="mt-3 line-clamp-2 text-sm font-black text-white">
+                              {project.title}
+                            </p>
+                          </div>
+
+                          <span
+                            className={`absolute left-3 top-3 rounded-full border px-3 py-1 text-[0.65rem] font-black ${statusClasses(
+                              project.status,
+                            )}`}
+                          >
+                            {statusLabel(
+                              project.status,
+                            )}
+                          </span>
 
                           <span className="absolute bottom-3 right-3 rounded-full border border-white/10 bg-slate-950/80 px-2.5 py-1 text-[0.65rem] font-black text-slate-200 backdrop-blur">
-                            {formatDuration(project.durationMs)}
+                            {formatDuration(
+                              primaryVariant
+                                ?.durationMs ??
+                                campaignPlan
+                                  ?.durationMs,
+                            )}
                           </span>
                         </div>
 
                         <div className="p-5">
                           <h3 className="truncate text-base font-black text-white">
-                            {project.name || "Untitled project"}
+                            {project.title}
                           </h3>
 
                           <p className="mt-2 line-clamp-2 min-h-10 text-xs font-semibold leading-5 text-slate-500">
                             {project.description ||
-                              "Beacon Studio creation project"}
+                              brief.prompt ||
+                              "Beacon Studio campaign project"}
                           </p>
+
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {formats
+                              .slice(0, 3)
+                              .map((format) => (
+                                <span
+                                  key={format}
+                                  className="rounded-full border border-white/10 bg-slate-950/50 px-2.5 py-1 text-[0.65rem] font-bold text-slate-400"
+                                >
+                                  {formatOutputName(
+                                    format,
+                                  )}
+                                </span>
+                              ))}
+
+                            {formats.length > 3 && (
+                              <span className="rounded-full border border-white/10 bg-slate-950/50 px-2.5 py-1 text-[0.65rem] font-bold text-slate-400">
+                                +{formats.length - 3}
+                              </span>
+                            )}
+                          </div>
 
                           <div className="mt-4 flex items-center justify-between gap-3">
                             <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500">
                               <Clock3 className="h-3.5 w-3.5" />
-                              {formatProjectDate(project)}
+                              {formatProjectDate(
+                                project.updatedAt,
+                                project.createdAt,
+                              )}
                             </span>
 
-                            <span className="inline-flex items-center gap-1 text-xs font-black text-cyan-200">
-                              Open
-                              <ArrowRight className="h-3.5 w-3.5" />
+                            <span className="text-xs font-black text-amber-200">
+                              {creditText}
                             </span>
                           </div>
+
+                          <span className="mt-4 inline-flex items-center gap-1 text-xs font-black text-cyan-200">
+                            Open editor
+                            <ArrowRight className="h-3.5 w-3.5" />
+                          </span>
                         </div>
-                      </button>
+                      </Link>
 
                       <div className="border-t border-white/10 px-5 py-3">
-                        <button
-                          className="inline-flex items-center gap-2 text-xs font-black text-slate-500 transition hover:text-red-200 disabled:opacity-50"
-                          disabled={deletingId === project.id}
-                          onClick={() => void deleteProject(project.id)}
-                          type="button"
+                        <form
+                          action={
+                            deleteStudioProject
+                          }
                         >
-                          {deletingId === project.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
+                          <input
+                            type="hidden"
+                            name="projectId"
+                            value={project.id}
+                          />
+
+                          <button
+                            type="submit"
+                            className="inline-flex items-center gap-2 text-xs font-black text-slate-500 transition hover:text-red-200"
+                          >
                             <Trash2 className="h-3.5 w-3.5" />
-                          )}
-                          Delete project
-                        </button>
+                            Delete project
+                          </button>
+                        </form>
                       </div>
                     </article>
-                  ))}
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex min-h-64 flex-col items-center justify-center rounded-3xl border border-dashed border-white/10 bg-white/[0.02] px-6 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-300/10">
+                  <FileImage className="h-6 w-6 text-cyan-200" />
                 </div>
-              ) : (
-                <div className="flex min-h-64 flex-col items-center justify-center rounded-3xl border border-dashed border-white/10 bg-white/[0.02] px-6 text-center">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-300/10">
-                    <FileImage className="h-6 w-6 text-cyan-200" />
-                  </div>
 
-                  <h3 className="mt-4 text-lg font-black">
-                    {searchQuery
-                      ? "No matching projects"
-                      : "Create your first Studio project"}
-                  </h3>
+                <h3 className="mt-4 text-lg font-black">
+                  {searchQuery ||
+                  requestedStatus !== "all"
+                    ? "No matching projects"
+                    : "Create your first Studio project"}
+                </h3>
 
-                  <p className="mt-2 max-w-md text-sm font-medium leading-6 text-slate-500">
-                    {searchQuery
-                      ? "Try another search term or clear the search."
-                      : "Describe what you want to create and Beacon will guide you through format, quality, credits and rendering."}
-                  </p>
-
-                  {!searchQuery ? (
-                    <button
-                      className="mt-5 inline-flex h-11 items-center gap-2 rounded-full bg-blue-600 px-5 text-sm font-black text-white transition hover:bg-blue-500"
-                      onClick={() => beginCreation()}
-                      type="button"
-                    >
-                      <Sparkles className="h-4 w-4" />
-                      Start creating
-                    </button>
-                  ) : null}
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section className="py-8">
-            <div className="grid gap-4 md:grid-cols-3">
-              <button
-                className="rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-5 text-left transition hover:border-cyan-300/25 hover:bg-white/[0.055]"
-                onClick={() => router.push("/studio/projects")}
-                type="button"
-              >
-                <FolderOpen className="h-5 w-5 text-cyan-200" />
-                <h3 className="mt-4 font-black">All projects</h3>
-                <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
-                  View every draft, completed render and previous creation.
+                <p className="mt-2 max-w-md text-sm font-medium leading-6 text-slate-500">
+                  {searchQuery ||
+                  requestedStatus !== "all"
+                    ? "Try another search term or return to all project statuses."
+                    : "Describe what you want to create and Beacon will guide you through formats, quality, credits and generation."}
                 </p>
-              </button>
 
-              <button
-                className="rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-5 text-left transition hover:border-cyan-300/25 hover:bg-white/[0.055]"
-                onClick={() => router.push("/studio/assets")}
-                type="button"
-              >
-                <FileImage className="h-5 w-5 text-cyan-200" />
-                <h3 className="mt-4 font-black">Asset library</h3>
-                <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
-                  Manage reusable logos, images, clips, audio and brand files.
-                </p>
-              </button>
+                <Link
+                  href="/studio/create"
+                  className="mt-5 inline-flex h-11 items-center gap-2 rounded-full bg-blue-600 px-5 text-sm font-black text-white transition hover:bg-blue-500"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Start creating
+                </Link>
+              </div>
+            )}
+          </div>
+        </section>
 
-              <button
-                className="rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-5 text-left transition hover:border-cyan-300/25 hover:bg-white/[0.055]"
-                onClick={() => router.push("/studio/pricing")}
-                type="button"
-              >
-                <Sparkles className="h-5 w-5 text-cyan-200" />
-                <h3 className="mt-4 font-black">Credits and pricing</h3>
-                <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
-                  Review your plan, available credits and Studio usage details.
-                </p>
-              </button>
-            </div>
-          </section>
-        </div>
+        <section className="py-8">
+          <div className="grid gap-4 md:grid-cols-3">
+            <Link
+              href="/studio/projects"
+              className="rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-5 text-left transition hover:border-cyan-300/25 hover:bg-white/[0.055]"
+            >
+              <FolderOpen className="h-5 w-5 text-cyan-200" />
+              <h3 className="mt-4 font-black">
+                All projects
+              </h3>
+              <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
+                View every campaign, generation and previous Studio creation.
+              </p>
+            </Link>
+
+            <Link
+              href="/studio/assets"
+              className="rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-5 text-left transition hover:border-cyan-300/25 hover:bg-white/[0.055]"
+            >
+              <FileImage className="h-5 w-5 text-cyan-200" />
+              <h3 className="mt-4 font-black">
+                Asset library
+              </h3>
+              <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
+                Manage reusable logos, images, clips, audio and brand files.
+              </p>
+            </Link>
+
+            <Link
+              href="/studio/pricing"
+              className="rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-5 text-left transition hover:border-cyan-300/25 hover:bg-white/[0.055]"
+            >
+              <Sparkles className="h-5 w-5 text-cyan-200" />
+              <h3 className="mt-4 font-black">
+                Credits and pricing
+              </h3>
+              <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
+                Review your Studio plan, available credits and usage options.
+              </p>
+            </Link>
+          </div>
+        </section>
+      </div>
     </main>
   );
 }
