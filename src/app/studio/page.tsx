@@ -3,17 +3,14 @@
 import {
   ArrowRight,
   BriefcaseBusiness,
-  Check,
   Clock3,
   Clapperboard,
   FileImage,
   Film,
   FolderOpen,
-  Home,
   Image as ImageIcon,
   Laugh,
   Loader2,
-  Menu,
   MessageSquareText,
   Music2,
   Search,
@@ -21,10 +18,8 @@ import {
   Trash2,
   Video,
   WandSparkles,
-  X,
 } from "lucide-react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -60,35 +55,6 @@ type CreationType = {
   icon: typeof Sparkles;
   examples: string[];
 };
-
-type StudioNavigationItem = {
-  label: string;
-  href: string;
-  icon: typeof Home;
-};
-
-const STUDIO_NAVIGATION: StudioNavigationItem[] = [
-  {
-    label: "Home",
-    href: "/studio",
-    icon: Home,
-  },
-  {
-    label: "Studio dashboard",
-    href: "/studio/dashboard",
-    icon: Sparkles,
-  },
-  {
-    label: "Memberships",
-    href: "/studio/memberships",
-    icon: Check,
-  },
-  {
-    label: "Pricing",
-    href: "/studio/pricing",
-    icon: BriefcaseBusiness,
-  },
-];
 
 const CREATION_TYPES: CreationType[] = [
   {
@@ -216,170 +182,6 @@ function formatDuration(durationMs?: number): string {
   return seconds === 0 ? `${minutes} min` : `${minutes}m ${seconds}s`;
 }
 
-function isNavigationItemActive(pathname: string, href: string): boolean {
-  if (href === "/studio") {
-    return pathname === "/studio";
-  }
-
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-function StudioLogo() {
-  return (
-    <Link
-      aria-label="Beacon Studio home"
-      className="group inline-flex min-w-0 items-center gap-3"
-      href="/studio"
-    >
-      <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-amber-300/30 bg-gradient-to-br from-[#173b8f] via-[#0a1f55] to-[#061024] shadow-[0_12px_35px_rgba(37,99,235,0.32)]">
-        <span className="absolute inset-1 rounded-xl border border-white/10" />
-        <Sparkles className="relative h-5 w-5 text-amber-200 transition group-hover:scale-110" />
-      </span>
-
-      <span className="min-w-0">
-        <span className="block truncate text-base font-black tracking-[0.08em] text-white sm:text-lg">
-          BEACON STUDIO
-        </span>
-        <span className="block truncate text-[0.65rem] font-bold uppercase tracking-[0.16em] text-cyan-200/80 sm:text-xs">
-          Create. Refine. Bring ideas to life.
-        </span>
-      </span>
-    </Link>
-  );
-}
-
-function StudioNavbar() {
-  const pathname = usePathname();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [pathname]);
-
-  return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#050b18]/95 backdrop-blur-xl">
-      <div className="mx-auto flex h-[74px] w-full max-w-[1500px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <StudioLogo />
-
-        <nav
-          aria-label="Beacon Studio navigation"
-          className="hidden items-center gap-1 lg:flex"
-        >
-          {STUDIO_NAVIGATION.map((item) => {
-            const Icon = item.icon;
-            const active = isNavigationItemActive(pathname, item.href);
-
-            return (
-              <Link
-                aria-current={active ? "page" : undefined}
-                className={`inline-flex h-11 items-center gap-2 rounded-full px-4 text-sm font-black transition ${
-                  active
-                    ? "border border-cyan-300/25 bg-cyan-300/10 text-cyan-100"
-                    : "border border-transparent text-slate-300 hover:border-white/10 hover:bg-white/5 hover:text-white"
-                }`}
-                href={item.href}
-                key={item.href}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <button
-          aria-expanded={mobileMenuOpen}
-          aria-label={mobileMenuOpen ? "Close navigation" : "Open navigation"}
-          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:border-cyan-300/25 hover:bg-cyan-300/10 lg:hidden"
-          onClick={() => setMobileMenuOpen((open) => !open)}
-          type="button"
-        >
-          {mobileMenuOpen ? (
-            <X className="h-5 w-5" />
-          ) : (
-            <Menu className="h-5 w-5" />
-          )}
-        </button>
-      </div>
-
-      {mobileMenuOpen ? (
-        <nav
-          aria-label="Beacon Studio mobile navigation"
-          className="border-t border-white/10 px-4 pb-4 pt-3 sm:px-6 lg:hidden"
-        >
-          <div className="mx-auto grid w-full max-w-[1500px] gap-2">
-            {STUDIO_NAVIGATION.map((item) => {
-              const Icon = item.icon;
-              const active = isNavigationItemActive(pathname, item.href);
-
-              return (
-                <Link
-                  aria-current={active ? "page" : undefined}
-                  className={`flex min-h-12 items-center gap-3 rounded-2xl border px-4 text-sm font-black transition ${
-                    active
-                      ? "border-cyan-300/25 bg-cyan-300/10 text-cyan-100"
-                      : "border-white/10 bg-white/[0.035] text-slate-300 hover:bg-white/[0.06] hover:text-white"
-                  }`}
-                  href={item.href}
-                  key={item.href}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </div>
-        </nav>
-      ) : null}
-    </header>
-  );
-}
-
-function StudioFooter() {
-  return (
-    <footer className="relative border-t border-white/10 bg-[#030712]">
-      <div className="mx-auto grid w-full max-w-[1500px] gap-8 px-4 py-10 sm:px-6 md:grid-cols-[1.2fr_1fr] lg:px-8">
-        <div>
-          <StudioLogo />
-          <p className="mt-4 max-w-xl text-sm font-medium leading-7 text-slate-500">
-            Beacon Studio turns ideas, scripts and business briefs into polished
-            marketing content, social posts, graphics, voice, video and reusable
-            creative assets.
-          </p>
-        </div>
-
-        <div className="md:justify-self-end">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
-            Studio navigation
-          </p>
-
-          <nav
-            aria-label="Beacon Studio footer navigation"
-            className="mt-4 flex flex-wrap gap-x-5 gap-y-3"
-          >
-            {STUDIO_NAVIGATION.map((item) => (
-              <Link
-                className="text-sm font-bold text-slate-400 transition hover:text-cyan-200"
-                href={item.href}
-                key={item.href}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-      </div>
-
-      <div className="border-t border-white/10">
-        <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-2 px-4 py-5 text-xs font-semibold text-slate-600 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
-          <span>© {new Date().getFullYear()} Beacon Studio.</span>
-          <span>Built by Beacon AI. Designed to make creation clearer.</span>
-        </div>
-      </div>
-    </footer>
-  );
-}
-
 export default function StudioDashboardPage() {
   const router = useRouter();
 
@@ -503,10 +305,7 @@ export default function StudioDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050b18] text-white">
-      <StudioNavbar />
-
-      <main className="relative overflow-hidden">
+    <main className="relative min-h-screen overflow-hidden bg-[#050b18] text-white">
         <div className="pointer-events-none fixed inset-0 overflow-hidden">
           <div className="absolute left-[-10rem] top-[-12rem] h-[30rem] w-[30rem] rounded-full bg-blue-600/15 blur-[120px]" />
           <div className="absolute right-[-8rem] top-[12rem] h-[28rem] w-[28rem] rounded-full bg-cyan-400/10 blur-[120px]" />
@@ -825,9 +624,6 @@ export default function StudioDashboardPage() {
             </div>
           </section>
         </div>
-      </main>
-
-      <StudioFooter />
-    </div>
+    </main>
   );
 }
