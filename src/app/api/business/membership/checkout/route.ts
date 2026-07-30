@@ -1,10 +1,19 @@
-import { NextResponse } from "next/server";
-import Stripe from "stripe";
+import "server-only";
+
+import {
+  NextRequest,
+  NextResponse,
+} from "next/server";
+
+import { auth } from "@/lib/auth/Auth";
+import { getStripeClient } from "@/lib/stripe/StripeClient";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type MembershipPlanId = "business" | "business_pro";
+type MembershipPlanId =
+  | "business"
+  | "business_pro";
 
 type CheckoutRequestBody = {
   planId?: unknown;
@@ -13,59 +22,91 @@ type CheckoutRequestBody = {
 type MembershipPlan = {
   id: MembershipPlanId;
   name: string;
+  studioCredits: 50 | 150;
   priceEnvironmentVariable:
     | "STRIPE_PRICE_BEACON_BUSINESS"
     | "STRIPE_PRICE_BEACON_BUSINESS_PRO";
 };
 
-const MEMBERSHIP_PLANS: Record<MembershipPlanId, MembershipPlan> = {
+type CheckoutSuccessResponse = {
+  url: string;
+};
+
+type CheckoutErrorResponse = {
+  error: string;
+};
+
+const MEMBERSHIP_PLANS: Record<
+  MembershipPlanId,
+  MembershipPlan
+> = {
   business: {
     id: "business",
     name: "Beacon Business",
-    priceEnvironmentVariable: "STRIPE_PRICE_BEACON_BUSINESS",
+    studioCredits: 50,
+    priceEnvironmentVariable:
+      "STRIPE_PRICE_BEACON_BUSINESS",
   },
+
   business_pro: {
     id: "business_pro",
     name: "Beacon Business Pro",
-    priceEnvironmentVariable: "STRIPE_PRICE_BEACON_BUSINESS_PRO",
+    studioCredits: 150,
+    priceEnvironmentVariable:
+      "STRIPE_PRICE_BEACON_BUSINESS_PRO",
   },
 };
 
-function isMembershipPlanId(value: unknown): value is MembershipPlanId {
-  return value === "business" || value === "business_pro";
+function isMembershipPlanId(
+  value: unknown,
+): value is MembershipPlanId {
+  return (
+    value === "business" ||
+    value === "business_pro"
+  );
 }
 
-function getStripeClient(): Stripe {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
-
-  if (!secretKey) {
-    throw new Error("Missing STRIPE_SECRET_KEY.");
-  }
-
-  return new Stripe(secretKey);
-}
-
-function getSiteUrl(request: Request): string {
+function getSiteUrl(
+  request: NextRequest,
+): string {
   const configuredSiteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    process.env.SITE_URL ??
-    process.env.VERCEL_PROJECT_PRODUCTION_URL ??
-    process.env.VERCEL_URL;
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    process.env.BETTER_AUTH_URL?.trim() ||
+    process.env.SITE_URL?.trim() ||
+    process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim() ||
+    process.env.VERCEL_URL?.trim();
 
   if (configuredSiteUrl) {
-    const normalisedUrl = configuredSiteUrl.startsWith("http")
-      ? configuredSiteUrl
-      : `https://${configuredSiteUrl}`;
+    const normalisedUrl =
+      configuredSiteUrl.startsWith("http://") ||
+      configuredSiteUrl.startsWith("https://")
+        ? configuredSiteUrl
+        : `https://${configuredSiteUrl}`;
 
-    return normalisedUrl.replace(/\/+$/, "");
+    try {
+      return new URL(
+        normalisedUrl,
+      ).origin;
+    } catch {
+      throw new Error(
+        "The configured Beacon site URL is invalid.",
+      );
+    }
   }
 
-  const requestUrl = new URL(request.url);
-  return requestUrl.origin.replace(/\/+$/, "");
+  return new URL(
+    request.url,
+  ).origin;
 }
 
-function getPriceId(plan: MembershipPlan): string {
-  const priceId = process.env[plan.priceEnvironmentVariable];
+function getPriceId(
+  plan: MembershipPlan,
+): string {
+  const priceId =
+    process.env[
+      plan.priceEnvironmentVariable
+    ]?.trim();
 
   if (!priceId) {
     throw new Error(
@@ -76,104 +117,235 @@ function getPriceId(plan: MembershipPlan): string {
   return priceId;
 }
 
-function getCustomerEmail(request: Request): string | undefined {
-  const emailHeader =
-    request.headers.get("x-user-email") ??
-    request.headers.get("x-customer-email");
-
-  if (!emailHeader) {
-    return undefined;
-  }
-
-  const trimmedEmail = emailHeader.trim();
-
-  return trimmedEmail.length > 0 ? trimmedEmail : undefined;
+function jsonError(
+  message: string,
+  status: number,
+): NextResponse<CheckoutErrorResponse> {
+  return NextResponse.json(
+    {
+      error: message,
+    },
+    {
+      status,
+      headers: {
+        "Cache-Control":
+          "no-store, max-age=0",
+      },
+    },
+  );
 }
 
-export async function POST(request: Request) {
+async function readRequestBody(
+  request: NextRequest,
+): Promise<CheckoutRequestBody | null> {
   try {
-    const body = (await request.json().catch(() => null)) as
-      | CheckoutRequestBody
-      | null;
+    const body =
+      (await request.json()) as unknown;
 
-    if (!body || !isMembershipPlanId(body.planId)) {
-      return NextResponse.json(
-        {
-          error:
-            "Please select either Beacon Business or Beacon Business Pro.",
-        },
-        { status: 400 },
+    if (
+      typeof body !== "object" ||
+      body === null ||
+      Array.isArray(body)
+    ) {
+      return null;
+    }
+
+    return body as CheckoutRequestBody;
+  } catch {
+    return null;
+  }
+}
+
+function createMembershipMetadata(
+  plan: MembershipPlan,
+  userId: string,
+): Record<string, string> {
+  return {
+    source:
+      "beacon_business_memberships",
+
+    purchaseType:
+      "subscription",
+
+    productFamily:
+      "business",
+
+    membershipPlan:
+      plan.id,
+
+    businessMembershipPlan:
+      plan.id,
+
+    membershipPlanId:
+      plan.id,
+
+    membershipPlanName:
+      plan.name,
+
+    studioCredits:
+      String(
+        plan.studioCredits,
+      ),
+
+    beaconUserId:
+      userId,
+
+    userId,
+  };
+}
+
+export async function POST(
+  request: NextRequest,
+): Promise<
+  NextResponse<
+    | CheckoutSuccessResponse
+    | CheckoutErrorResponse
+  >
+> {
+  try {
+    const session =
+      await auth.api.getSession({
+        headers:
+          request.headers,
+      });
+
+    if (
+      !session?.user?.id ||
+      !session.user.email
+    ) {
+      return jsonError(
+        "You must be signed in before starting a Beacon Business membership.",
+        401,
       );
     }
 
-    const plan = MEMBERSHIP_PLANS[body.planId];
-    const priceId = getPriceId(plan);
-    const stripe = getStripeClient();
-    const siteUrl = getSiteUrl(request);
-    const customerEmail = getCustomerEmail(request);
+    const body =
+      await readRequestBody(
+        request,
+      );
 
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      allow_promotion_codes: true,
-      billing_address_collection: "auto",
-      customer_email: customerEmail,
-      success_url: `${siteUrl}/business/memberships/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${siteUrl}/business/memberships?checkout=cancelled`,
-      metadata: {
-        membershipPlanId: plan.id,
-        membershipPlanName: plan.name,
-        source: "beacon_business_memberships",
-      },
-      subscription_data: {
-        trial_period_days: 14,
-        metadata: {
-          membershipPlanId: plan.id,
-          membershipPlanName: plan.name,
-          source: "beacon_business_memberships",
-        },
-      },
-      consent_collection: {
-        terms_of_service: "required",
-      },
-      custom_text: {
-        submit: {
-          message:
-            "Your 14-day free trial starts today. Monthly billing begins automatically after the trial unless you cancel.",
-        },
-      },
-    });
-
-    if (!session.url) {
-      return NextResponse.json(
-        {
-          error: "Stripe did not return a secure checkout URL.",
-        },
-        { status: 502 },
+    if (
+      !body ||
+      !isMembershipPlanId(
+        body.planId,
+      )
+    ) {
+      return jsonError(
+        "Please select either Beacon Business or Beacon Business Pro.",
+        400,
       );
     }
 
-    return NextResponse.json({
-      url: session.url,
-    });
-  } catch (error) {
-    console.error("Membership checkout error:", error);
+    const plan =
+      MEMBERSHIP_PLANS[
+        body.planId
+      ];
 
-    const message =
-      process.env.NODE_ENV === "development" && error instanceof Error
-        ? error.message
-        : "We could not start your membership checkout. Please try again.";
+    const siteUrl =
+      getSiteUrl(
+        request,
+      );
+
+    const metadata =
+      createMembershipMetadata(
+        plan,
+        session.user.id,
+      );
+
+    const checkoutSession =
+      await getStripeClient()
+        .checkout.sessions.create({
+          mode:
+            "subscription",
+
+          customer_email:
+            session.user.email,
+
+          client_reference_id:
+            session.user.id,
+
+          line_items: [
+            {
+              price:
+                getPriceId(
+                  plan,
+                ),
+              quantity:
+                1,
+            },
+          ],
+
+          allow_promotion_codes:
+            true,
+
+          billing_address_collection:
+            "auto",
+
+          success_url:
+            `${siteUrl}/business/memberships/success` +
+            "?session_id={CHECKOUT_SESSION_ID}",
+
+          cancel_url:
+            `${siteUrl}/business/memberships` +
+            "?checkout=cancelled",
+
+          metadata,
+
+          subscription_data: {
+            trial_period_days:
+              14,
+
+            metadata,
+          },
+
+          consent_collection: {
+            terms_of_service:
+              "required",
+          },
+
+          custom_text: {
+            submit: {
+              message:
+                "Your 14-day free trial starts today. Monthly billing begins automatically after the trial unless you cancel.",
+            },
+          },
+        });
+
+    if (!checkoutSession.url) {
+      return jsonError(
+        "Stripe did not return a secure checkout URL.",
+        502,
+      );
+    }
 
     return NextResponse.json(
       {
-        error: message,
+        url:
+          checkoutSession.url,
       },
-      { status: 500 },
+      {
+        headers: {
+          "Cache-Control":
+            "no-store, max-age=0",
+        },
+      },
+    );
+  } catch (error) {
+    console.error(
+      "Beacon Business membership checkout failed:",
+      error,
+    );
+
+    const message =
+      process.env.NODE_ENV ===
+        "development" &&
+      error instanceof Error
+        ? error.message
+        : "We could not start your membership checkout. Please try again.";
+
+    return jsonError(
+      message,
+      500,
     );
   }
 }

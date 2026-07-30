@@ -28,6 +28,34 @@ export const userRole =
     ]
   );
 
+export const beaconPlusBillingPlan =
+  pgEnum(
+    "beacon_plus_billing_plan",
+    [
+      "monthly",
+      "annual",
+    ]
+  );
+
+export const businessMembershipPlan =
+  pgEnum(
+    "business_membership_plan",
+    [
+      "business",
+      "business_pro",
+    ]
+  );
+
+export const studioMembershipPlan =
+  pgEnum(
+    "studio_membership_plan",
+    [
+      "pro",
+      "business",
+      "enterprise",
+    ]
+  );
+
 export const user = pgTable(
   "user",
   {
@@ -69,12 +97,28 @@ export const user = pgTable(
       )
         .unique(),
 
+    /*
+     * Beacon AI one-time credit balance.
+     *
+     * These credits are separate from Beacon Studio credits.
+     */
     purchasedCredits:
       integer(
         "purchased_credits"
       )
         .notNull()
         .default(0),
+
+    /*
+     * Beacon+ subscription state.
+     *
+     * Beacon+ monthly and annual plans both include a fair-use
+     * allowance of 300 completed searches per monthly usage period.
+     */
+    beaconPlusPlan:
+      beaconPlusBillingPlan(
+        "beacon_plus_plan"
+      ),
 
     beaconPlusActive:
       boolean(
@@ -83,6 +127,181 @@ export const user = pgTable(
         .notNull()
         .default(false),
 
+    beaconPlusStripeSubscriptionId:
+      text(
+        "beacon_plus_stripe_subscription_id"
+      )
+        .unique(),
+
+    beaconPlusSubscriptionStatus:
+      text(
+        "beacon_plus_subscription_status"
+      ),
+
+    beaconPlusCurrentPeriodStart:
+      timestamp(
+        "beacon_plus_current_period_start",
+        {
+          withTimezone: true,
+        }
+      ),
+
+    beaconPlusCurrentPeriodEnd:
+      timestamp(
+        "beacon_plus_current_period_end",
+        {
+          withTimezone: true,
+        }
+      ),
+
+    beaconPlusSearchesUsedThisPeriod:
+      integer(
+        "beacon_plus_searches_used_this_period"
+      )
+        .notNull()
+        .default(0),
+
+    beaconPlusSearchLimit:
+      integer(
+        "beacon_plus_search_limit"
+      )
+        .notNull()
+        .default(300),
+
+    /*
+     * Beacon Business subscription state.
+     *
+     * Business includes 50 Studio Credits per monthly period.
+     * Business Pro includes 150 Studio Credits per monthly period.
+     */
+    businessMembershipPlan:
+      businessMembershipPlan(
+        "business_membership_plan"
+      ),
+
+    businessMembershipActive:
+      boolean(
+        "business_membership_active"
+      )
+        .notNull()
+        .default(false),
+
+    businessStripeSubscriptionId:
+      text(
+        "business_stripe_subscription_id"
+      )
+        .unique(),
+
+    businessSubscriptionStatus:
+      text(
+        "business_subscription_status"
+      ),
+
+    businessCurrentPeriodStart:
+      timestamp(
+        "business_current_period_start",
+        {
+          withTimezone: true,
+        }
+      ),
+
+    businessCurrentPeriodEnd:
+      timestamp(
+        "business_current_period_end",
+        {
+          withTimezone: true,
+        }
+      ),
+
+    businessStudioCreditsAllowance:
+      integer(
+        "business_studio_credits_allowance"
+      )
+        .notNull()
+        .default(0),
+
+    businessStudioCreditsRenewedAt:
+      timestamp(
+        "business_studio_credits_renewed_at",
+        {
+          withTimezone: true,
+        }
+      ),
+
+    /*
+     * Beacon Studio subscription state and credit balances.
+     *
+     * Membership credits and Business-included credits reset with
+     * their own billing periods. Purchased Studio Credits do not
+     * expire while the Beacon account remains active.
+     */
+    studioMembershipPlan:
+      studioMembershipPlan(
+        "studio_membership_plan"
+      ),
+
+    studioMembershipActive:
+      boolean(
+        "studio_membership_active"
+      )
+        .notNull()
+        .default(false),
+
+    studioStripeSubscriptionId:
+      text(
+        "studio_stripe_subscription_id"
+      )
+        .unique(),
+
+    studioSubscriptionStatus:
+      text(
+        "studio_subscription_status"
+      ),
+
+    studioCurrentPeriodStart:
+      timestamp(
+        "studio_current_period_start",
+        {
+          withTimezone: true,
+        }
+      ),
+
+    studioCurrentPeriodEnd:
+      timestamp(
+        "studio_current_period_end",
+        {
+          withTimezone: true,
+        }
+      ),
+
+    studioMembershipCreditsAllowance:
+      integer(
+        "studio_membership_credits_allowance"
+      )
+        .notNull()
+        .default(0),
+
+    studioMembershipCreditsRenewedAt:
+      timestamp(
+        "studio_membership_credits_renewed_at",
+        {
+          withTimezone: true,
+        }
+      ),
+
+    studioPurchasedCredits:
+      integer(
+        "studio_purchased_credits"
+      )
+        .notNull()
+        .default(0),
+
+    /*
+     * Legacy Beacon+ fields retained temporarily so existing code
+     * continues to compile during the staged billing migration.
+     * New checkout and webhook code must use the product-specific
+     * fields above.
+     */
     stripeSubscriptionId:
       text(
         "stripe_subscription_id"
@@ -92,14 +311,6 @@ export const user = pgTable(
     stripeSubscriptionStatus:
       text(
         "stripe_subscription_status"
-      ),
-
-    beaconPlusCurrentPeriodEnd:
-      timestamp(
-        "beacon_plus_current_period_end",
-        {
-          withTimezone: true,
-        }
       ),
 
     createdAt:
@@ -139,6 +350,24 @@ export const user = pgTable(
       "user_stripe_subscription_unique"
     ).on(
       table.stripeSubscriptionId
+    ),
+
+    uniqueIndex(
+      "user_beacon_plus_subscription_unique"
+    ).on(
+      table.beaconPlusStripeSubscriptionId
+    ),
+
+    uniqueIndex(
+      "user_business_subscription_unique"
+    ).on(
+      table.businessStripeSubscriptionId
+    ),
+
+    uniqueIndex(
+      "user_studio_subscription_unique"
+    ).on(
+      table.studioStripeSubscriptionId
     ),
   ]
 );
@@ -769,6 +998,169 @@ export const creditLedger =
   );
 
 /*
+ * Beacon Studio credit ledger
+ *
+ * Studio Credits are isolated from Beacon AI search credits.
+ * Membership allowances and purchased balances are tracked
+ * separately on the user account, while this ledger provides
+ * an auditable history of every Studio balance change.
+ */
+
+export const studioCreditLedgerType =
+  pgEnum(
+    "studio_credit_ledger_type",
+    [
+      "purchase",
+      "membership_reset",
+      "business_membership_reset",
+      "generation",
+      "refund",
+      "adjustment",
+      "promotion",
+      "complimentary",
+    ]
+  );
+
+export const studioCreditLedger =
+  pgTable(
+    "studio_credit_ledger",
+    {
+      id:
+        uuid("id")
+          .defaultRandom()
+          .primaryKey(),
+
+      userId:
+        text("user_id")
+          .notNull()
+          .references(
+            () => user.id,
+            {
+              onDelete:
+                "cascade",
+            }
+          ),
+
+      type:
+        studioCreditLedgerType(
+          "type"
+        )
+          .notNull(),
+
+      amount:
+        integer("amount")
+          .notNull(),
+
+      purchasedBalanceAfter:
+        integer(
+          "purchased_balance_after"
+        )
+          .notNull(),
+
+      studioMembershipAllowanceAfter:
+        integer(
+          "studio_membership_allowance_after"
+        )
+          .notNull(),
+
+      businessAllowanceAfter:
+        integer(
+          "business_allowance_after"
+        )
+          .notNull(),
+
+      totalAvailableAfter:
+        integer(
+          "total_available_after"
+        )
+          .notNull(),
+
+      description:
+        text(
+          "description"
+        )
+          .notNull(),
+
+      stripeCheckoutSessionId:
+        text(
+          "stripe_checkout_session_id"
+        ),
+
+      stripePaymentIntentId:
+        text(
+          "stripe_payment_intent_id"
+        ),
+
+      stripeInvoiceId:
+        text(
+          "stripe_invoice_id"
+        ),
+
+      stripeSubscriptionId:
+        text(
+          "stripe_subscription_id"
+        ),
+
+      metadata:
+        jsonb(
+          "metadata"
+        )
+          .$type<
+            Record<
+              string,
+              string |
+                number |
+                boolean |
+                null
+            >
+          >()
+          .notNull()
+          .default({}),
+
+      createdAt:
+        timestamp(
+          "created_at",
+          {
+            withTimezone: true,
+          }
+        )
+          .notNull()
+          .defaultNow(),
+    },
+    (table) => [
+      index(
+        "studio_credit_ledger_user_id_idx"
+      ).on(
+        table.userId
+      ),
+
+      index(
+        "studio_credit_ledger_created_at_idx"
+      ).on(
+        table.createdAt
+      ),
+
+      index(
+        "studio_credit_ledger_subscription_idx"
+      ).on(
+        table.stripeSubscriptionId
+      ),
+
+      uniqueIndex(
+        "studio_credit_ledger_checkout_session_unique"
+      ).on(
+        table.stripeCheckoutSessionId
+      ),
+
+      uniqueIndex(
+        "studio_credit_ledger_invoice_unique"
+      ).on(
+        table.stripeInvoiceId
+      ),
+    ]
+  );
+
+/*
  * Search history
  */
 
@@ -1278,6 +1670,11 @@ export const userRelations =
           creditLedger
         ),
 
+      studioCreditLedgerEntries:
+        many(
+          studioCreditLedger
+        ),
+
       searchHistory:
         many(
           searchHistory
@@ -1360,6 +1757,23 @@ export const creditLedgerRelations =
         one(user, {
           fields: [
             creditLedger.userId,
+          ],
+
+          references: [
+            user.id,
+          ],
+        }),
+    })
+  );
+
+export const studioCreditLedgerRelations =
+  relations(
+    studioCreditLedger,
+    ({ one }) => ({
+      user:
+        one(user, {
+          fields: [
+            studioCreditLedger.userId,
           ],
 
           references: [
@@ -1459,6 +1873,12 @@ export type NewUserVehicleProfile =
 
 export type CreditLedgerEntry =
   typeof creditLedger.$inferSelect;
+
+export type StudioCreditLedgerEntry =
+  typeof studioCreditLedger.$inferSelect;
+
+export type NewStudioCreditLedgerEntry =
+  typeof studioCreditLedger.$inferInsert;
 
 export type SearchHistoryEntry =
   typeof searchHistory.$inferSelect;

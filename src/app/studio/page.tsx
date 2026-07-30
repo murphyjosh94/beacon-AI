@@ -2,22 +2,25 @@
 
 import {
   ArrowRight,
+  BriefcaseBusiness,
   Clock3,
+  FileImage,
   Film,
-  Globe2,
-  LayoutTemplate,
+  FolderOpen,
+  Image as ImageIcon,
+  Laugh,
   Loader2,
-  MonitorPlay,
-  MoreHorizontal,
-  Plus,
+  MessageSquareText,
+  Music2,
   Search,
   Sparkles,
   Trash2,
+  Video,
   WandSparkles,
+  Clapperboard,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
-  FormEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -45,42 +48,78 @@ type StudioProjectsResponse =
       id?: string;
     };
 
-type Template = {
+type CreationType = {
   id: string;
-  name: string;
+  title: string;
   description: string;
-  duration: string;
-  sourceUrl: string;
-  badge: string;
+  icon: typeof Sparkles;
+  examples: string[];
 };
 
-const TEMPLATES: Template[] = [
+const CREATION_TYPES: CreationType[] = [
   {
-    id: "beacon-ai-overview",
-    name: "Beacon AI Overview",
+    id: "marketing",
+    title: "Marketing",
     description:
-      "A polished product walkthrough built around the Beacon AI homepage.",
-    duration: "15 sec",
-    sourceUrl: "/",
-    badge: "Beacon AI",
+      "Create branded adverts, promotions and campaigns for your business.",
+    icon: BriefcaseBusiness,
+    examples: ["Business advert", "Product promotion", "Website launch"],
   },
   {
-    id: "beacon-business-promo",
-    name: "Beacon Business Promo",
+    id: "short-video",
+    title: "Short-form video",
     description:
-      "Showcase services, website packages and the primary call to action.",
-    duration: "20 sec",
-    sourceUrl: "/business",
-    badge: "Business",
+      "Create vertical clips for Instagram, TikTok, YouTube and Facebook.",
+    icon: Video,
+    examples: ["Instagram Reel", "TikTok clip", "YouTube Short"],
   },
   {
-    id: "website-tour",
-    name: "Website Tour",
+    id: "long-video",
+    title: "Long-form AI video",
     description:
-      "Start with a clean timeline for any same-origin Beacon website page.",
-    duration: "30 sec",
-    sourceUrl: "/",
-    badge: "Blank",
+      "Turn a script or idea into a longer narrated or animated production.",
+    icon: Clapperboard,
+    examples: ["Explainer", "Nursery rhyme", "YouTube video"],
+  },
+  {
+    id: "images",
+    title: "Images and graphics",
+    description:
+      "Generate social graphics, posters, thumbnails, banners and artwork.",
+    icon: ImageIcon,
+    examples: ["Social post", "Poster", "Thumbnail"],
+  },
+  {
+    id: "writing",
+    title: "Social posts and copy",
+    description:
+      "Write captions, adverts, campaigns, blogs and product descriptions.",
+    icon: MessageSquareText,
+    examples: ["Facebook post", "Caption", "Campaign copy"],
+  },
+  {
+    id: "memes",
+    title: "Memes and entertainment",
+    description:
+      "Create shareable memes, comic ideas, greetings and entertaining content.",
+    icon: Laugh,
+    examples: ["General meme", "Comic post", "Greeting"],
+  },
+  {
+    id: "audio",
+    title: "Voice and audio",
+    description:
+      "Generate voice-overs, podcast intros, narration and audio adverts.",
+    icon: Music2,
+    examples: ["Voice-over", "Radio advert", "Narration"],
+  },
+  {
+    id: "custom",
+    title: "Create from any idea",
+    description:
+      "Start with a blank request and let Beacon choose the best production path.",
+    icon: WandSparkles,
+    examples: ["Custom scene", "Mixed media", "Original concept"],
   },
 ];
 
@@ -110,14 +149,6 @@ function normaliseProjects(payload: StudioProjectsResponse): StudioProject[] {
   return [];
 }
 
-function projectIdFromResponse(payload: StudioProjectsResponse): string | null {
-  if (Array.isArray(payload)) {
-    return payload[0]?.id ?? null;
-  }
-
-  return payload.project?.id ?? payload.id ?? null;
-}
-
 function formatProjectDate(project: StudioProject): string {
   const rawDate = project.updatedAt ?? project.createdAt;
 
@@ -136,10 +167,19 @@ function formatProjectDate(project: StudioProject): string {
 
 function formatDuration(durationMs?: number): string {
   if (!durationMs || durationMs <= 0) {
-    return "15 sec";
+    return "Project";
   }
 
-  return `${Math.max(1, Math.round(durationMs / 1000))} sec`;
+  const totalSeconds = Math.max(1, Math.round(durationMs / 1000));
+
+  if (totalSeconds < 60) {
+    return `${totalSeconds} sec`;
+  }
+
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return seconds === 0 ? `${minutes} min` : `${minutes}m ${seconds}s`;
 }
 
 export default function StudioDashboardPage() {
@@ -147,17 +187,11 @@ export default function StudioDashboardPage() {
 
   const [projects, setProjects] = useState<StudioProject[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [idea, setIdea] = useState("");
+  const [selectedType, setSelectedType] = useState("marketing");
   const [isLoading, setIsLoading] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const [showCreatePanel, setShowCreatePanel] = useState(false);
-  const [projectName, setProjectName] = useState("Untitled Studio Project");
-  const [sourceUrl, setSourceUrl] = useState("/");
-  const [description, setDescription] = useState(
-    "A live website motion project created in Beacon Studio.",
-  );
 
   const loadProjects = useCallback(async () => {
     setIsLoading(true);
@@ -211,83 +245,22 @@ export default function StudioDashboardPage() {
     });
   }, [projects, searchQuery]);
 
-  const createProject = async (
-    event?: FormEvent<HTMLFormElement>,
-    template?: Template,
-  ) => {
-    event?.preventDefault();
+  const activeCreationType =
+    CREATION_TYPES.find((item) => item.id === selectedType) ??
+    CREATION_TYPES[0];
 
-    if (isCreating) {
-      return;
+  function beginCreation(typeId = selectedType) {
+    const params = new URLSearchParams();
+    params.set("type", typeId);
+
+    const trimmedIdea = idea.trim();
+
+    if (trimmedIdea) {
+      params.set("prompt", trimmedIdea);
     }
 
-    const finalName = template?.name ?? projectName.trim();
-    const finalSourceUrl = template?.sourceUrl ?? sourceUrl.trim();
-    const finalDescription = template?.description ?? description.trim();
-
-    if (!finalName) {
-      setError("Enter a project name.");
-      return;
-    }
-
-    if (!finalSourceUrl) {
-      setError("Enter a website path or URL.");
-      return;
-    }
-
-    setIsCreating(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/motion/projects", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: finalName,
-          title: finalName,
-          description: finalDescription,
-          sourceUrl: finalSourceUrl,
-          aspectRatio: "16:9",
-          device: "desktop",
-          durationMs: template?.duration === "30 sec" ? 30000 : template?.duration === "20 sec" ? 20000 : 15000,
-          tracks: [],
-        }),
-      });
-
-      if (!response.ok) {
-        const detail = await response
-          .json()
-          .catch(() => null) as { error?: string; message?: string } | null;
-
-        throw new Error(
-          detail?.error ??
-            detail?.message ??
-            "Could not create the Studio project.",
-        );
-      }
-
-      const payload = (await response.json()) as StudioProjectsResponse;
-      const id = projectIdFromResponse(payload);
-
-      if (!id) {
-        throw new Error(
-          "The project was created, but no project ID was returned.",
-        );
-      }
-
-      router.push(`/studio/editor/${encodeURIComponent(id)}`);
-    } catch (createError) {
-      setError(
-        createError instanceof Error
-          ? createError.message
-          : "Could not create the Studio project.",
-      );
-    } finally {
-      setIsCreating(false);
-    }
-  };
+    router.push(`/studio/create?${params.toString()}`);
+  }
 
   const deleteProject = async (projectId: string) => {
     if (deletingId) {
@@ -339,112 +312,117 @@ export default function StudioDashboardPage() {
         <div className="absolute bottom-[-12rem] left-[35%] h-[26rem] w-[26rem] rounded-full bg-amber-400/10 blur-[120px]" />
       </div>
 
-      <div className="relative mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-        <header className="flex flex-col gap-5 border-b border-white/10 pb-7 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-300/25 bg-gradient-to-br from-blue-600 to-cyan-400 shadow-[0_0_35px_rgba(56,189,248,0.25)]">
-              <Film className="h-6 w-6 text-white" />
+      <div className="relative mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+        <section className="overflow-hidden rounded-[2.25rem] border border-white/10 bg-gradient-to-br from-blue-700/30 via-slate-950/95 to-cyan-500/10 p-6 shadow-[0_35px_100px_rgba(0,0,0,0.35)] sm:p-8 lg:p-10">
+          <div className="mx-auto max-w-4xl text-center">
+            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-amber-100">
+              <Sparkles className="h-4 w-4" />
+              Beacon Studio
             </div>
 
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-black tracking-tight">
-                  Beacon Studio
-                </h1>
-                <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2.5 py-1 text-[0.65rem] font-black uppercase tracking-[0.16em] text-amber-200">
-                  Motion
-                </span>
-              </div>
+            <h1 className="mt-6 text-4xl font-black leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+              What would you like to create?
+            </h1>
 
-              <p className="mt-1 text-sm font-medium text-slate-400">
-                Create motion videos from real Beacon websites.
-              </p>
-            </div>
-          </div>
+            <p className="mx-auto mt-4 max-w-3xl text-sm font-medium leading-7 text-slate-300 sm:text-base">
+              Turn an idea, script or business brief into marketing content,
+              social media posts, images, short clips or complete AI-generated
+              videos.
+            </p>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 text-sm font-black text-slate-200 transition hover:border-white/20 hover:bg-white/10"
-              onClick={() => router.push("/admin")}
-              type="button"
-            >
-              Back to admin
-            </button>
+            <div className="mx-auto mt-8 max-w-3xl rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-3 shadow-2xl">
+              <textarea
+                className="min-h-32 w-full resize-none bg-transparent px-3 py-3 text-base font-semibold leading-7 text-white outline-none placeholder:text-slate-600 sm:text-lg"
+                onChange={(event) => setIdea(event.target.value)}
+                placeholder="Example: Create a 30-second Instagram Reel promoting my plumbing business, using a professional British voice-over and a clear call to action."
+                value={idea}
+              />
 
-            <button
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-cyan-400 px-5 text-sm font-black text-white shadow-[0_15px_45px_rgba(37,99,235,0.28)] transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isCreating}
-              onClick={() => setShowCreatePanel(true)}
-              type="button"
-            >
-              <Plus className="h-4 w-4" />
-              New project
-            </button>
-          </div>
-        </header>
+              <div className="flex flex-col gap-3 border-t border-white/10 px-1 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2 text-left text-xs font-bold text-slate-500">
+                  <activeCreationType.icon className="h-4 w-4 text-cyan-200" />
+                  <span>{activeCreationType.title}</span>
+                </div>
 
-        <section className="grid gap-5 py-7 lg:grid-cols-[1.35fr_0.65fr]">
-          <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-blue-700/30 via-slate-950/90 to-cyan-500/10 p-6 shadow-[0_35px_100px_rgba(0,0,0,0.35)] sm:p-8">
-            <div className="absolute right-[-5rem] top-[-5rem] h-52 w-52 rounded-full border border-cyan-300/20 bg-cyan-400/10 blur-sm" />
-
-            <div className="relative max-w-3xl">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-xs font-black text-cyan-100">
-                <WandSparkles className="h-3.5 w-3.5" />
-                Live website motion editor
-              </div>
-
-              <h2 className="max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-5xl">
-                Turn real websites into polished promotional videos.
-              </h2>
-
-              <p className="mt-4 max-w-2xl text-sm font-medium leading-7 text-slate-300 sm:text-base">
-                Load Beacon AI, Beacon Business or another supported page,
-                then animate scrolling, camera movement, highlights, cursor
-                actions and text from one timeline.
-              </p>
-
-              <div className="mt-7 flex flex-wrap gap-3">
                 <button
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white px-6 text-sm font-black text-slate-950 transition hover:scale-[1.02]"
-                  onClick={() => setShowCreatePanel(true)}
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-cyan-400 px-6 text-sm font-black text-white shadow-[0_15px_45px_rgba(37,99,235,0.28)] transition hover:scale-[1.02]"
+                  onClick={() => beginCreation()}
                   type="button"
                 >
-                  Create from website
+                  Continue to creator
                   <ArrowRight className="h-4 w-4" />
                 </button>
-
-                <button
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 px-6 text-sm font-black text-white transition hover:bg-white/10"
-                  onClick={() =>
-                    document
-                      .getElementById("studio-templates")
-                      ?.scrollIntoView({ behavior: "smooth" })
-                  }
-                  type="button"
-                >
-                  <LayoutTemplate className="h-4 w-4" />
-                  Browse templates
-                </button>
               </div>
             </div>
+
+            <p className="mt-4 text-xs font-semibold text-slate-500">
+              Your live cost calculator will confirm credits and estimated AI
+              cost before anything is rendered.
+            </p>
+          </div>
+        </section>
+
+        <section className="py-8">
+          <div>
+            <h2 className="text-2xl font-black">Choose a creation type</h2>
+            <p className="mt-2 text-sm font-medium text-slate-500">
+              Pick a starting point. Beacon can combine formats when your idea
+              needs more than one type of content.
+            </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-            <StatCard
-              icon={<Globe2 className="h-5 w-5" />}
-              label="Live source"
-              value="Real websites"
-            />
-            <StatCard
-              icon={<MonitorPlay className="h-5 w-5" />}
-              label="Preview modes"
-              value="Desktop · Tablet · Mobile"
-            />
-            <StatCard
-              icon={<Sparkles className="h-5 w-5" />}
-              label="Editor engine"
-              value="Timeline controlled"
-            />
+          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {CREATION_TYPES.map((item) => {
+              const Icon = item.icon;
+              const active = selectedType === item.id;
+
+              return (
+                <button
+                  aria-pressed={active}
+                  className={`group rounded-[1.75rem] border p-5 text-left transition hover:-translate-y-0.5 ${
+                    active
+                      ? "border-cyan-300/35 bg-cyan-300/10 shadow-[0_20px_55px_rgba(34,211,238,0.08)]"
+                      : "border-white/10 bg-white/[0.035] hover:border-cyan-300/20 hover:bg-white/[0.055]"
+                  }`}
+                  key={item.id}
+                  onClick={() => setSelectedType(item.id)}
+                  onDoubleClick={() => beginCreation(item.id)}
+                  type="button"
+                >
+                  <div
+                    className={`flex h-12 w-12 items-center justify-center rounded-2xl border ${
+                      active
+                        ? "border-cyan-300/30 bg-cyan-300/15 text-cyan-100"
+                        : "border-white/10 bg-white/5 text-slate-300"
+                    }`}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
+
+                  <h3 className="mt-5 text-lg font-black">{item.title}</h3>
+
+                  <p className="mt-2 min-h-16 text-sm font-medium leading-6 text-slate-500">
+                    {item.description}
+                  </p>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {item.examples.map((example) => (
+                      <span
+                        className="rounded-full border border-white/10 bg-slate-950/50 px-2.5 py-1 text-[0.65rem] font-bold text-slate-400"
+                        key={example}
+                      >
+                        {example}
+                      </span>
+                    ))}
+                  </div>
+
+                  <span className="mt-5 inline-flex items-center gap-2 text-sm font-black text-cyan-200">
+                    Select
+                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </section>
 
@@ -464,9 +442,12 @@ export default function StudioDashboardPage() {
         <section className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-5 shadow-[0_30px_90px_rgba(0,0,0,0.25)] sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-xl font-black">Your projects</h2>
+              <div className="flex items-center gap-2">
+                <FolderOpen className="h-5 w-5 text-cyan-200" />
+                <h2 className="text-xl font-black">Your projects</h2>
+              </div>
               <p className="mt-1 text-sm font-medium text-slate-500">
-                Continue editing or start a fresh website video.
+                Continue a draft, review a render or reuse an earlier project.
               </p>
             </div>
 
@@ -519,7 +500,7 @@ export default function StudioDashboardPage() {
                         ) : (
                           <>
                             <div className="absolute inset-5 rounded-2xl border border-white/10 bg-slate-950/70 shadow-2xl" />
-                            <Globe2 className="relative h-9 w-9 text-cyan-200" />
+                            <Film className="relative h-9 w-9 text-cyan-200" />
                           </>
                         )}
 
@@ -529,18 +510,14 @@ export default function StudioDashboardPage() {
                       </div>
 
                       <div className="p-5">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <h3 className="truncate text-base font-black text-white">
-                              {project.name || "Untitled project"}
-                            </h3>
-                            <p className="mt-1 truncate text-xs font-semibold text-slate-500">
-                              {project.sourceUrl || "Website source not set"}
-                            </p>
-                          </div>
+                        <h3 className="truncate text-base font-black text-white">
+                          {project.name || "Untitled project"}
+                        </h3>
 
-                          <MoreHorizontal className="h-5 w-5 shrink-0 text-slate-600" />
-                        </div>
+                        <p className="mt-2 line-clamp-2 min-h-10 text-xs font-semibold leading-5 text-slate-500">
+                          {project.description ||
+                            "Beacon Studio creation project"}
+                        </p>
 
                         <div className="mt-4 flex items-center justify-between gap-3">
                           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500">
@@ -577,27 +554,29 @@ export default function StudioDashboardPage() {
             ) : (
               <div className="flex min-h-64 flex-col items-center justify-center rounded-3xl border border-dashed border-white/10 bg-white/[0.02] px-6 text-center">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-300/10">
-                  <Film className="h-6 w-6 text-cyan-200" />
+                  <FileImage className="h-6 w-6 text-cyan-200" />
                 </div>
 
                 <h3 className="mt-4 text-lg font-black">
-                  {searchQuery ? "No matching projects" : "Create your first Studio project"}
+                  {searchQuery
+                    ? "No matching projects"
+                    : "Create your first Studio project"}
                 </h3>
 
                 <p className="mt-2 max-w-md text-sm font-medium leading-6 text-slate-500">
                   {searchQuery
                     ? "Try another search term or clear the search."
-                    : "Choose a Beacon page, open it in the live viewport and build its motion timeline."}
+                    : "Describe what you want to create and Beacon will guide you through format, quality, credits and rendering."}
                 </p>
 
                 {!searchQuery ? (
                   <button
                     className="mt-5 inline-flex h-11 items-center gap-2 rounded-full bg-blue-600 px-5 text-sm font-black text-white transition hover:bg-blue-500"
-                    onClick={() => setShowCreatePanel(true)}
+                    onClick={() => beginCreation()}
                     type="button"
                   >
-                    <Plus className="h-4 w-4" />
-                    New project
+                    <Sparkles className="h-4 w-4" />
+                    Start creating
                   </button>
                 ) : null}
               </div>
@@ -605,178 +584,46 @@ export default function StudioDashboardPage() {
           </div>
         </section>
 
-        <section className="py-8" id="studio-templates">
-          <div>
-            <h2 className="text-xl font-black">Start from a template</h2>
-            <p className="mt-1 text-sm font-medium text-slate-500">
-              Create the project structure now, then build its timeline inside
-              the editor.
-            </p>
-          </div>
+        <section className="py-8">
+          <div className="grid gap-4 md:grid-cols-3">
+            <button
+              className="rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-5 text-left transition hover:border-cyan-300/25 hover:bg-white/[0.055]"
+              onClick={() => router.push("/studio/projects")}
+              type="button"
+            >
+              <FolderOpen className="h-5 w-5 text-cyan-200" />
+              <h3 className="mt-4 font-black">All projects</h3>
+              <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
+                View every draft, completed render and previous creation.
+              </p>
+            </button>
 
-          <div className="mt-5 grid gap-4 lg:grid-cols-3">
-            {TEMPLATES.map((template) => (
-              <button
-                className="group rounded-[1.75rem] border border-white/10 bg-white/[0.035] p-5 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/25 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={isCreating}
-                key={template.id}
-                onClick={() => void createProject(undefined, template)}
-                type="button"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="rounded-full border border-cyan-300/15 bg-cyan-300/10 px-3 py-1 text-[0.65rem] font-black uppercase tracking-[0.12em] text-cyan-100">
-                    {template.badge}
-                  </span>
+            <button
+              className="rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-5 text-left transition hover:border-cyan-300/25 hover:bg-white/[0.055]"
+              onClick={() => router.push("/studio/assets")}
+              type="button"
+            >
+              <FileImage className="h-5 w-5 text-cyan-200" />
+              <h3 className="mt-4 font-black">Asset library</h3>
+              <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
+                Manage reusable logos, images, clips, audio and brand files.
+              </p>
+            </button>
 
-                  <span className="text-xs font-black text-slate-500">
-                    {template.duration}
-                  </span>
-                </div>
-
-                <h3 className="mt-5 text-lg font-black">{template.name}</h3>
-                <p className="mt-2 min-h-12 text-sm font-medium leading-6 text-slate-500">
-                  {template.description}
-                </p>
-
-                <span className="mt-5 inline-flex items-center gap-2 text-sm font-black text-cyan-200">
-                  Use template
-                  {isCreating ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-                  )}
-                </span>
-              </button>
-            ))}
+            <button
+              className="rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-5 text-left transition hover:border-cyan-300/25 hover:bg-white/[0.055]"
+              onClick={() => router.push("/studio/pricing")}
+              type="button"
+            >
+              <Sparkles className="h-5 w-5 text-cyan-200" />
+              <h3 className="mt-4 font-black">Credits and pricing</h3>
+              <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
+                Review your plan, available credits and Studio usage details.
+              </p>
+            </button>
           </div>
         </section>
       </div>
-
-      {showCreatePanel ? (
-        <div
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/80 p-0 backdrop-blur-sm sm:items-center sm:p-5"
-          role="dialog"
-        >
-          <button
-            aria-label="Close create project dialog"
-            className="absolute inset-0 cursor-default"
-            onClick={() => setShowCreatePanel(false)}
-            type="button"
-          />
-
-          <form
-            className="relative w-full max-w-xl rounded-t-[2rem] border border-white/10 bg-[#081122] p-6 shadow-[0_40px_120px_rgba(0,0,0,0.65)] sm:rounded-[2rem] sm:p-7"
-            onSubmit={(event) => void createProject(event)}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-black">Create Studio project</h2>
-                <p className="mt-1 text-sm font-medium text-slate-500">
-                  Use a route from this Beacon application for full motion
-                  bridge control.
-                </p>
-              </div>
-
-              <button
-                className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-black text-slate-400 hover:bg-white/10 hover:text-white"
-                onClick={() => setShowCreatePanel(false)}
-                type="button"
-              >
-                Close
-              </button>
-            </div>
-
-            <div className="mt-6 space-y-5">
-              <label className="block">
-                <span className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">
-                  Project name
-                </span>
-                <input
-                  autoFocus
-                  className="mt-2 h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-4 text-sm font-bold text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-300/40 focus:bg-white/[0.07]"
-                  onChange={(event) => setProjectName(event.target.value)}
-                  placeholder="Beacon AI launch video"
-                  value={projectName}
-                />
-              </label>
-
-              <label className="block">
-                <span className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">
-                  Website route or URL
-                </span>
-                <input
-                  className="mt-2 h-12 w-full rounded-2xl border border-white/10 bg-white/5 px-4 text-sm font-bold text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-300/40 focus:bg-white/[0.07]"
-                  onChange={(event) => setSourceUrl(event.target.value)}
-                  placeholder="/ or /business"
-                  value={sourceUrl}
-                />
-                <p className="mt-2 text-xs font-medium leading-5 text-slate-600">
-                  Same-origin Beacon routes can receive scrolling, clicking,
-                  typing and highlight commands from Studio.
-                </p>
-              </label>
-
-              <label className="block">
-                <span className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">
-                  Description
-                </span>
-                <textarea
-                  className="mt-2 min-h-28 w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold leading-6 text-white outline-none transition placeholder:text-slate-600 focus:border-cyan-300/40 focus:bg-white/[0.07]"
-                  onChange={(event) => setDescription(event.target.value)}
-                  value={description}
-                />
-              </label>
-            </div>
-
-            <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <button
-                className="h-11 rounded-full border border-white/10 bg-white/5 px-5 text-sm font-black text-slate-300 transition hover:bg-white/10"
-                onClick={() => setShowCreatePanel(false)}
-                type="button"
-              >
-                Cancel
-              </button>
-
-              <button
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-cyan-400 px-6 text-sm font-black text-white transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={isCreating}
-                type="submit"
-              >
-                {isCreating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="h-4 w-4" />
-                )}
-                Create and open
-              </button>
-            </div>
-          </form>
-        </div>
-      ) : null}
     </main>
-  );
-}
-
-type StatCardProps = {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-};
-
-function StatCard({ icon, label, value }: StatCardProps) {
-  return (
-    <div className="flex min-h-28 items-center gap-4 rounded-[1.6rem] border border-white/10 bg-white/[0.035] p-5">
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-cyan-300/15 bg-cyan-300/10 text-cyan-200">
-        {icon}
-      </div>
-
-      <div>
-        <p className="text-[0.65rem] font-black uppercase tracking-[0.14em] text-slate-600">
-          {label}
-        </p>
-        <p className="mt-1 text-sm font-black text-slate-200">{value}</p>
-      </div>
-    </div>
   );
 }

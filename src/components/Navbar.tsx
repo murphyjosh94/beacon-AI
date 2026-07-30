@@ -40,6 +40,17 @@ const businessNavigation = [
   },
 ] as const;
 
+const studioNavigation = [
+  {
+    label: "Create",
+    href: "/studio",
+  },
+  {
+    label: "Pricing",
+    href: "/studio/pricing",
+  },
+] as const;
+
 function readUserRole(user: unknown): string | null {
   if (
     !user ||
@@ -65,10 +76,9 @@ export default function Navbar() {
   const pathname = usePathname();
   const { data: session, isPending } = authClient.useSession();
 
+  const isStudioRoute = pathname.startsWith("/studio");
   const isBusinessRoute = pathname.startsWith("/business");
-
   const isSignedIn = Boolean(session?.user);
-
   const isAdmin = readUserRole(session?.user) === "admin";
 
   const accountHref = isAdmin
@@ -94,6 +104,134 @@ export default function Navbar() {
     : isSignedIn
       ? "My Account"
       : "Join Beacon+";
+
+  if (isStudioRoute) {
+    return (
+      <>
+        <div className="bg-slate-950 px-4 py-2 text-center text-xs font-semibold leading-5 text-white sm:px-6 sm:text-sm">
+          Create with AI
+          <span aria-hidden="true" className="mx-2 text-violet-300">
+            •
+          </span>
+          Build your content
+          <span aria-hidden="true" className="mx-2 text-violet-300">
+            •
+          </span>
+          Grow your audience
+        </div>
+
+        <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl">
+          <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 sm:gap-5 sm:px-6 sm:py-4">
+            <Link
+              href="/studio"
+              aria-label="Beacon Studio home"
+              className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4"
+            >
+              <div className="relative h-12 w-12 shrink-0 sm:h-16 sm:w-16 lg:h-20 lg:w-20">
+                <Image
+                  src="/images/logo.svg"
+                  alt="Beacon Studio lighthouse logo"
+                  fill
+                  priority
+                  className="object-contain"
+                  sizes="(max-width: 640px) 48px, (max-width: 1024px) 64px, 80px"
+                />
+              </div>
+
+              <div className="min-w-0">
+                <p className="truncate text-xl font-black tracking-tight text-slate-950 min-[390px]:text-2xl lg:text-3xl">
+                  Beacon Studio
+                </p>
+
+                <p className="hidden truncate text-sm font-semibold text-slate-500 sm:block lg:text-base">
+                  AI Content Creation
+                </p>
+              </div>
+            </Link>
+
+            <nav
+              aria-label="Beacon Studio navigation"
+              className="hidden items-center gap-1 lg:flex"
+            >
+              {studioNavigation.map((item) => {
+                const active = isActiveRoute(pathname, item.href);
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    className={`rounded-xl px-4 py-3 font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 ${
+                      active
+                        ? "bg-violet-950 text-white"
+                        : "text-slate-700 hover:bg-violet-50 hover:text-violet-950"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+              <Link
+                href="/business/dashboard"
+                className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl border-2 border-slate-300 bg-white px-3 py-2 text-sm font-extrabold text-slate-800 transition hover:border-blue-500 hover:text-blue-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 sm:px-5 sm:py-3 sm:text-base"
+              >
+                <span className="sm:hidden">Business</span>
+                <span className="hidden sm:inline">Return to Business</span>
+              </Link>
+
+              <Link
+                href="/"
+                className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl bg-slate-950 px-3 py-2 text-sm font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-700 focus-visible:ring-offset-2 sm:px-5 sm:py-3 sm:text-base"
+              >
+                Personal
+              </Link>
+            </div>
+          </div>
+
+          <nav
+            aria-label="Beacon Studio mobile navigation"
+            className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-3 py-2 lg:hidden"
+          >
+            {studioNavigation.map((item) => {
+              const active = isActiveRoute(pathname, item.href);
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={`shrink-0 rounded-lg px-3 py-2 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 ${
+                    active
+                      ? "bg-violet-950 text-white"
+                      : "text-slate-700 hover:bg-violet-50 hover:text-violet-950"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+
+            <Link
+              href="/business/dashboard"
+              className="shrink-0 rounded-lg px-3 py-2 text-sm font-extrabold text-blue-900 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
+            >
+              Return to Business
+            </Link>
+
+            <Link
+              href="/"
+              className="shrink-0 rounded-lg px-3 py-2 text-sm font-extrabold text-slate-900 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-700"
+            >
+              Personal
+            </Link>
+          </nav>
+        </header>
+      </>
+    );
+  }
 
   if (isBusinessRoute) {
     return (
@@ -139,9 +277,29 @@ export default function Navbar() {
               </div>
             </Link>
 
+            <div
+              aria-label="Switch between Beacon Business and Beacon Studio"
+              className="hidden items-center rounded-xl border border-slate-200 bg-slate-100 p-1 lg:flex"
+            >
+              <Link
+                href="/business/dashboard"
+                aria-current="page"
+                className="rounded-lg bg-blue-950 px-4 py-2.5 text-sm font-extrabold text-white shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2"
+              >
+                Business
+              </Link>
+
+              <Link
+                href="/studio"
+                className="rounded-lg px-4 py-2.5 text-sm font-extrabold text-slate-700 transition hover:bg-white hover:text-violet-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
+              >
+                Studio
+              </Link>
+            </div>
+
             <nav
               aria-label="Beacon Business navigation"
-              className="hidden items-center gap-1 lg:flex"
+              className="hidden items-center gap-1 xl:flex"
             >
               {businessNavigation.map((item) => {
                 const active = isActiveRoute(pathname, item.href);
@@ -168,7 +326,7 @@ export default function Navbar() {
                 href="/"
                 className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl border-2 border-slate-300 bg-white px-3 py-2 text-sm font-extrabold text-slate-800 transition hover:border-blue-500 hover:text-blue-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 sm:px-5 sm:py-3 sm:text-base"
               >
-                <span className="sm:hidden">Exit</span>
+                <span className="sm:hidden">Personal</span>
                 <span className="hidden sm:inline">Exit to Beacon AI</span>
               </Link>
             </div>
@@ -176,8 +334,23 @@ export default function Navbar() {
 
           <nav
             aria-label="Beacon Business mobile navigation"
-            className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-3 py-2 lg:hidden"
+            className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-3 py-2 xl:hidden"
           >
+            <Link
+              href="/business/dashboard"
+              aria-current="page"
+              className="shrink-0 rounded-lg bg-blue-950 px-3 py-2 text-sm font-extrabold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
+            >
+              Business
+            </Link>
+
+            <Link
+              href="/studio"
+              className="shrink-0 rounded-lg px-3 py-2 text-sm font-extrabold text-violet-900 transition hover:bg-violet-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700"
+            >
+              Studio
+            </Link>
+
             {businessNavigation.map((item) => {
               const active = isActiveRoute(pathname, item.href);
 
