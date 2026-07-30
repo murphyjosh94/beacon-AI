@@ -64,7 +64,7 @@ function readUserRole(user: unknown): string | null {
   return user.role;
 }
 
-function isActiveRoute(pathname: string, href: string) {
+function isActiveRoute(pathname: string, href: string): boolean {
   if (href === "/") {
     return pathname === "/";
   }
@@ -107,7 +107,7 @@ export default function Navbar() {
 
   if (isStudioRoute) {
     return (
-      <>
+      <div className="sticky top-0 z-50">
         <div className="bg-slate-950 px-4 py-2 text-center text-xs font-semibold leading-5 text-white sm:px-6 sm:text-sm">
           Create with AI
           <span aria-hidden="true" className="mx-2 text-violet-300">
@@ -120,7 +120,7 @@ export default function Navbar() {
           Grow your audience
         </div>
 
-        <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl">
+        <header className="border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl">
           <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 sm:gap-5 sm:px-6 sm:py-4">
             <Link
               href="/studio"
@@ -229,13 +229,13 @@ export default function Navbar() {
             </Link>
           </nav>
         </header>
-      </>
+      </div>
     );
   }
 
   if (isBusinessRoute) {
     return (
-      <>
+      <div className="sticky top-0 z-50">
         <div className="bg-slate-950 px-4 py-2 text-center text-xs font-semibold leading-5 text-white sm:px-6 sm:text-sm">
           Build your business
           <span aria-hidden="true" className="mx-2 text-amber-300">
@@ -248,11 +248,11 @@ export default function Navbar() {
           Grow with Beacon
         </div>
 
-        <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl">
+        <header className="border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl">
           <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 sm:gap-5 sm:px-6 sm:py-4">
             <Link
-              href="/business/dashboard"
-              aria-label="Beacon Business dashboard"
+              href="/business"
+              aria-label="Beacon Business home"
               className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4"
             >
               <div className="relative h-12 w-12 shrink-0 sm:h-16 sm:w-16 lg:h-20 lg:w-20">
@@ -282,7 +282,7 @@ export default function Navbar() {
               className="hidden items-center rounded-xl border border-slate-200 bg-slate-100 p-1 lg:flex"
             >
               <Link
-                href="/business/dashboard"
+                href="/business"
                 aria-current="page"
                 className="rounded-lg bg-blue-950 px-4 py-2.5 text-sm font-extrabold text-white shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2"
               >
@@ -337,7 +337,7 @@ export default function Navbar() {
             className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-3 py-2 xl:hidden"
           >
             <Link
-              href="/business/dashboard"
+              href="/business"
               aria-current="page"
               className="shrink-0 rounded-lg bg-blue-950 px-3 py-2 text-sm font-extrabold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
             >
@@ -378,12 +378,12 @@ export default function Navbar() {
             </Link>
           </nav>
         </header>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
+    <div className="sticky top-0 z-50">
       <div className="bg-slate-950 px-4 py-2 text-center text-xs font-semibold leading-5 text-white sm:px-6 sm:text-sm">
         Trusted guidance
         <span aria-hidden="true" className="mx-2 text-blue-300">
@@ -396,7 +396,7 @@ export default function Navbar() {
         Smarter choices
       </div>
 
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl">
+      <header className="border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 sm:gap-5 sm:px-6 sm:py-4">
           <Link
             href="/"
@@ -425,19 +425,48 @@ export default function Navbar() {
             </div>
           </Link>
 
+          <div
+            aria-label="Switch between Beacon Personal and Beacon Business"
+            className="hidden items-center rounded-xl border border-slate-200 bg-slate-100 p-1 lg:flex"
+          >
+            <Link
+              href="/"
+              aria-current="page"
+              className="rounded-lg bg-blue-950 px-4 py-2.5 text-sm font-extrabold text-white shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2"
+            >
+              Personal
+            </Link>
+
+            <Link
+              href="/business"
+              className="rounded-lg px-4 py-2.5 text-sm font-extrabold text-slate-700 transition hover:bg-white hover:text-blue-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2"
+            >
+              Business
+            </Link>
+          </div>
+
           <nav
             aria-label="Main navigation"
-            className="hidden items-center gap-1 lg:flex"
+            className="hidden items-center gap-1 xl:flex"
           >
-            {personalNavigation.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="rounded-xl px-4 py-3 font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2"
-              >
-                {item.label}
-              </Link>
-            ))}
+            {personalNavigation.map((item) => {
+              const active = isActiveRoute(pathname, item.href);
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={`rounded-xl px-4 py-3 font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 ${
+                    active
+                      ? "bg-blue-50 text-blue-950"
+                      : "text-slate-700 hover:bg-blue-50 hover:text-blue-950"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
 
             {isAdmin ? (
               <Link
@@ -488,17 +517,41 @@ export default function Navbar() {
 
         <nav
           aria-label="Mobile navigation"
-          className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-3 py-2 lg:hidden"
+          className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-3 py-2 xl:hidden"
         >
-          {personalNavigation.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="shrink-0 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-blue-50 hover:text-blue-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
-            >
-              {item.label}
-            </Link>
-          ))}
+          <Link
+            href="/"
+            aria-current="page"
+            className="shrink-0 rounded-lg bg-blue-950 px-3 py-2 text-sm font-extrabold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
+          >
+            Personal
+          </Link>
+
+          <Link
+            href="/business"
+            className="shrink-0 rounded-lg px-3 py-2 text-sm font-extrabold text-amber-800 transition hover:bg-amber-50 hover:text-amber-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
+          >
+            Business
+          </Link>
+
+          {personalNavigation.map((item) => {
+            const active = isActiveRoute(pathname, item.href);
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={`shrink-0 rounded-lg px-3 py-2 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
+                  active
+                    ? "bg-blue-50 text-blue-950"
+                    : "text-slate-700 hover:bg-blue-50 hover:text-blue-950"
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
 
           {isAdmin ? (
             <Link
@@ -520,6 +573,6 @@ export default function Navbar() {
           </Link>
         </nav>
       </header>
-    </>
+    </div>
   );
 }
