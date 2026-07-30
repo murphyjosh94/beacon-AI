@@ -28,8 +28,8 @@ import {
 } from "drizzle-orm";
 
 import {
+  getCurrentAccessAccount,
   hasUnrestrictedBeaconAccess,
-  requireSignedInAccount,
 } from "@/lib/auth/AdminAccess";
 import { database } from "@/lib/database/Database";
 import {
@@ -293,11 +293,22 @@ async function deleteStudioProject(
 ): Promise<void> {
   "use server";
 
-  const account =
-    await requireSignedInAccount();
+  let account;
+
+  try {
+    account =
+      await getCurrentAccessAccount();
+  } catch (error) {
+    console.error(
+      "[studio] Unable to resolve the current account during project deletion.",
+      error,
+    );
+
+    redirect("/signin");
+  }
 
   if (!account?.id) {
-    redirect("/sign-in");
+    redirect("/signin");
   }
 
   const projectId =
@@ -352,11 +363,22 @@ async function deleteStudioProject(
 export default async function StudioDashboardPage({
   searchParams,
 }: StudioDashboardPageProps) {
-  const account =
-    await requireSignedInAccount();
+  let account;
+
+  try {
+    account =
+      await getCurrentAccessAccount();
+  } catch (error) {
+    console.error(
+      "[studio] Unable to resolve the current account.",
+      error,
+    );
+
+    redirect("/signin");
+  }
 
   if (!account?.id) {
-    redirect("/sign-in");
+    redirect("/signin");
   }
 
   const resolvedSearchParams =
@@ -374,6 +396,8 @@ export default async function StudioDashboardPage({
       ?.trim()
       .toLowerCase() ?? "all";
 
+  let studioDataUnavailable = false;
+
   const projects = await database
     .select()
     .from(studioProject)
@@ -387,7 +411,17 @@ export default async function StudioDashboardPage({
       desc(studioProject.updatedAt),
       desc(studioProject.createdAt),
     )
-    .limit(60);
+    .limit(60)
+    .catch((error) => {
+      studioDataUnavailable = true;
+
+      console.error(
+        "[studio] Failed to load Studio projects.",
+        error,
+      );
+
+      return [];
+    });
 
   const projectIds =
     projects.map((project) => project.id);
@@ -406,6 +440,16 @@ export default async function StudioDashboardPage({
           .orderBy(
             desc(studioGeneration.createdAt),
           )
+          .catch((error) => {
+            studioDataUnavailable = true;
+
+            console.error(
+              "[studio] Failed to load Studio generations.",
+              error,
+            );
+
+            return [];
+          })
       : [];
 
   const latestGenerationByProject =
@@ -531,6 +575,19 @@ export default async function StudioDashboardPage({
             </p>
           </div>
         </section>
+
+        {studioDataUnavailable ? (
+          <section className="mt-6 rounded-3xl border border-amber-300/25 bg-amber-300/10 px-5 py-4 text-amber-50">
+            <p className="text-sm font-black">
+              Studio project history is temporarily unavailable
+            </p>
+            <p className="mt-1 text-sm font-medium leading-6 text-amber-100/75">
+              You can still open the creator, assets, pricing and membership
+              pages. Beacon has logged the database error without taking the
+              entire Studio offline.
+            </p>
+          </section>
+        ) : null}
 
         <section className="py-8">
           <h2 className="text-2xl font-black">
