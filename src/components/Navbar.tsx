@@ -81,29 +81,11 @@ export default function Navbar() {
   const isSignedIn = Boolean(session?.user);
   const isAdmin = readUserRole(session?.user) === "admin";
 
-  const accountHref = isAdmin
-    ? "/admin"
-    : isSignedIn
-      ? "/dashboard"
-      : "/signin";
+  const accountHref = isSignedIn ? "/dashboard" : "/signin";
+  const accountLabel = isSignedIn ? "Dashboard" : "Sign In";
 
-  const accountLabel = isAdmin
-    ? "Admin"
-    : isSignedIn
-      ? "Dashboard"
-      : "Sign In";
-
-  const primaryHref = isAdmin
-    ? "/admin"
-    : isSignedIn
-      ? "/dashboard"
-      : "/membership";
-
-  const primaryLabel = isAdmin
-    ? "Admin Console"
-    : isSignedIn
-      ? "My Account"
-      : "Join Beacon+";
+  const primaryHref = isSignedIn ? "/dashboard" : "/membership";
+  const primaryLabel = isSignedIn ? "My Account" : "Join Beacon+";
 
   if (isStudioRoute) {
     return (
@@ -121,7 +103,7 @@ export default function Navbar() {
         </div>
 
         <header className="border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl">
-          <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 sm:gap-5 sm:px-6 sm:py-4">
+          <div className="mx-auto flex max-w-[1600px] items-center gap-3 px-3 py-3 sm:gap-5 sm:px-6 sm:py-4">
             <Link
               href="/studio"
               aria-label="Beacon Studio home"
@@ -175,7 +157,7 @@ export default function Navbar() {
 
             <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               <Link
-                href="/business/dashboard"
+                href="/business"
                 className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl border-2 border-slate-300 bg-white px-3 py-2 text-sm font-extrabold text-slate-800 transition hover:border-blue-500 hover:text-blue-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 sm:px-5 sm:py-3 sm:text-base"
               >
                 <span className="sm:hidden">Business</span>
@@ -215,10 +197,10 @@ export default function Navbar() {
             })}
 
             <Link
-              href="/business/dashboard"
+              href="/business"
               className="shrink-0 rounded-lg px-3 py-2 text-sm font-extrabold text-blue-900 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
             >
-              Return to Business
+              Business
             </Link>
 
             <Link
@@ -249,7 +231,7 @@ export default function Navbar() {
         </div>
 
         <header className="border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl">
-          <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 sm:gap-5 sm:px-6 sm:py-4">
+          <div className="mx-auto flex max-w-[1600px] items-center gap-3 px-3 py-3 sm:gap-5 sm:px-6 sm:py-4">
             <Link
               href="/business"
               aria-label="Beacon Business home"
@@ -279,7 +261,7 @@ export default function Navbar() {
 
             <div
               aria-label="Switch between Beacon Business and Beacon Studio"
-              className="hidden items-center rounded-xl border border-slate-200 bg-slate-100 p-1 lg:flex"
+              className="hidden shrink-0 items-center rounded-xl border border-slate-200 bg-slate-100 p-1 lg:flex"
             >
               <Link
                 href="/business"
@@ -299,7 +281,7 @@ export default function Navbar() {
 
             <nav
               aria-label="Beacon Business navigation"
-              className="hidden items-center gap-1 xl:flex"
+              className="hidden items-center gap-1 2xl:flex"
             >
               {businessNavigation.map((item) => {
                 const active = isActiveRoute(pathname, item.href);
@@ -334,12 +316,16 @@ export default function Navbar() {
 
           <nav
             aria-label="Beacon Business mobile navigation"
-            className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-3 py-2 xl:hidden"
+            className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-3 py-2 2xl:hidden"
           >
             <Link
               href="/business"
-              aria-current="page"
-              className="shrink-0 rounded-lg bg-blue-950 px-3 py-2 text-sm font-extrabold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
+              aria-current={pathname === "/business" ? "page" : undefined}
+              className={`shrink-0 rounded-lg px-3 py-2 text-sm font-extrabold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
+                pathname === "/business"
+                  ? "bg-blue-950 text-white"
+                  : "text-blue-950 hover:bg-blue-50"
+              }`}
             >
               Business
             </Link>
@@ -397,11 +383,11 @@ export default function Navbar() {
       </div>
 
       <header className="border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 sm:gap-5 sm:px-6 sm:py-4">
+        <div className="mx-auto flex max-w-[1600px] items-center gap-3 px-3 py-3 sm:gap-5 sm:px-6 sm:py-4">
           <Link
             href="/"
             aria-label="Beacon AI home"
-            className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4"
+            className="flex w-[210px] shrink-0 items-center gap-2 sm:w-[260px] sm:gap-4 lg:w-[300px]"
           >
             <div className="relative h-12 w-12 shrink-0 sm:h-16 sm:w-16 lg:h-20 lg:w-20">
               <Image
@@ -415,11 +401,11 @@ export default function Navbar() {
             </div>
 
             <div className="min-w-0">
-              <p className="truncate text-xl font-black tracking-tight text-slate-950 min-[390px]:text-2xl lg:text-3xl">
+              <p className="whitespace-nowrap text-xl font-black tracking-tight text-slate-950 min-[390px]:text-2xl lg:text-3xl">
                 Beacon AI
               </p>
 
-              <p className="hidden truncate text-sm font-semibold text-slate-500 sm:block lg:text-base">
+              <p className="hidden whitespace-nowrap text-sm font-semibold text-slate-500 sm:block lg:text-base">
                 Your Personal AI Shopper
               </p>
             </div>
@@ -427,7 +413,7 @@ export default function Navbar() {
 
           <div
             aria-label="Switch between Beacon Personal and Beacon Business"
-            className="hidden items-center rounded-xl border border-slate-200 bg-slate-100 p-1 lg:flex"
+            className="hidden shrink-0 items-center rounded-xl border border-slate-200 bg-slate-100 p-1 lg:flex"
           >
             <Link
               href="/"
@@ -447,7 +433,7 @@ export default function Navbar() {
 
           <nav
             aria-label="Main navigation"
-            className="hidden items-center gap-1 xl:flex"
+            className="hidden flex-1 items-center justify-center gap-1 2xl:flex"
           >
             {personalNavigation.map((item) => {
               const active = isActiveRoute(pathname, item.href);
@@ -467,57 +453,56 @@ export default function Navbar() {
                 </Link>
               );
             })}
+          </nav>
 
+          <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
             {isAdmin ? (
               <Link
                 href="/admin"
-                className="rounded-xl px-4 py-3 font-extrabold text-amber-700 transition hover:bg-amber-50 hover:text-amber-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+                className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl bg-amber-600 px-3 py-2 text-sm font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 sm:px-5 sm:py-3 sm:text-base"
               >
-                Admin
+                <span className="sm:hidden">Admin</span>
+                <span className="hidden sm:inline">Admin Console</span>
               </Link>
-            ) : null}
-          </nav>
+            ) : (
+              <>
+                <Link
+                  href={accountHref}
+                  aria-disabled={isPending}
+                  className={`hidden rounded-xl px-4 py-3 font-extrabold text-blue-950 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 sm:inline-flex ${
+                    isPending ? "pointer-events-none opacity-50" : ""
+                  }`}
+                >
+                  {isPending ? "Loading..." : accountLabel}
+                </Link>
 
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <Link
-              href={accountHref}
-              aria-disabled={isPending}
-              className={`hidden rounded-xl px-4 py-3 font-extrabold text-blue-950 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 sm:inline-flex ${
-                isPending ? "pointer-events-none opacity-50" : ""
-              }`}
-            >
-              {isPending ? "Loading..." : accountLabel}
-            </Link>
+                <Link
+                  href={primaryHref}
+                  aria-disabled={isPending}
+                  className={`inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl bg-blue-900 px-3 py-2 text-sm font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 sm:px-5 sm:py-3 sm:text-base ${
+                    isPending ? "pointer-events-none opacity-50" : ""
+                  }`}
+                >
+                  <span className="sm:hidden">
+                    {isPending
+                      ? "Account"
+                      : isSignedIn
+                        ? "Dashboard"
+                        : "Beacon+"}
+                  </span>
 
-            <Link
-              href={primaryHref}
-              aria-disabled={isPending}
-              className={`inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl px-3 py-2 text-sm font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 sm:px-5 sm:py-3 sm:text-base ${
-                isAdmin
-                  ? "bg-amber-600 hover:bg-amber-500 focus-visible:ring-amber-600"
-                  : "bg-blue-900 hover:bg-blue-800 focus-visible:ring-blue-700"
-              } ${isPending ? "pointer-events-none opacity-50" : ""}`}
-            >
-              <span className="sm:hidden">
-                {isPending
-                  ? "Account"
-                  : isAdmin
-                    ? "Admin"
-                    : isSignedIn
-                      ? "Dashboard"
-                      : "Beacon+"}
-              </span>
-
-              <span className="hidden sm:inline">
-                {isPending ? "Loading..." : primaryLabel}
-              </span>
-            </Link>
+                  <span className="hidden sm:inline">
+                    {isPending ? "Loading..." : primaryLabel}
+                  </span>
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
         <nav
           aria-label="Mobile navigation"
-          className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-3 py-2 xl:hidden"
+          className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-3 py-2 2xl:hidden"
         >
           <Link
             href="/"
@@ -556,21 +541,21 @@ export default function Navbar() {
           {isAdmin ? (
             <Link
               href="/admin"
-              className="shrink-0 rounded-lg px-3 py-2 text-sm font-extrabold text-amber-700 transition hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
+              className="shrink-0 rounded-lg px-3 py-2 text-sm font-extrabold text-amber-700 transition hover:bg-amber-50 hover:text-amber-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
             >
-              Admin
+              Admin Console
             </Link>
-          ) : null}
-
-          <Link
-            href={accountHref}
-            aria-disabled={isPending}
-            className={`shrink-0 rounded-lg px-3 py-2 text-sm font-extrabold text-blue-900 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
-              isPending ? "pointer-events-none opacity-50" : ""
-            }`}
-          >
-            {isPending ? "Account" : accountLabel}
-          </Link>
+          ) : (
+            <Link
+              href={accountHref}
+              aria-disabled={isPending}
+              className={`shrink-0 rounded-lg px-3 py-2 text-sm font-extrabold text-blue-900 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
+                isPending ? "pointer-events-none opacity-50" : ""
+              }`}
+            >
+              {isPending ? "Account" : accountLabel}
+            </Link>
+          )}
         </nav>
       </header>
     </div>
