@@ -6,12 +6,7 @@ import { usePathname } from "next/navigation";
 
 import { authClient } from "@/lib/auth/AuthClient";
 
-type NavigationItem = {
-  href: string;
-  label: string;
-};
-
-const personalNavigation: readonly NavigationItem[] = [
+const personalNavigation = [
   {
     label: "Home",
     href: "/",
@@ -28,9 +23,9 @@ const personalNavigation: readonly NavigationItem[] = [
     label: "Pricing",
     href: "/pricing",
   },
-];
+] as const;
 
-const businessNavigation: readonly NavigationItem[] = [
+const businessNavigation = [
   {
     label: "Dashboard",
     href: "/business/dashboard",
@@ -43,18 +38,7 @@ const businessNavigation: readonly NavigationItem[] = [
     label: "Account",
     href: "/business/account",
   },
-];
-
-const studioNavigation: readonly NavigationItem[] = [
-  {
-    label: "Create",
-    href: "/studio",
-  },
-  {
-    label: "Pricing",
-    href: "/studio/pricing",
-  },
-];
+] as const;
 
 function readUserRole(user: unknown): string | null {
   if (
@@ -77,194 +61,41 @@ function isActiveRoute(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-type BrandProps = {
-  href: string;
-  name: string;
-  description: string;
-  ariaLabel: string;
-  imageAlt: string;
-};
-
-function Brand({
-  href,
-  name,
-  description,
-  ariaLabel,
-  imageAlt,
-}: BrandProps) {
-  return (
-    <Link
-      href={href}
-      aria-label={ariaLabel}
-      className="flex min-w-0 shrink-0 items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-4 sm:gap-4"
-    >
-      <div className="relative h-12 w-12 shrink-0 sm:h-16 sm:w-16">
-        <Image
-          src="/images/logo.svg"
-          alt={imageAlt}
-          fill
-          priority
-          className="object-contain"
-          sizes="(max-width: 640px) 48px, 64px"
-        />
-      </div>
-
-      <div className="min-w-0">
-        <p className="whitespace-nowrap text-xl font-black tracking-tight text-slate-950 sm:text-2xl xl:text-[1.7rem]">
-          {name}
-        </p>
-
-        <p className="hidden whitespace-nowrap text-sm font-semibold text-slate-500 sm:block">
-          {description}
-        </p>
-      </div>
-    </Link>
-  );
-}
-
-type NavigationLinksProps = {
-  pathname: string;
-  items: readonly NavigationItem[];
-  activeClassName: string;
-  inactiveClassName: string;
-  focusClassName: string;
-};
-
-function NavigationLinks({
-  pathname,
-  items,
-  activeClassName,
-  inactiveClassName,
-  focusClassName,
-}: NavigationLinksProps) {
-  return (
-    <>
-      {items.map((item) => {
-        const active = isActiveRoute(pathname, item.href);
-
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            aria-current={active ? "page" : undefined}
-            className={`whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-extrabold transition ${focusClassName} ${
-              active ? activeClassName : inactiveClassName
-            }`}
-          >
-            {item.label}
-          </Link>
-        );
-      })}
-    </>
-  );
-}
-
 export default function Navbar() {
   const pathname = usePathname();
   const { data: session, isPending } = authClient.useSession();
 
-  const isStudioRoute = pathname.startsWith("/studio");
   const isBusinessRoute = pathname.startsWith("/business");
   const isSignedIn = Boolean(session?.user);
   const isAdmin = readUserRole(session?.user) === "admin";
 
-  const accountHref = isSignedIn ? "/dashboard" : "/signin";
-  const accountLabel = isSignedIn ? "Dashboard" : "Sign In";
+  const accountHref = isAdmin
+    ? "/admin"
+    : isSignedIn
+      ? "/dashboard"
+      : "/signin";
 
-  const primaryHref = isSignedIn ? "/dashboard" : "/membership";
-  const primaryLabel = isSignedIn ? "My Account" : "Join Beacon+";
+  const accountLabel = isAdmin
+    ? "Admin"
+    : isSignedIn
+      ? "Dashboard"
+      : "Sign In";
 
-  if (isStudioRoute) {
-    return (
-      <div className="sticky top-0 z-50">
-        <div className="bg-slate-950 px-4 py-2 text-center text-xs font-semibold leading-5 text-white sm:px-6 sm:text-sm">
-          Create with AI
-          <span aria-hidden="true" className="mx-2 text-violet-300">
-            •
-          </span>
-          Build your content
-          <span aria-hidden="true" className="mx-2 text-violet-300">
-            •
-          </span>
-          Grow your audience
-        </div>
+  const primaryHref = isAdmin
+    ? "/admin"
+    : isSignedIn
+      ? "/dashboard"
+      : "/membership";
 
-        <header className="border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl">
-          <div className="mx-auto flex w-full max-w-[1800px] items-center gap-4 px-4 py-3 sm:px-6 lg:px-8">
-            <div className="mr-auto">
-              <Brand
-                href="/studio"
-                name="Beacon Studio"
-                description="AI Content Creation"
-                ariaLabel="Beacon Studio home"
-                imageAlt="Beacon Studio lighthouse logo"
-              />
-            </div>
-
-            <nav
-              aria-label="Beacon Studio navigation"
-              className="hidden shrink-0 items-center gap-1 lg:flex"
-            >
-              <NavigationLinks
-                pathname={pathname}
-                items={studioNavigation}
-                activeClassName="bg-violet-950 text-white"
-                inactiveClassName="text-slate-700 hover:bg-violet-50 hover:text-violet-950"
-                focusClassName="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
-              />
-            </nav>
-
-            <div className="hidden shrink-0 items-center gap-2 sm:flex">
-              <Link
-                href="/business"
-                className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl border-2 border-slate-300 bg-white px-4 py-2 text-sm font-extrabold text-slate-800 transition hover:border-blue-500 hover:text-blue-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2"
-              >
-                Business
-              </Link>
-
-              <Link
-                href="/"
-                className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl bg-slate-950 px-4 py-2 text-sm font-extrabold text-white shadow-lg transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-700 focus-visible:ring-offset-2"
-              >
-                Personal
-              </Link>
-            </div>
-          </div>
-
-          <nav
-            aria-label="Beacon Studio mobile navigation"
-            className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-3 py-2 lg:hidden"
-          >
-            <NavigationLinks
-              pathname={pathname}
-              items={studioNavigation}
-              activeClassName="bg-violet-950 text-white"
-              inactiveClassName="text-slate-700 hover:bg-violet-50 hover:text-violet-950"
-              focusClassName="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700"
-            />
-
-            <Link
-              href="/business"
-              className="whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-extrabold text-blue-900 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
-            >
-              Business
-            </Link>
-
-            <Link
-              href="/"
-              className="whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-extrabold text-slate-900 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-700"
-            >
-              Personal
-            </Link>
-          </nav>
-        </header>
-      </div>
-    );
-  }
+  const primaryLabel = isAdmin
+    ? "Admin Console"
+    : isSignedIn
+      ? "My Account"
+      : "Join Beacon+";
 
   if (isBusinessRoute) {
     return (
-      <div className="sticky top-0 z-50">
+      <>
         <div className="bg-slate-950 px-4 py-2 text-center text-xs font-semibold leading-5 text-white sm:px-6 sm:text-sm">
           Build your business
           <span aria-hidden="true" className="mx-2 text-amber-300">
@@ -277,104 +108,107 @@ export default function Navbar() {
           Grow with Beacon
         </div>
 
-        <header className="border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl">
-          <div className="mx-auto flex w-full max-w-[1800px] items-center gap-4 px-4 py-3 sm:px-6 lg:px-8">
-            <div className="mr-auto">
-              <Brand
-                href="/business"
-                name="Beacon Business"
-                description="Your Business Operating System"
-                ariaLabel="Beacon Business home"
-                imageAlt="Beacon Business lighthouse logo"
-              />
-            </div>
-
-            <div
-              aria-label="Switch between Beacon Business and Beacon Studio"
-              className="hidden shrink-0 items-center rounded-xl border border-slate-200 bg-slate-100 p-1 lg:flex"
+        <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl">
+          <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 sm:gap-5 sm:px-6 sm:py-4">
+            <Link
+              href="/business/dashboard"
+              aria-label="Beacon Business dashboard"
+              className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4"
             >
-              <Link
-                href="/business"
-                aria-current={pathname === "/business" ? "page" : undefined}
-                className="rounded-lg bg-blue-950 px-4 py-2.5 text-sm font-extrabold text-white shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2"
-              >
-                Business
-              </Link>
+              <div className="relative h-12 w-12 shrink-0 sm:h-16 sm:w-16 lg:h-20 lg:w-20">
+                <Image
+                  src="/images/logo.svg"
+                  alt="Beacon Business lighthouse logo"
+                  fill
+                  priority
+                  className="object-contain"
+                  sizes="(max-width: 640px) 48px, (max-width: 1024px) 64px, 80px"
+                />
+              </div>
 
-              <Link
-                href="/studio"
-                className="rounded-lg px-4 py-2.5 text-sm font-extrabold text-slate-700 transition hover:bg-white hover:text-violet-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
-              >
-                Studio
-              </Link>
-            </div>
+              <div className="min-w-0">
+                <p className="truncate text-xl font-black tracking-tight text-slate-950 min-[390px]:text-2xl lg:text-3xl">
+                  Beacon Business
+                </p>
+
+                <p className="hidden truncate text-sm font-semibold text-slate-500 sm:block lg:text-base">
+                  Your Business Operating System
+                </p>
+              </div>
+            </Link>
 
             <nav
               aria-label="Beacon Business navigation"
-              className="hidden shrink-0 items-center gap-1 xl:flex"
+              className="hidden items-center gap-1 lg:flex"
             >
-              <NavigationLinks
-                pathname={pathname}
-                items={businessNavigation}
-                activeClassName="bg-blue-950 text-white"
-                inactiveClassName="text-slate-700 hover:bg-blue-50 hover:text-blue-950"
-                focusClassName="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2"
-              />
+              {businessNavigation.map((item) => {
+                const active = isActiveRoute(pathname, item.href);
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    className={`rounded-xl px-4 py-3 font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 ${
+                      active
+                        ? "bg-blue-950 text-white"
+                        : "text-slate-700 hover:bg-blue-50 hover:text-blue-950"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
             </nav>
 
-            <Link
-              href="/"
-              className="hidden min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-xl border-2 border-slate-300 bg-white px-4 py-2 text-sm font-extrabold text-slate-800 transition hover:border-blue-500 hover:text-blue-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 sm:inline-flex"
-            >
-              Beacon AI
-            </Link>
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+              <Link
+                href="/"
+                className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl border-2 border-slate-300 bg-white px-3 py-2 text-sm font-extrabold text-slate-800 transition hover:border-blue-500 hover:text-blue-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 sm:px-5 sm:py-3 sm:text-base"
+              >
+                <span className="sm:hidden">Personal</span>
+                <span className="hidden sm:inline">Exit to Beacon AI</span>
+              </Link>
+            </div>
           </div>
 
           <nav
             aria-label="Beacon Business mobile navigation"
-            className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-3 py-2 xl:hidden"
+            className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-3 py-2 lg:hidden"
           >
-            <Link
-              href="/business"
-              aria-current={pathname === "/business" ? "page" : undefined}
-              className={`whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-extrabold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
-                pathname === "/business"
-                  ? "bg-blue-950 text-white"
-                  : "text-blue-950 hover:bg-blue-50"
-              }`}
-            >
-              Business
-            </Link>
+            {businessNavigation.map((item) => {
+              const active = isActiveRoute(pathname, item.href);
 
-            <Link
-              href="/studio"
-              className="whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-extrabold text-violet-900 transition hover:bg-violet-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700"
-            >
-              Studio
-            </Link>
-
-            <NavigationLinks
-              pathname={pathname}
-              items={businessNavigation}
-              activeClassName="bg-blue-950 text-white"
-              inactiveClassName="text-slate-700 hover:bg-blue-50 hover:text-blue-950"
-              focusClassName="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
-            />
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={`shrink-0 rounded-lg px-3 py-2 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
+                    active
+                      ? "bg-blue-950 text-white"
+                      : "text-slate-700 hover:bg-blue-50 hover:text-blue-950"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
 
             <Link
               href="/"
-              className="whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-extrabold text-amber-800 transition hover:bg-amber-50 hover:text-amber-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
+              className="shrink-0 rounded-lg px-3 py-2 text-sm font-extrabold text-amber-800 transition hover:bg-amber-50 hover:text-amber-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
             >
-              Beacon AI
+              Exit to Beacon AI
             </Link>
           </nav>
         </header>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="sticky top-0 z-50">
+    <>
       <div className="bg-slate-950 px-4 py-2 text-center text-xs font-semibold leading-5 text-white sm:px-6 sm:text-sm">
         Trusted guidance
         <span aria-hidden="true" className="mx-2 text-blue-300">
@@ -387,136 +221,148 @@ export default function Navbar() {
         Smarter choices
       </div>
 
-      <header className="border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-[1800px] items-center gap-3 px-4 py-3 sm:px-6 lg:gap-4 lg:px-8">
-          <div className="mr-auto shrink-0">
-            <Brand
-              href="/"
-              name="Beacon AI"
-              description="Your Personal AI Shopper"
-              ariaLabel="Beacon AI home"
-              imageAlt="Beacon AI lighthouse logo"
-            />
-          </div>
-
-          <div
-            aria-label="Switch between Beacon Personal and Beacon Business"
-            className="hidden shrink-0 items-center rounded-xl border border-slate-200 bg-slate-100 p-1 lg:flex"
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 sm:gap-5 sm:px-6 sm:py-4">
+          <Link
+            href="/"
+            aria-label="Beacon AI home"
+            className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4"
           >
-            <Link
-              href="/"
-              aria-current="page"
-              className="rounded-lg bg-blue-950 px-4 py-2.5 text-sm font-extrabold text-white shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2"
-            >
-              Personal
-            </Link>
+            <div className="relative h-12 w-12 shrink-0 sm:h-16 sm:w-16 lg:h-20 lg:w-20">
+              <Image
+                src="/images/logo.svg"
+                alt="Beacon AI lighthouse logo"
+                fill
+                priority
+                className="object-contain"
+                sizes="(max-width: 640px) 48px, (max-width: 1024px) 64px, 80px"
+              />
+            </div>
 
-            <Link
-              href="/business"
-              className="rounded-lg px-4 py-2.5 text-sm font-extrabold text-slate-700 transition hover:bg-white hover:text-blue-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2"
-            >
-              Business
-            </Link>
-          </div>
+            <div className="min-w-0">
+              <p className="truncate text-xl font-black tracking-tight text-slate-950 min-[390px]:text-2xl lg:text-3xl">
+                Beacon AI
+              </p>
+
+              <p className="hidden truncate text-sm font-semibold text-slate-500 sm:block lg:text-base">
+                Your Personal AI Shopper
+              </p>
+            </div>
+          </Link>
 
           <nav
             aria-label="Main navigation"
-            className="hidden shrink-0 items-center gap-1 xl:flex"
+            className="hidden items-center gap-1 lg:flex"
           >
-            <NavigationLinks
-              pathname={pathname}
-              items={personalNavigation}
-              activeClassName="bg-blue-50 text-blue-950"
-              inactiveClassName="text-slate-700 hover:bg-blue-50 hover:text-blue-950"
-              focusClassName="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2"
-            />
-          </nav>
+            {personalNavigation.map((item) => {
+              const active = isActiveRoute(pathname, item.href);
 
-          <div className="ml-auto flex shrink-0 items-center gap-2">
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={`rounded-xl px-4 py-3 font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 ${
+                    active
+                      ? "bg-blue-950 text-white"
+                      : "text-slate-700 hover:bg-blue-50 hover:text-blue-950"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+
             {isAdmin ? (
               <Link
                 href="/admin"
-                className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl bg-amber-600 px-4 py-2 text-sm font-extrabold text-white shadow-lg transition hover:bg-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+                className="rounded-xl px-4 py-3 font-extrabold text-amber-700 transition hover:bg-amber-50 hover:text-amber-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
               >
-                <span className="sm:hidden">Admin</span>
-                <span className="hidden sm:inline">Admin Console</span>
+                Admin
               </Link>
-            ) : (
-              <>
-                <Link
-                  href={accountHref}
-                  aria-disabled={isPending}
-                  className={`hidden whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-extrabold text-blue-950 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 2xl:inline-flex ${
-                    isPending ? "pointer-events-none opacity-50" : ""
-                  }`}
-                >
-                  {isPending ? "Loading..." : accountLabel}
-                </Link>
+            ) : null}
+          </nav>
 
-                <Link
-                  href={primaryHref}
-                  aria-disabled={isPending}
-                  className={`inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl bg-blue-900 px-4 py-2 text-sm font-extrabold text-white shadow-lg transition hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 ${
-                    isPending ? "pointer-events-none opacity-50" : ""
-                  }`}
-                >
-                  <span className="sm:hidden">
-                    {isPending
-                      ? "Account"
-                      : isSignedIn
-                        ? "Dashboard"
-                        : "Beacon+"}
-                  </span>
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <Link
+              href={accountHref}
+              aria-disabled={isPending}
+              className={`hidden rounded-xl px-4 py-3 font-extrabold text-blue-950 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 sm:inline-flex ${
+                isPending ? "pointer-events-none opacity-50" : ""
+              }`}
+            >
+              {isPending ? "Loading..." : accountLabel}
+            </Link>
 
-                  <span className="hidden sm:inline">
-                    {isPending ? "Loading..." : primaryLabel}
-                  </span>
-                </Link>
-              </>
-            )}
+            <Link
+              href={primaryHref}
+              aria-disabled={isPending}
+              className={`inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl px-3 py-2 text-sm font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 sm:px-5 sm:py-3 sm:text-base ${
+                isAdmin
+                  ? "bg-amber-600 hover:bg-amber-500 focus-visible:ring-amber-600"
+                  : "bg-blue-900 hover:bg-blue-800 focus-visible:ring-blue-700"
+              } ${isPending ? "pointer-events-none opacity-50" : ""}`}
+            >
+              <span className="sm:hidden">
+                {isPending
+                  ? "Account"
+                  : isAdmin
+                    ? "Admin"
+                    : isSignedIn
+                      ? "Dashboard"
+                      : "Beacon+"}
+              </span>
+
+              <span className="hidden sm:inline">
+                {isPending ? "Loading..." : primaryLabel}
+              </span>
+            </Link>
           </div>
         </div>
 
         <nav
           aria-label="Mobile navigation"
-          className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-3 py-2 xl:hidden"
+          className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-3 py-2 lg:hidden"
         >
-          <Link
-            href="/"
-            aria-current="page"
-            className="whitespace-nowrap rounded-xl bg-blue-950 px-3 py-2.5 text-sm font-extrabold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
-          >
-            Personal
-          </Link>
+          {personalNavigation.map((item) => {
+            const active = isActiveRoute(pathname, item.href);
 
-          <Link
-            href="/business"
-            className="whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-extrabold text-amber-800 transition hover:bg-amber-50 hover:text-amber-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
-          >
-            Business
-          </Link>
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={`shrink-0 rounded-lg px-3 py-2 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
+                  active
+                    ? "bg-blue-950 text-white"
+                    : "text-slate-700 hover:bg-blue-50 hover:text-blue-950"
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
 
-          <NavigationLinks
-            pathname={pathname}
-            items={personalNavigation}
-            activeClassName="bg-blue-50 text-blue-950"
-            inactiveClassName="text-slate-700 hover:bg-blue-50 hover:text-blue-950"
-            focusClassName="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
-          />
-
-          {!isAdmin ? (
+          {isAdmin ? (
             <Link
-              href={accountHref}
-              aria-disabled={isPending}
-              className={`whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-extrabold text-blue-900 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
-                isPending ? "pointer-events-none opacity-50" : ""
-              }`}
+              href="/admin"
+              className="shrink-0 rounded-lg px-3 py-2 text-sm font-extrabold text-amber-700 transition hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
             >
-              {isPending ? "Account" : accountLabel}
+              Admin
             </Link>
           ) : null}
+
+          <Link
+            href={accountHref}
+            aria-disabled={isPending}
+            className={`shrink-0 rounded-lg px-3 py-2 text-sm font-extrabold text-blue-900 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
+              isPending ? "pointer-events-none opacity-50" : ""
+            }`}
+          >
+            {isPending ? "Account" : accountLabel}
+          </Link>
         </nav>
       </header>
-    </div>
+    </>
   );
 }
