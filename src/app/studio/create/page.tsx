@@ -44,11 +44,118 @@ import StudioRequest from "@/app/studio/_components/StudioRequest";
 
 type StudioCreateStep =
   | "request"
-  | "plan";
+  | "plan"
+  | "routing";
 
 type StudioGenerateApiResponse =
   | StudioGenerateSuccessResponse
   | StudioGenerateErrorResponse;
+
+type WebsiteBriefPackage =
+  | "starter"
+  | "business"
+  | "premium";
+
+type WebsiteBriefHandoff = {
+  businessName: string;
+  businessType: string;
+  businessDescription: string;
+  yearsTrading: string;
+  serviceArea: string;
+  address: string;
+  phone: string;
+  email: string;
+  website: string;
+  primaryColour: string;
+  secondaryColour: string;
+  styleDirection: string;
+  services: string;
+  idealCustomer: string;
+  keyMessage: string;
+  callToAction: string;
+  socialLinks: string;
+  packageId: WebsiteBriefPackage;
+  chatbot: boolean;
+  onlineShop: boolean;
+  membershipArea: boolean;
+  notes: string;
+  studioHandoff: {
+    source: "beacon-studio";
+    originalPrompt: string;
+    routedAt: string;
+    requestedTool: StudioToolId;
+    quality: StudioQuality;
+    aspectRatio: StudioAspectRatio;
+    outputCount: StudioOutputCount;
+    durationSeconds: number;
+    audience: string;
+    style: string;
+    tone: string;
+    colours: string[];
+    referenceUrl?: string;
+    brandKit?: string;
+    projectTitle: string;
+  };
+};
+
+const WEBSITE_BRIEF_STORAGE_KEY =
+  "beacon-business-website-brief";
+
+const WEBSITE_INTENT_PHRASES = [
+  "website",
+  "web site",
+  "website design",
+  "website builder",
+  "build a site",
+  "build me a site",
+  "business site",
+  "company site",
+  "landing page",
+  "landing-page",
+  "homepage",
+  "home page",
+  "web page",
+  "webpage",
+  "web app",
+  "web application",
+  "online shop",
+  "online store",
+  "ecommerce",
+  "e-commerce",
+  "portfolio site",
+  "portfolio website",
+  "booking website",
+  "booking site",
+  "service website",
+  "business website",
+  "responsive website",
+  "desktop website",
+  "mobile website",
+  "website mockup",
+  "website mock-up",
+  "website preview",
+  "site preview",
+  "website layout",
+  "website template",
+  "web template",
+  "dashboard website",
+  "customer portal",
+  "membership website",
+];
+
+const WEBSITE_EXCLUSION_PHRASES = [
+  "website banner",
+  "web banner",
+  "banner for my website",
+  "image for my website",
+  "hero image",
+  "website hero image",
+  "website advert",
+  "website ad",
+  "social post promoting my website",
+  "video promoting my website",
+  "advert for my website",
+];
 
 function getInitialTool(
   requestedTool: string | null,
@@ -69,49 +176,626 @@ function parseColours(
     .filter(Boolean);
 }
 
+function normaliseIntentText(
+  value: string,
+): string {
+  return value
+    .toLowerCase()
+    .replace(/[’']/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isWebsiteCreationRequest(
+  prompt: string,
+): boolean {
+  const normalised =
+    normaliseIntentText(prompt);
+
+  if (!normalised) {
+    return false;
+  }
+
+  const isExcluded =
+    WEBSITE_EXCLUSION_PHRASES.some(
+      (phrase) =>
+        normalised.includes(phrase),
+    );
+
+  if (isExcluded) {
+    return false;
+  }
+
+  return WEBSITE_INTENT_PHRASES.some(
+    (phrase) =>
+      normalised.includes(phrase),
+  );
+}
+
+function inferWebsitePackage(
+  prompt: string,
+): WebsiteBriefPackage {
+  const normalised =
+    normaliseIntentText(prompt);
+
+  if (
+    normalised.includes("premium") ||
+    normalised.includes("bespoke") ||
+    normalised.includes("advanced") ||
+    normalised.includes("membership") ||
+    normalised.includes("customer portal") ||
+    normalised.includes("booking system")
+  ) {
+    return "premium";
+  }
+
+  if (
+    normalised.includes("simple") ||
+    normalised.includes("basic") ||
+    normalised.includes("starter") ||
+    normalised.includes("one page") ||
+    normalised.includes("one-page")
+  ) {
+    return "starter";
+  }
+
+  return "business";
+}
+
+function inferWebsiteStyle(
+  style: string,
+  prompt: string,
+): string {
+  const combined =
+    normaliseIntentText(
+      `${style} ${prompt}`,
+    );
+
+  if (
+    combined.includes("premium") ||
+    combined.includes("luxury") ||
+    combined.includes("elegant")
+  ) {
+    return "Premium and elegant";
+  }
+
+  if (
+    combined.includes("bold") ||
+    combined.includes("energetic") ||
+    combined.includes("vibrant")
+  ) {
+    return "Bold and energetic";
+  }
+
+  if (
+    combined.includes("minimal") ||
+    combined.includes("clean") ||
+    combined.includes("modern")
+  ) {
+    return "Modern and minimal";
+  }
+
+  if (
+    combined.includes("friendly") ||
+    combined.includes("approachable")
+  ) {
+    return "Friendly and approachable";
+  }
+
+  if (
+    combined.includes("traditional") ||
+    combined.includes("established")
+  ) {
+    return "Traditional and established";
+  }
+
+  return "Professional and trustworthy";
+}
+
+function inferBusinessName(
+  projectTitle: string,
+): string {
+  const cleaned =
+    projectTitle.trim();
+
+  if (
+    !cleaned ||
+    cleaned.toLowerCase() ===
+      "beacon studio"
+  ) {
+    return "";
+  }
+
+  return cleaned.slice(0, 140);
+}
+
+function inferBusinessType(
+  prompt: string,
+): string {
+  const normalised =
+    normaliseIntentText(prompt);
+
+  const patterns: Array<{
+    label: string;
+    terms: string[];
+  }> = [
+    {
+      label: "Construction and trade services",
+      terms: [
+        "builder",
+        "building company",
+        "roofer",
+        "roofing",
+        "plumber",
+        "plumbing",
+        "electrician",
+        "electrical",
+        "plasterer",
+        "plastering",
+        "joiner",
+        "carpenter",
+        "landscaper",
+        "landscaping",
+        "decorator",
+        "painting company",
+      ],
+    },
+    {
+      label: "Automotive business",
+      terms: [
+        "garage",
+        "mechanic",
+        "car dealer",
+        "automotive",
+        "vehicle repair",
+        "mot centre",
+      ],
+    },
+    {
+      label: "Beauty and wellbeing business",
+      terms: [
+        "salon",
+        "beauty",
+        "barber",
+        "hairdresser",
+        "spa",
+        "wellness",
+        "massage",
+      ],
+    },
+    {
+      label: "Restaurant and hospitality business",
+      terms: [
+        "restaurant",
+        "cafe",
+        "coffee shop",
+        "hotel",
+        "guest house",
+        "takeaway",
+        "catering",
+      ],
+    },
+    {
+      label: "Professional services business",
+      terms: [
+        "accountant",
+        "solicitor",
+        "consultant",
+        "consultancy",
+        "financial adviser",
+        "estate agent",
+        "insurance",
+      ],
+    },
+    {
+      label: "Retail and ecommerce business",
+      terms: [
+        "online shop",
+        "online store",
+        "ecommerce",
+        "e-commerce",
+        "retail",
+        "product store",
+      ],
+    },
+    {
+      label: "Technology business",
+      terms: [
+        "software",
+        "technology",
+        "tech company",
+        "saas",
+        "app",
+        "digital agency",
+      ],
+    },
+  ];
+
+  const match =
+    patterns.find((pattern) =>
+      pattern.terms.some((term) =>
+        normalised.includes(term),
+      ),
+    );
+
+  return match?.label ?? "";
+}
+
+function inferCallToAction(
+  prompt: string,
+): string {
+  const normalised =
+    normaliseIntentText(prompt);
+
+  if (
+    normalised.includes("book") ||
+    normalised.includes("booking")
+  ) {
+    return "Book now";
+  }
+
+  if (
+    normalised.includes("shop") ||
+    normalised.includes("store") ||
+    normalised.includes("ecommerce") ||
+    normalised.includes("e-commerce")
+  ) {
+    return "Shop now";
+  }
+
+  if (
+    normalised.includes("contact")
+  ) {
+    return "Contact us";
+  }
+
+  if (
+    normalised.includes("consultation")
+  ) {
+    return "Book a consultation";
+  }
+
+  return "Request a quote";
+}
+
+function inferWebsiteModules(
+  prompt: string,
+): Pick<
+  WebsiteBriefHandoff,
+  | "chatbot"
+  | "onlineShop"
+  | "membershipArea"
+> {
+  const normalised =
+    normaliseIntentText(prompt);
+
+  return {
+    chatbot:
+      normalised.includes("chatbot") ||
+      normalised.includes(
+        "ai assistant",
+      ),
+
+    onlineShop:
+      normalised.includes(
+        "online shop",
+      ) ||
+      normalised.includes(
+        "online store",
+      ) ||
+      normalised.includes(
+        "ecommerce",
+      ) ||
+      normalised.includes(
+        "e-commerce",
+      ) ||
+      normalised.includes(
+        "sell products",
+      ),
+
+    membershipArea:
+      normalised.includes(
+        "membership",
+      ) ||
+      normalised.includes(
+        "member area",
+      ) ||
+      normalised.includes(
+        "customer portal",
+      ) ||
+      normalised.includes(
+        "client portal",
+      ),
+  };
+}
+
+function getHexColours(
+  colours: string[],
+): {
+  primaryColour: string;
+  secondaryColour: string;
+} {
+  const validHexColours =
+    colours.filter((colour) =>
+      /^#[0-9a-f]{6}$/i.test(
+        colour.trim(),
+      ),
+    );
+
+  return {
+    primaryColour:
+      validHexColours[0] ??
+      "#0f3d91",
+
+    secondaryColour:
+      validHexColours[1] ??
+      "#d4af37",
+  };
+}
+
+function buildWebsiteBriefHandoff({
+  prompt,
+  selectedTool,
+  quality,
+  aspectRatio,
+  outputCount,
+  durationSeconds,
+  audience,
+  style,
+  tone,
+  colours,
+  reference,
+  notes,
+  brandKit,
+  projectTitle,
+}: {
+  prompt: string;
+  selectedTool: StudioToolId;
+  quality: StudioQuality;
+  aspectRatio: StudioAspectRatio;
+  outputCount: StudioOutputCount;
+  durationSeconds: number;
+  audience: string;
+  style: string;
+  tone: string;
+  colours: string;
+  reference: string;
+  notes: string;
+  brandKit: string;
+  projectTitle: string;
+}): WebsiteBriefHandoff {
+  const parsedColours =
+    parseColours(colours);
+
+  const {
+    primaryColour,
+    secondaryColour,
+  } = getHexColours(parsedColours);
+
+  const modules =
+    inferWebsiteModules(prompt);
+
+  const cleanPrompt =
+    prompt.trim();
+
+  const cleanNotes =
+    notes.trim();
+
+  const cleanAudience =
+    audience.trim();
+
+  const cleanReference =
+    reference.trim();
+
+  const businessName =
+    inferBusinessName(projectTitle);
+
+  return {
+    businessName,
+
+    businessType:
+      inferBusinessType(
+        cleanPrompt,
+      ),
+
+    businessDescription:
+      cleanPrompt,
+
+    yearsTrading: "",
+
+    serviceArea: "",
+
+    address: "",
+
+    phone: "",
+
+    email: "",
+
+    website:
+      cleanReference,
+
+    primaryColour,
+
+    secondaryColour,
+
+    styleDirection:
+      inferWebsiteStyle(
+        style,
+        cleanPrompt,
+      ),
+
+    services: "",
+
+    idealCustomer:
+      cleanAudience,
+
+    keyMessage:
+      cleanPrompt,
+
+    callToAction:
+      inferCallToAction(
+        cleanPrompt,
+      ),
+
+    socialLinks: "",
+
+    packageId:
+      inferWebsitePackage(
+        cleanPrompt,
+      ),
+
+    chatbot:
+      modules.chatbot,
+
+    onlineShop:
+      modules.onlineShop,
+
+    membershipArea:
+      modules.membershipArea,
+
+    notes: [
+      cleanNotes,
+
+      tone.trim()
+        ? `Preferred tone: ${tone.trim()}.`
+        : "",
+
+      brandKit !== "none"
+        ? `Use saved brand kit: ${brandKit}.`
+        : "",
+
+      parsedColours.length > 0
+        ? `Requested colours: ${parsedColours.join(
+            ", ",
+          )}.`
+        : "",
+
+      "This brief was started in Beacon Studio and routed directly to the Beacon Business Website Builder.",
+
+      `Original Studio request: ${cleanPrompt}`,
+    ]
+      .filter(Boolean)
+      .join("\n\n"),
+
+    studioHandoff: {
+      source:
+        "beacon-studio",
+
+      originalPrompt:
+        cleanPrompt,
+
+      routedAt:
+        new Date().toISOString(),
+
+      requestedTool:
+        selectedTool,
+
+      quality,
+
+      aspectRatio,
+
+      outputCount,
+
+      durationSeconds,
+
+      audience:
+        cleanAudience,
+
+      style:
+        style.trim(),
+
+      tone:
+        tone.trim(),
+
+      colours:
+        parsedColours,
+
+      referenceUrl:
+        cleanReference ||
+        undefined,
+
+      brandKit:
+        brandKit !== "none"
+          ? brandKit
+          : undefined,
+
+      projectTitle:
+        projectTitle.trim() ||
+        "Beacon Studio",
+    },
+  };
+}
+
 function StudioCreateContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams =
+    useSearchParams();
 
   const requestedTool =
     searchParams.get("tool");
 
   const initialTool = useMemo(
-    () => getInitialTool(requestedTool),
+    () =>
+      getInitialTool(
+        requestedTool,
+      ),
     [requestedTool],
   );
 
   const [step, setStep] =
-    useState<StudioCreateStep>("request");
+    useState<StudioCreateStep>(
+      "request",
+    );
 
-  const [selectedTool, setSelectedTool] =
-    useState<StudioToolId>(initialTool);
+  const [
+    selectedTool,
+    setSelectedTool,
+  ] =
+    useState<StudioToolId>(
+      initialTool,
+    );
 
   const [prompt, setPrompt] =
     useState("");
 
-  const [showAdvanced, setShowAdvanced] =
-    useState(false);
+  const [
+    showAdvanced,
+    setShowAdvanced,
+  ] = useState(false);
 
   const [quality, setQuality] =
-    useState<StudioQuality>("high");
+    useState<StudioQuality>(
+      "high",
+    );
 
-  const [aspectRatio, setAspectRatio] =
+  const [
+    aspectRatio,
+    setAspectRatio,
+  ] =
     useState<StudioAspectRatio>(
-      initialTool === "long-video"
+      initialTool ===
+        "long-video"
         ? "16:9"
         : "9:16",
     );
 
-  const [outputCount, setOutputCount] =
-    useState<StudioOutputCount>(1);
-
-  const [durationSeconds, setDurationSeconds] =
-    useState(
-      initialTool === "long-video"
-        ? 60
-        : 15,
+  const [
+    outputCount,
+    setOutputCount,
+  ] =
+    useState<StudioOutputCount>(
+      1,
     );
+
+  const [
+    durationSeconds,
+    setDurationSeconds,
+  ] = useState(
+    initialTool ===
+      "long-video"
+      ? 60
+      : 15,
+  );
 
   const [audience, setAudience] =
     useState("");
@@ -125,8 +809,10 @@ function StudioCreateContent() {
   const [colours, setColours] =
     useState("");
 
-  const [reference, setReference] =
-    useState("");
+  const [
+    reference,
+    setReference,
+  ] = useState("");
 
   const [notes, setNotes] =
     useState("");
@@ -134,11 +820,16 @@ function StudioCreateContent() {
   const [brandKit, setBrandKit] =
     useState("none");
 
-  const [projectTitle, setProjectTitle] =
+  const [
+    projectTitle,
+    setProjectTitle,
+  ] =
     useState("Beacon Studio");
 
-  const [saveToLibrary, setSaveToLibrary] =
-    useState(true);
+  const [
+    saveToLibrary,
+    setSaveToLibrary,
+  ] = useState(true);
 
   const [
     creativePlan,
@@ -156,50 +847,69 @@ function StudioCreateContent() {
       null,
     );
 
-  const [showReview, setShowReview] =
-    useState(false);
+  const [
+    showReview,
+    setShowReview,
+  ] = useState(false);
 
-  const [isGenerating, setIsGenerating] =
-    useState(false);
+  const [
+    isGenerating,
+    setIsGenerating,
+  ] = useState(false);
 
   const [
     generationError,
     setGenerationError,
-  ] = useState<string | null>(null);
+  ] = useState<string | null>(
+    null,
+  );
 
   const selectedToolDetails =
     useMemo<StudioToolOption>(
-      () => getStudioTool(selectedTool),
+      () =>
+        getStudioTool(
+          selectedTool,
+        ),
       [selectedTool],
     );
 
   const isVideo =
-    isStudioVideoTool(selectedTool);
+    isStudioVideoTool(
+      selectedTool,
+    );
 
-  const estimatedCredits = useMemo(
-    () =>
-      calculateStudioCreditEstimate({
-        tool: selectedToolDetails,
-        quality,
-        outputCount,
+  const estimatedCredits =
+    useMemo(
+      () =>
+        calculateStudioCreditEstimate(
+          {
+            tool:
+              selectedToolDetails,
+            quality,
+            outputCount,
+            durationSeconds,
+          },
+        ),
+      [
         durationSeconds,
-      }),
-    [
-      durationSeconds,
-      outputCount,
-      quality,
-      selectedToolDetails,
-    ],
-  );
-
-  const estimatedWait = useMemo(
-    () =>
-      getStudioEstimatedWait({
-        tool: selectedTool,
+        outputCount,
         quality,
-      }),
-    [quality, selectedTool],
-  );
+        selectedToolDetails,
+      ],
+    );
+
+  const estimatedWait =
+    useMemo(
+      () =>
+        getStudioEstimatedWait({
+          tool: selectedTool,
+          quality,
+        }),
+      [
+        quality,
+        selectedTool,
+      ],
+    );
 
   const promptReady =
     prompt.trim().length >= 10;
@@ -207,39 +917,57 @@ function StudioCreateContent() {
   const plannerRequest =
     useMemo<StudioPlannerInput>(
       () => ({
-        prompt: prompt.trim(),
-        requestedTool: selectedTool,
+        prompt:
+          prompt.trim(),
+
+        requestedTool:
+          selectedTool,
+
         quality,
+
         aspectRatio,
+
         outputCount,
+
         durationSeconds:
           isVideo
             ? durationSeconds
             : undefined,
+
         audience:
           audience.trim() ||
           undefined,
+
         style:
           style.trim() ||
           undefined,
+
         tone:
           tone.trim() ||
           undefined,
+
         colours:
-          parseColours(colours),
+          parseColours(
+            colours,
+          ),
+
         referenceUrl:
           reference.trim() ||
           undefined,
+
         notes:
           notes.trim() ||
           undefined,
+
         brandKit:
           brandKit !== "none"
             ? brandKit
             : undefined,
+
         projectTitle:
           projectTitle.trim() ||
           "Beacon Studio",
+
         saveToLibrary,
       }),
       [
@@ -264,26 +992,92 @@ function StudioCreateContent() {
 
   useEffect(() => {
     if (
-      selectedTool === initialTool
+      selectedTool ===
+      initialTool
     ) {
       return;
     }
 
-    setSelectedTool(initialTool);
+    setSelectedTool(
+      initialTool,
+    );
 
-    if (initialTool === "short-video") {
-      setAspectRatio("9:16");
-      setDurationSeconds(15);
+    if (
+      initialTool ===
+      "short-video"
+    ) {
+      setAspectRatio(
+        "9:16",
+      );
+
+      setDurationSeconds(
+        15,
+      );
     }
 
-    if (initialTool === "long-video") {
-      setAspectRatio("16:9");
-      setDurationSeconds(60);
+    if (
+      initialTool ===
+      "long-video"
+    ) {
+      setAspectRatio(
+        "16:9",
+      );
+
+      setDurationSeconds(
+        60,
+      );
     }
   }, [
     initialTool,
     selectedTool,
   ]);
+
+  function routeWebsiteRequest(): void {
+    const websiteBrief =
+      buildWebsiteBriefHandoff({
+        prompt:
+          prompt.trim(),
+
+        selectedTool,
+
+        quality,
+
+        aspectRatio,
+
+        outputCount,
+
+        durationSeconds,
+
+        audience,
+
+        style,
+
+        tone,
+
+        colours,
+
+        reference,
+
+        notes,
+
+        brandKit,
+
+        projectTitle,
+      });
+
+    window.localStorage.setItem(
+      WEBSITE_BRIEF_STORAGE_KEY,
+      JSON.stringify(
+        websiteBrief,
+      ),
+    );
+
+    setStep("routing");
+
+    router.push(
+      "/business/website?source=studio",
+    );
+  }
 
   function createPlan(): void {
     if (
@@ -295,8 +1089,20 @@ function StudioCreateContent() {
 
     setGenerationError(null);
     setCreativePlan(null);
-    setPlannedGenerationRequest(null);
+    setPlannedGenerationRequest(
+      null,
+    );
     setShowReview(false);
+
+    if (
+      isWebsiteCreationRequest(
+        prompt,
+      )
+    ) {
+      routeWebsiteRequest();
+      return;
+    }
+
     setStep("plan");
 
     window.scrollTo({
@@ -314,7 +1120,9 @@ function StudioCreateContent() {
     setShowReview(false);
     setGenerationError(null);
     setCreativePlan(null);
-    setPlannedGenerationRequest(null);
+    setPlannedGenerationRequest(
+      null,
+    );
 
     window.scrollTo({
       top: 0,
@@ -331,9 +1139,11 @@ function StudioCreateContent() {
     }
 
     setCreativePlan(plan);
+
     setPlannedGenerationRequest(
       generationRequest,
     );
+
     setGenerationError(null);
     setShowReview(true);
   }
@@ -360,88 +1170,104 @@ function StudioCreateContent() {
     setGenerationError(null);
 
     try {
+      if (
+        isWebsiteCreationRequest(
+          plannedGenerationRequest.prompt,
+        )
+      ) {
+        routeWebsiteRequest();
+        return;
+      }
+
       const generationDurationSeconds =
         plannedGenerationRequest.durationSeconds;
 
-      const response = await fetch(
-        "/api/studio/generate",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
+      const response =
+        await fetch(
+          "/api/studio/generate",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                prompt:
+                  plannedGenerationRequest.prompt.trim(),
+
+                requestedTool:
+                  plannedGenerationRequest.requestedTool,
+
+                selectedTool:
+                  plannedGenerationRequest.requestedTool,
+
+                formats:
+                  creativePlan.deliverables.map(
+                    (
+                      deliverable,
+                    ) =>
+                      deliverable.format,
+                  ),
+
+                audience:
+                  plannedGenerationRequest.audience,
+
+                tone:
+                  plannedGenerationRequest.tone,
+
+                style:
+                  plannedGenerationRequest.style,
+
+                colours:
+                  plannedGenerationRequest.colours,
+
+                sourceUrl:
+                  plannedGenerationRequest.referenceUrl,
+
+                referenceUrl:
+                  plannedGenerationRequest.referenceUrl,
+
+                notes:
+                  plannedGenerationRequest.notes,
+
+                durationMs:
+                  typeof generationDurationSeconds ===
+                  "number"
+                    ? generationDurationSeconds *
+                      1_000
+                    : undefined,
+
+                quality:
+                  plannedGenerationRequest.quality,
+
+                aspectRatio:
+                  plannedGenerationRequest.aspectRatio,
+
+                outputCount:
+                  plannedGenerationRequest.outputCount,
+
+                brandKit:
+                  plannedGenerationRequest.brandKit,
+
+                projectTitle:
+                  plannedGenerationRequest.projectTitle,
+
+                saveToLibrary:
+                  plannedGenerationRequest.saveToLibrary,
+
+                confirmedCreditCost:
+                  creativePlan.estimatedCredits,
+
+                creativePlan,
+              }),
           },
-          body: JSON.stringify({
-            prompt:
-              plannedGenerationRequest.prompt.trim(),
+        );
 
-            requestedTool:
-              plannedGenerationRequest.requestedTool,
-
-            selectedTool:
-              plannedGenerationRequest.requestedTool,
-
-            formats:
-              creativePlan.deliverables.map(
-                (deliverable) =>
-                  deliverable.format,
-              ),
-
-            audience:
-              plannedGenerationRequest.audience,
-
-            tone:
-              plannedGenerationRequest.tone,
-
-            style:
-              plannedGenerationRequest.style,
-
-            colours:
-              plannedGenerationRequest.colours,
-
-            sourceUrl:
-              plannedGenerationRequest.referenceUrl,
-
-            referenceUrl:
-              plannedGenerationRequest.referenceUrl,
-
-            notes:
-              plannedGenerationRequest.notes,
-
-            durationMs:
-              typeof generationDurationSeconds ===
-                "number"
-                ? generationDurationSeconds *
-                  1_000
-                : undefined,
-
-            quality:
-              plannedGenerationRequest.quality,
-
-            aspectRatio:
-              plannedGenerationRequest.aspectRatio,
-
-            outputCount:
-              plannedGenerationRequest.outputCount,
-
-            brandKit:
-              plannedGenerationRequest.brandKit,
-
-            projectTitle:
-              plannedGenerationRequest.projectTitle,
-
-            saveToLibrary:
-              plannedGenerationRequest.saveToLibrary,
-
-            confirmedCreditCost:
-              creativePlan.estimatedCredits,
-
-            creativePlan,
-          }),
-        },
-      );
-
-      let data: StudioGenerateApiResponse;
+      let data:
+        StudioGenerateApiResponse;
 
       try {
         data =
@@ -457,7 +1283,8 @@ function StudioCreateContent() {
           data as StudioGenerateErrorResponse;
 
         if (
-          response.status === 402 &&
+          response.status ===
+            402 &&
           typeof errorData.requiredCredits ===
             "number" &&
           typeof errorData.availableCredits ===
@@ -468,26 +1295,38 @@ function StudioCreateContent() {
           );
         }
 
-        if (response.status === 401) {
+        if (
+          response.status ===
+          401
+        ) {
           throw new Error(
             "Please sign in before creating a Studio project.",
           );
         }
 
-        if (response.status === 403) {
+        if (
+          response.status ===
+          403
+        ) {
           throw new Error(
             "Your account does not currently have permission to use this Studio workflow.",
           );
         }
 
-        if (response.status === 422) {
+        if (
+          response.status ===
+          422
+        ) {
           throw new Error(
             errorData.error ||
               "Beacon Studio needs more information before generation can begin.",
           );
         }
 
-        if (response.status === 429) {
+        if (
+          response.status ===
+          429
+        ) {
           throw new Error(
             "Beacon Studio is currently busy. Please wait a moment and try again.",
           );
@@ -502,7 +1341,9 @@ function StudioCreateContent() {
       const successData =
         data as StudioGenerateSuccessResponse;
 
-      if (!successData.projectId) {
+      if (
+        !successData.projectId
+      ) {
         throw new Error(
           "Beacon Studio created the project but did not return a project ID.",
         );
@@ -520,6 +1361,39 @@ function StudioCreateContent() {
     } finally {
       setIsGenerating(false);
     }
+  }
+
+  if (step === "routing") {
+    return (
+      <main className="min-h-screen bg-[#020617] text-white">
+        <section className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-5 py-16 text-center">
+          <div className="w-full rounded-[2rem] border border-cyan-300/20 bg-cyan-300/[0.06] p-8 shadow-2xl shadow-black/30 sm:p-12">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-cyan-300 text-blue-950">
+              <Sparkles className="h-7 w-7" />
+            </div>
+
+            <p className="mt-7 text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
+              Website project detected
+            </p>
+
+            <h1 className="mt-4 text-3xl font-black tracking-tight text-white sm:text-4xl">
+              Opening the Beacon Business Website Builder
+            </h1>
+
+            <p className="mx-auto mt-4 max-w-xl text-sm font-semibold leading-7 text-slate-300 sm:text-base">
+              Website requests do not use storyboards. Your Studio request has
+              been saved into the website brief and is being handed to the
+              correct builder.
+            </p>
+
+            <div
+              aria-hidden="true"
+              className="mx-auto mt-8 h-10 w-10 animate-spin rounded-full border-4 border-cyan-200/20 border-t-cyan-300"
+            />
+          </div>
+        </section>
+      </main>
+    );
   }
 
   return (
@@ -546,8 +1420,8 @@ function StudioCreateContent() {
 
               <p className="mt-4 max-w-3xl text-base font-medium leading-8 text-slate-300 sm:text-lg">
                 {step === "request"
-                  ? "Beacon turns your request into a structured production plan before any credits are used."
-                  : "Studio Brain has analysed your request and selected the best production route."}
+                  ? "Beacon identifies what you are creating and sends the request to the correct production workflow."
+                  : "Studio Brain has analysed your request and selected the appropriate creative workflow."}
               </p>
             </div>
 
@@ -651,37 +1525,57 @@ function StudioCreateContent() {
             <div className="space-y-6">
               <StudioRequest
                 prompt={prompt}
-                selectedTool={selectedTool}
+                selectedTool={
+                  selectedTool
+                }
                 selectedToolDetails={
                   selectedToolDetails
                 }
-                showAdvanced={showAdvanced}
-                disabled={isGenerating}
-                onPromptChange={setPrompt}
+                showAdvanced={
+                  showAdvanced
+                }
+                disabled={
+                  isGenerating
+                }
+                onPromptChange={
+                  setPrompt
+                }
                 onAdvancedToggle={() =>
                   setShowAdvanced(
                     (current) =>
                       !current,
                   )
                 }
-                onContinue={createPlan}
+                onContinue={
+                  createPlan
+                }
               />
 
               {showAdvanced ? (
                 <StudioAdvancedSettings
-                  audience={audience}
+                  audience={
+                    audience
+                  }
                   style={style}
                   tone={tone}
                   colours={colours}
                   quality={quality}
-                  aspectRatio={aspectRatio}
-                  outputCount={outputCount}
+                  aspectRatio={
+                    aspectRatio
+                  }
+                  outputCount={
+                    outputCount
+                  }
                   durationSeconds={
                     durationSeconds
                   }
-                  reference={reference}
+                  reference={
+                    reference
+                  }
                   notes={notes}
-                  brandKit={brandKit}
+                  brandKit={
+                    brandKit
+                  }
                   projectTitle={
                     projectTitle
                   }
@@ -689,12 +1583,18 @@ function StudioCreateContent() {
                     saveToLibrary
                   }
                   isVideo={isVideo}
-                  disabled={isGenerating}
+                  disabled={
+                    isGenerating
+                  }
                   onAudienceChange={
                     setAudience
                   }
-                  onStyleChange={setStyle}
-                  onToneChange={setTone}
+                  onStyleChange={
+                    setStyle
+                  }
+                  onToneChange={
+                    setTone
+                  }
                   onColoursChange={
                     setColours
                   }
@@ -713,7 +1613,9 @@ function StudioCreateContent() {
                   onReferenceChange={
                     setReference
                   }
-                  onNotesChange={setNotes}
+                  onNotesChange={
+                    setNotes
+                  }
                   onBrandKitChange={
                     setBrandKit
                   }
@@ -728,28 +1630,48 @@ function StudioCreateContent() {
             </div>
 
             <StudioCreditEstimate
-              tool={selectedToolDetails}
+              tool={
+                selectedToolDetails
+              }
               quality={quality}
-              aspectRatio={aspectRatio}
-              outputCount={outputCount}
+              aspectRatio={
+                aspectRatio
+              }
+              outputCount={
+                outputCount
+              }
               durationSeconds={
                 durationSeconds
               }
               estimatedCredits={
                 estimatedCredits
               }
-              estimatedWait={estimatedWait}
+              estimatedWait={
+                estimatedWait
+              }
               isVideo={isVideo}
-              promptReady={promptReady}
-              isProcessing={isGenerating}
-              error={generationError}
-              onReview={createPlan}
+              promptReady={
+                promptReady
+              }
+              isProcessing={
+                isGenerating
+              }
+              error={
+                generationError
+              }
+              onReview={
+                createPlan
+              }
             />
           </div>
         ) : (
           <StudioPlanner
-            request={plannerRequest}
-            onBack={returnToRequest}
+            request={
+              plannerRequest
+            }
+            onBack={
+              returnToRequest
+            }
             onContinue={
               handlePlannerContinue
             }
@@ -761,17 +1683,27 @@ function StudioCreateContent() {
       {creativePlan &&
       plannedGenerationRequest ? (
         <StudioGenerationReview
-          open={showReview}
-          plan={creativePlan}
+          open={
+            showReview
+          }
+          plan={
+            creativePlan
+          }
           tool={getStudioTool(
             creativePlan.selectedTool,
           )}
           quality={
             plannedGenerationRequest.quality
           }
-          isGenerating={isGenerating}
-          error={generationError}
-          onClose={closeReview}
+          isGenerating={
+            isGenerating
+          }
+          error={
+            generationError
+          }
+          onClose={
+            closeReview
+          }
           onConfirm={() =>
             void generateCampaign()
           }
@@ -816,6 +1748,7 @@ function StudioCreateLoading() {
 
           <div className="space-y-5">
             <div className="h-96 rounded-[2rem] border border-white/10 bg-white/[0.04]" />
+
             <div className="h-40 rounded-[2rem] border border-white/10 bg-white/[0.04]" />
           </div>
         </div>
