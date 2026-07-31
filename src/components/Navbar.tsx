@@ -61,6 +61,57 @@ function isActiveRoute(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+type BeaconAreaToggleProps = {
+  isBusinessRoute: boolean;
+  compact?: boolean;
+};
+
+function BeaconAreaToggle({
+  isBusinessRoute,
+  compact = false,
+}: BeaconAreaToggleProps) {
+  return (
+    <div
+      className={`flex items-center rounded-xl border border-slate-200 bg-slate-100 p-1 ${
+        compact ? "shrink-0" : ""
+      }`}
+      aria-label="Switch Beacon area"
+    >
+      <Link
+        href="/"
+        aria-current={!isBusinessRoute ? "page" : undefined}
+        className={`rounded-lg font-extrabold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
+          compact
+            ? "px-3 py-2 text-xs"
+            : "px-4 py-2.5 text-sm"
+        } ${
+          !isBusinessRoute
+            ? "bg-blue-950 text-white shadow-sm"
+            : "text-slate-600 hover:bg-white hover:text-blue-950"
+        }`}
+      >
+        Beacon AI
+      </Link>
+
+      <Link
+        href="/business"
+        aria-current={isBusinessRoute ? "page" : undefined}
+        className={`rounded-lg font-extrabold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
+          compact
+            ? "px-3 py-2 text-xs"
+            : "px-4 py-2.5 text-sm"
+        } ${
+          isBusinessRoute
+            ? "bg-amber-500 text-slate-950 shadow-sm"
+            : "text-slate-600 hover:bg-white hover:text-blue-950"
+        }`}
+      >
+        Business
+      </Link>
+    </div>
+  );
+}
+
 export default function Navbar() {
   const pathname = usePathname();
   const { data: session, isPending } = authClient.useSession();
@@ -69,29 +120,8 @@ export default function Navbar() {
   const isSignedIn = Boolean(session?.user);
   const isAdmin = readUserRole(session?.user) === "admin";
 
-  const accountHref = isAdmin
-    ? "/admin"
-    : isSignedIn
-      ? "/dashboard"
-      : "/signin";
-
-  const accountLabel = isAdmin
-    ? "Admin"
-    : isSignedIn
-      ? "Dashboard"
-      : "Sign In";
-
-  const primaryHref = isAdmin
-    ? "/admin"
-    : isSignedIn
-      ? "/dashboard"
-      : "/membership";
-
-  const primaryLabel = isAdmin
-    ? "Admin Console"
-    : isSignedIn
-      ? "My Account"
-      : "Join Beacon+";
+  const accountHref = isSignedIn ? "/dashboard" : "/signin";
+  const accountLabel = isSignedIn ? "Dashboard" : "Sign In";
 
   if (isBusinessRoute) {
     return (
@@ -111,8 +141,8 @@ export default function Navbar() {
         <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl">
           <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 sm:gap-5 sm:px-6 sm:py-4">
             <Link
-              href="/business/dashboard"
-              aria-label="Beacon Business dashboard"
+              href="/business"
+              aria-label="Beacon Business home"
               className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4"
             >
               <div className="relative h-12 w-12 shrink-0 sm:h-16 sm:w-16 lg:h-20 lg:w-20">
@@ -132,10 +162,14 @@ export default function Navbar() {
                 </p>
 
                 <p className="hidden truncate text-sm font-semibold text-slate-500 sm:block lg:text-base">
-                  Your Business Operating System
+                  Websites and Business Support
                 </p>
               </div>
             </Link>
+
+            <div className="hidden xl:block">
+              <BeaconAreaToggle isBusinessRoute />
+            </div>
 
             <nav
               aria-label="Beacon Business navigation"
@@ -162,46 +196,51 @@ export default function Navbar() {
             </nav>
 
             <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-              <Link
-                href="/"
-                className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl border-2 border-slate-300 bg-white px-3 py-2 text-sm font-extrabold text-slate-800 transition hover:border-blue-500 hover:text-blue-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 sm:px-5 sm:py-3 sm:text-base"
-              >
-                <span className="sm:hidden">Personal</span>
-                <span className="hidden sm:inline">Exit to Beacon AI</span>
-              </Link>
+              {isAdmin ? (
+                <Link
+                  href="/admin"
+                  className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl bg-amber-500 px-3 py-2 text-sm font-extrabold text-slate-950 shadow-lg transition hover:-translate-y-0.5 hover:bg-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 sm:px-5 sm:py-3 sm:text-base"
+                >
+                  Admin Console
+                </Link>
+              ) : (
+                <Link
+                  href={accountHref}
+                  aria-disabled={isPending}
+                  className={`inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl bg-blue-950 px-3 py-2 text-sm font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 sm:px-5 sm:py-3 sm:text-base ${
+                    isPending ? "pointer-events-none opacity-50" : ""
+                  }`}
+                >
+                  {isPending ? "Loading..." : accountLabel}
+                </Link>
+              )}
             </div>
           </div>
 
-          <nav
-            aria-label="Beacon Business mobile navigation"
-            className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-3 py-2 lg:hidden"
-          >
-            {businessNavigation.map((item) => {
-              const active = isActiveRoute(pathname, item.href);
+          <div className="border-t border-slate-100 px-3 py-2 xl:hidden">
+            <div className="flex items-center gap-2 overflow-x-auto">
+              <BeaconAreaToggle isBusinessRoute compact />
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={active ? "page" : undefined}
-                  className={`shrink-0 rounded-lg px-3 py-2 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
-                    active
-                      ? "bg-blue-950 text-white"
-                      : "text-slate-700 hover:bg-blue-50 hover:text-blue-950"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
+              {businessNavigation.map((item) => {
+                const active = isActiveRoute(pathname, item.href);
 
-            <Link
-              href="/"
-              className="shrink-0 rounded-lg px-3 py-2 text-sm font-extrabold text-amber-800 transition hover:bg-amber-50 hover:text-amber-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
-            >
-              Exit to Beacon AI
-            </Link>
-          </nav>
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    className={`shrink-0 rounded-lg px-3 py-2 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
+                      active
+                        ? "bg-blue-950 text-white"
+                        : "text-slate-700 hover:bg-blue-50 hover:text-blue-950"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
         </header>
       </>
     );
@@ -250,6 +289,10 @@ export default function Navbar() {
             </div>
           </Link>
 
+          <div className="hidden xl:block">
+            <BeaconAreaToggle isBusinessRoute={false} />
+          </div>
+
           <nav
             aria-label="Main navigation"
             className="hidden items-center gap-1 lg:flex"
@@ -272,96 +315,70 @@ export default function Navbar() {
                 </Link>
               );
             })}
-
-            {isAdmin ? (
-              <Link
-                href="/admin"
-                className="rounded-xl px-4 py-3 font-extrabold text-amber-700 transition hover:bg-amber-50 hover:text-amber-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
-              >
-                Admin
-              </Link>
-            ) : null}
           </nav>
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <Link
-              href={accountHref}
-              aria-disabled={isPending}
-              className={`hidden rounded-xl px-4 py-3 font-extrabold text-blue-950 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 sm:inline-flex ${
-                isPending ? "pointer-events-none opacity-50" : ""
-              }`}
-            >
-              {isPending ? "Loading..." : accountLabel}
-            </Link>
+            {isAdmin ? (
+              <Link
+                href="/admin"
+                className="inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl bg-amber-500 px-3 py-2 text-sm font-extrabold text-slate-950 shadow-lg transition hover:-translate-y-0.5 hover:bg-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 sm:px-5 sm:py-3 sm:text-base"
+              >
+                Admin Console
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href={accountHref}
+                  aria-disabled={isPending}
+                  className={`hidden rounded-xl px-4 py-3 font-extrabold text-blue-950 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 sm:inline-flex ${
+                    isPending ? "pointer-events-none opacity-50" : ""
+                  }`}
+                >
+                  {isPending ? "Loading..." : accountLabel}
+                </Link>
 
-            <Link
-              href={primaryHref}
-              aria-disabled={isPending}
-              className={`inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl px-3 py-2 text-sm font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 sm:px-5 sm:py-3 sm:text-base ${
-                isAdmin
-                  ? "bg-amber-600 hover:bg-amber-500 focus-visible:ring-amber-600"
-                  : "bg-blue-900 hover:bg-blue-800 focus-visible:ring-blue-700"
-              } ${isPending ? "pointer-events-none opacity-50" : ""}`}
-            >
-              <span className="sm:hidden">
-                {isPending
-                  ? "Account"
-                  : isAdmin
-                    ? "Admin"
+                <Link
+                  href={isSignedIn ? "/dashboard" : "/membership"}
+                  aria-disabled={isPending}
+                  className={`inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl bg-blue-900 px-3 py-2 text-sm font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 sm:px-5 sm:py-3 sm:text-base ${
+                    isPending ? "pointer-events-none opacity-50" : ""
+                  }`}
+                >
+                  {isPending
+                    ? "Loading..."
                     : isSignedIn
-                      ? "Dashboard"
-                      : "Beacon+"}
-              </span>
-
-              <span className="hidden sm:inline">
-                {isPending ? "Loading..." : primaryLabel}
-              </span>
-            </Link>
+                      ? "My Account"
+                      : "Join Beacon+"}
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
-        <nav
-          aria-label="Mobile navigation"
-          className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-3 py-2 lg:hidden"
-        >
-          {personalNavigation.map((item) => {
-            const active = isActiveRoute(pathname, item.href);
+        <div className="border-t border-slate-100 px-3 py-2 xl:hidden">
+          <div className="flex items-center gap-2 overflow-x-auto">
+            <BeaconAreaToggle isBusinessRoute={false} compact />
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                className={`shrink-0 rounded-lg px-3 py-2 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
-                  active
-                    ? "bg-blue-950 text-white"
-                    : "text-slate-700 hover:bg-blue-50 hover:text-blue-950"
-                }`}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
+            {personalNavigation.map((item) => {
+              const active = isActiveRoute(pathname, item.href);
 
-          {isAdmin ? (
-            <Link
-              href="/admin"
-              className="shrink-0 rounded-lg px-3 py-2 text-sm font-extrabold text-amber-700 transition hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
-            >
-              Admin
-            </Link>
-          ) : null}
-
-          <Link
-            href={accountHref}
-            aria-disabled={isPending}
-            className={`shrink-0 rounded-lg px-3 py-2 text-sm font-extrabold text-blue-900 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
-              isPending ? "pointer-events-none opacity-50" : ""
-            }`}
-          >
-            {isPending ? "Account" : accountLabel}
-          </Link>
-        </nav>
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={`shrink-0 rounded-lg px-3 py-2 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
+                    active
+                      ? "bg-blue-950 text-white"
+                      : "text-slate-700 hover:bg-blue-50 hover:text-blue-950"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
       </header>
     </>
   );
