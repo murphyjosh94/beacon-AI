@@ -13,7 +13,6 @@ import { database } from "@/lib/database/Database";
 import {
   creditLedger,
   stripeWebhookEvent,
-  studioCreditLedger,
   user,
 } from "@/lib/database/schema";
 
@@ -24,8 +23,7 @@ export const dynamic = "force-dynamic";
 
 type ProductFamily =
   | "beacon_plus"
-  | "business"
-  | "studio";
+  | "business";
 
 type BeaconPlusPlan =
   | "monthly"
@@ -35,26 +33,15 @@ type BusinessPlan =
   | "business"
   | "business_pro";
 
-type StudioPlan =
-  | "pro"
-  | "business"
-  | "enterprise";
 
 type ResolvedSubscriptionProduct =
   | {
       family: "beacon_plus";
       plan: BeaconPlusPlan;
-      allowance: 300;
     }
   | {
       family: "business";
       plan: BusinessPlan;
-      allowance: 50 | 150;
-    }
-  | {
-      family: "studio";
-      plan: StudioPlan;
-      allowance: 300 | 800 | 2500;
     };
 
 type WebhookClaim =
@@ -70,15 +57,6 @@ const ACTIVE_SUBSCRIPTION_STATUSES =
   new Set<Stripe.Subscription.Status>([
     "active",
     "trialing",
-  ]);
-
-const STUDIO_CREDIT_PACKS =
-  new Map<string, number>([
-    ["credits_100", 100],
-    ["credits_300", 300],
-    ["credits_750", 750],
-    ["credits_1500", 1500],
-    ["credits_3000", 3000],
   ]);
 
 const BEACON_CREDIT_PACKS =
@@ -290,47 +268,6 @@ function resolveSubscriptionProduct(
       "source",
     );
 
-  const studioPlan =
-    readMetadataValue(
-      metadata,
-      "studioMembershipPlan",
-    );
-
-  if (
-    source === "beacon_studio" ||
-    studioPlan
-  ) {
-    if (
-      studioPlan === "pro"
-    ) {
-      return {
-        family: "studio",
-        plan: "pro",
-        allowance: 300,
-      };
-    }
-
-    if (
-      studioPlan === "business"
-    ) {
-      return {
-        family: "studio",
-        plan: "business",
-        allowance: 800,
-      };
-    }
-
-    if (
-      studioPlan === "enterprise"
-    ) {
-      return {
-        family: "studio",
-        plan: "enterprise",
-        allowance: 2500,
-      };
-    }
-  }
-
   const businessPlan =
     readMetadataValue(
       metadata,
@@ -359,14 +296,12 @@ function resolveSubscriptionProduct(
       return {
         family: "business",
         plan: "business_pro",
-        allowance: 150,
       };
     }
 
     return {
       family: "business",
       plan: "business",
-      allowance: 50,
     };
   }
 
@@ -378,52 +313,12 @@ function resolveSubscriptionProduct(
   if (
     matchesPrice(
       priceIds,
-      "STRIPE_STUDIO_PRO_PRICE_ID",
-    )
-  ) {
-    return {
-      family: "studio",
-      plan: "pro",
-      allowance: 300,
-    };
-  }
-
-  if (
-    matchesPrice(
-      priceIds,
-      "STRIPE_STUDIO_BUSINESS_PRICE_ID",
-    )
-  ) {
-    return {
-      family: "studio",
-      plan: "business",
-      allowance: 800,
-    };
-  }
-
-  if (
-    matchesPrice(
-      priceIds,
-      "STRIPE_STUDIO_ENTERPRISE_PRICE_ID",
-    )
-  ) {
-    return {
-      family: "studio",
-      plan: "enterprise",
-      allowance: 2500,
-    };
-  }
-
-  if (
-    matchesPrice(
-      priceIds,
       "STRIPE_PRICE_BEACON_BUSINESS_PRO",
     )
   ) {
     return {
       family: "business",
       plan: "business_pro",
-      allowance: 150,
     };
   }
 
@@ -436,7 +331,6 @@ function resolveSubscriptionProduct(
     return {
       family: "business",
       plan: "business",
-      allowance: 50,
     };
   }
 
@@ -450,7 +344,6 @@ function resolveSubscriptionProduct(
     return {
       family: "beacon_plus",
       plan: "annual",
-      allowance: 300,
     };
   }
 
@@ -464,7 +357,6 @@ function resolveSubscriptionProduct(
     return {
       family: "beacon_plus",
       plan: "monthly",
-      allowance: 300,
     };
   }
 
@@ -495,7 +387,6 @@ function resolveSubscriptionProduct(
           "year"
           ? "annual"
           : "monthly",
-      allowance: 300,
     };
   }
 
@@ -701,10 +592,6 @@ async function findUserIdBySubscriptionId(
             subscriptionId,
           ),
           eq(
-            user.studioStripeSubscriptionId,
-            subscriptionId,
-          ),
-          eq(
             user.stripeSubscriptionId,
             subscriptionId,
           ),
@@ -748,90 +635,6 @@ async function resolveSubscriptionUserId(
   return findUserIdBySubscriptionId(
     subscription.id,
   );
-}
-
-async function insertStudioLedger(
-  input: {
-    userId: string;
-    type:
-      | "purchase"
-      | "membership_reset"
-      | "business_membership_reset";
-    amount: number;
-    description: string;
-    checkoutSessionId?: string;
-    paymentIntentId?: string;
-    invoiceId?: string;
-    subscriptionId?: string;
-    metadata?: Record<
-      string,
-      string | number | boolean | null
-    >;
-  },
-): Promise<void> {
-  const balances =
-    await database
-      .select({
-        purchased:
-          user.studioPurchasedCredits,
-        membership:
-          user.studioMembershipCreditsAllowance,
-        business:
-          user.businessStudioCreditsAllowance,
-      })
-      .from(user)
-      .where(
-        eq(
-          user.id,
-          input.userId,
-        ),
-      )
-      .limit(1);
-
-  const balance =
-    balances[0];
-
-  if (!balance) {
-    throw new Error(
-      "The Beacon account linked to this Studio transaction could not be found.",
-    );
-  }
-
-  await database
-    .insert(
-      studioCreditLedger,
-    )
-    .values({
-      userId:
-        input.userId,
-      type:
-        input.type,
-      amount:
-        input.amount,
-      purchasedBalanceAfter:
-        balance.purchased,
-      studioMembershipAllowanceAfter:
-        balance.membership,
-      businessAllowanceAfter:
-        balance.business,
-      totalAvailableAfter:
-        balance.purchased +
-        balance.membership +
-        balance.business,
-      description:
-        input.description,
-      stripeCheckoutSessionId:
-        input.checkoutSessionId,
-      stripePaymentIntentId:
-        input.paymentIntentId,
-      stripeInvoiceId:
-        input.invoiceId,
-      stripeSubscriptionId:
-        input.subscriptionId,
-      metadata:
-        input.metadata ?? {},
-    })
-    .onConflictDoNothing();
 }
 
 async function addBeaconCredits(
@@ -928,93 +731,9 @@ async function addBeaconCredits(
     });
 }
 
-async function addStudioCredits(
-  input: {
-    userId: string;
-    credits: number;
-    checkoutSessionId: string;
-    paymentIntentId?: string;
-    productId?: string;
-  },
-): Promise<void> {
-  const existing =
-    await database
-      .select({
-        id:
-          studioCreditLedger.id,
-      })
-      .from(
-        studioCreditLedger,
-      )
-      .where(
-        eq(
-          studioCreditLedger
-            .stripeCheckoutSessionId,
-          input.checkoutSessionId,
-        ),
-      )
-      .limit(1);
-
-  if (
-    existing.length > 0
-  ) {
-    return;
-  }
-
-  const updated =
-    await database
-      .update(user)
-      .set({
-        studioPurchasedCredits:
-          sql`${user.studioPurchasedCredits} + ${input.credits}`,
-        updatedAt:
-          new Date(),
-      })
-      .where(
-        eq(
-          user.id,
-          input.userId,
-        ),
-      )
-      .returning({
-        id:
-          user.id,
-      });
-
-  if (!updated[0]) {
-    throw new Error(
-      "The Beacon account linked to this Studio credit purchase could not be found.",
-    );
-  }
-
-  await insertStudioLedger({
-    userId:
-      input.userId,
-    type:
-      "purchase",
-    amount:
-      input.credits,
-    description:
-      `${input.credits.toLocaleString("en-GB")} Beacon Studio Credits purchased through Stripe.`,
-    checkoutSessionId:
-      input.checkoutSessionId,
-    paymentIntentId:
-      input.paymentIntentId,
-    metadata: {
-      source:
-        "beacon_studio",
-      productId:
-        input.productId ?? null,
-      credits:
-        input.credits,
-    },
-  });
-}
-
 async function updateSubscription(
   subscription: Stripe.Subscription,
   fallbackUserId?: string,
-  invoiceId?: string,
 ): Promise<string> {
   const userId =
     await resolveSubscriptionUserId(
@@ -1093,97 +812,23 @@ async function updateSubscription(
     return userId;
   }
 
-  if (
-    product.family ===
-    "business"
-  ) {
-    await database
-      .update(user)
-      .set({
-        stripeCustomerId:
-          customerId,
-        businessMembershipPlan:
-          product.plan,
-        businessMembershipActive:
-          active,
-        businessStripeSubscriptionId:
-          subscription.id,
-        businessSubscriptionStatus:
-          subscription.status,
-        businessCurrentPeriodStart:
-          period.start,
-        businessCurrentPeriodEnd:
-          period.end,
-        businessStudioCreditsAllowance:
-          active
-            ? product.allowance
-            : 0,
-        businessStudioCreditsRenewedAt:
-          active
-            ? period.start ?? now
-            : null,
-        updatedAt:
-          now,
-      })
-      .where(
-        eq(
-          user.id,
-          userId,
-        ),
-      );
-
-    if (active) {
-      await insertStudioLedger({
-        userId,
-        type:
-          "business_membership_reset",
-        amount:
-          product.allowance,
-        description:
-          `${product.allowance} monthly Studio Credits included with Beacon Business ${product.plan === "business_pro" ? "Pro" : ""}.`.trim(),
-        invoiceId,
-        subscriptionId:
-          subscription.id,
-        metadata: {
-          family:
-            "business",
-          plan:
-            product.plan,
-          periodStart:
-            period.start?.toISOString() ??
-            null,
-        },
-      });
-    }
-
-    return userId;
-  }
-
   await database
     .update(user)
     .set({
       stripeCustomerId:
         customerId,
-      studioMembershipPlan:
+      businessMembershipPlan:
         product.plan,
-      studioMembershipActive:
+      businessMembershipActive:
         active,
-      studioStripeSubscriptionId:
+      businessStripeSubscriptionId:
         subscription.id,
-      studioSubscriptionStatus:
+      businessSubscriptionStatus:
         subscription.status,
-      studioCurrentPeriodStart:
+      businessCurrentPeriodStart:
         period.start,
-      studioCurrentPeriodEnd:
+      businessCurrentPeriodEnd:
         period.end,
-      studioMembershipCreditsAllowance:
-        active
-          ? product.allowance
-          : 0,
-      studioMembershipCreditsRenewedAt:
-        active
-          ? period.start ?? now
-          : null,
       updatedAt:
         now,
     })
@@ -1194,31 +839,8 @@ async function updateSubscription(
       ),
     );
 
-  if (active) {
-    await insertStudioLedger({
-      userId,
-      type:
-        "membership_reset",
-      amount:
-        product.allowance,
-      description:
-        `${product.allowance.toLocaleString("en-GB")} monthly Studio Credits included with Beacon Studio ${product.plan}.`,
-      invoiceId,
-      subscriptionId:
-        subscription.id,
-      metadata: {
-        family:
-          "studio",
-        plan:
-          product.plan,
-        periodStart:
-          period.start?.toISOString() ??
-          null,
-      },
-    });
-  }
-
   return userId;
+
 }
 
 async function processCheckoutSession(
@@ -1268,68 +890,6 @@ async function processCheckoutSession(
       throw new Error(
         `Stripe Checkout Session ${session.id} has not been paid.`,
       );
-    }
-
-    const studioProductId =
-      readMetadataValue(
-        session.metadata,
-        "studioProductId",
-      );
-
-    const studioKind =
-      readMetadataValue(
-        session.metadata,
-        "studioPurchaseKind",
-      );
-
-    const studioCreditsValue =
-      readMetadataValue(
-        session.metadata,
-        "studioCredits",
-      );
-
-    const studioCredits =
-      studioCreditsValue
-        ? Number(studioCreditsValue)
-        : studioProductId
-          ? STUDIO_CREDIT_PACKS.get(
-              studioProductId,
-            )
-          : undefined;
-
-    if (
-      studioKind === "credits" ||
-      studioProductId?.startsWith(
-        "credits_",
-      )
-    ) {
-      if (
-        !studioCredits ||
-        !Number.isInteger(
-          studioCredits,
-        ) ||
-        studioCredits <= 0
-      ) {
-        throw new Error(
-          `Stripe Checkout Session ${session.id} does not contain a valid Studio credit amount.`,
-        );
-      }
-
-      await addStudioCredits({
-        userId,
-        credits:
-          studioCredits,
-        checkoutSessionId:
-          session.id,
-        paymentIntentId:
-          readExpandableId(
-            session.payment_intent,
-          ),
-        productId:
-          studioProductId,
-      });
-
-      return userId;
     }
 
     const creditsValue =
@@ -1432,7 +992,6 @@ async function processPaidInvoice(
     readUserId(
       invoice.metadata,
     ),
-    invoice.id,
   );
 }
 

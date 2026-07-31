@@ -826,67 +826,6 @@ export default async function AdminPage({
 
 
             <section
-              id="motion"
-              className="mt-8 overflow-hidden rounded-[2rem] border border-cyan-200 bg-white shadow-sm"
-            >
-              <div className="border-b border-cyan-100 bg-gradient-to-r from-slate-950 via-blue-950 to-cyan-950 px-6 py-7 text-white sm:px-8">
-                <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-cyan-200">
-                  Beacon Creative System
-                </p>
-
-                <div className="mt-2 flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
-                  <div>
-                    <h2 className="text-3xl font-black">
-                      Beacon Motion
-                    </h2>
-
-                    <p className="mt-3 max-w-3xl text-sm font-semibold leading-7 text-cyan-100">
-                      Create, manage and edit real motion projects using the
-                      Beacon AI and Beacon Business websites as live previews.
-                    </p>
-                  </div>
-
-                  <Link
-                    href="/demo"
-                    className="inline-flex w-fit rounded-xl bg-cyan-300 px-5 py-3 text-sm font-extrabold text-slate-950 transition hover:bg-cyan-200"
-                  >
-                    Open Beacon Motion
-                  </Link>
-                </div>
-              </div>
-
-              <div className="grid gap-5 p-6 sm:grid-cols-2 sm:p-8 2xl:grid-cols-4">
-                <BusinessStatusCard
-                  label="Motion studio"
-                  value="Live"
-                  detail="The project manager and timeline editor are available."
-                  tone="emerald"
-                />
-
-                <BusinessStatusCard
-                  label="Live previews"
-                  value="2"
-                  detail="Beacon AI and Beacon Business can be previewed inside the editor."
-                  tone="blue"
-                />
-
-                <BusinessStatusCard
-                  label="Project storage"
-                  value="Private"
-                  detail="Motion projects and assets are stored in the private Vercel Blob store."
-                  tone="violet"
-                />
-
-                <BusinessStatusCard
-                  label="Editor route"
-                  value="/demo/editor"
-                  detail="Open an existing project or create a new one from the Motion studio."
-                  tone="amber"
-                />
-              </div>
-            </section>
-
-            <section
               id="users"
               className="mt-8 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm"
             >
@@ -1309,24 +1248,6 @@ function AdminSidebar() {
                   "/admin/analytics#business",
                 label:
                   "Analytics Readiness",
-              },
-            ]}
-          />
-
-          <AdminNavigationGroup
-            title="Beacon Motion"
-            links={[
-              {
-                href:
-                  "#motion",
-                label:
-                  "Studio Status",
-              },
-              {
-                href:
-                  "/demo",
-                label:
-                  "Open Motion Studio",
               },
             ]}
           />
