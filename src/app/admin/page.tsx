@@ -1252,6 +1252,16 @@ function AdminSidebar() {
             ]}
           />
 
+<AdminNavigationGroup
+  title="Save Woolton Baths"
+  links={[
+    {
+      href: "/savewooltonbaths/admin",
+      label: "Support Registry",
+    },
+  ]}
+/>
+
           <AdminNavigationGroup
             title="Users"
             links={[
