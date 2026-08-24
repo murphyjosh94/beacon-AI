@@ -24,9 +24,40 @@ const ALLOWED_STATUSES = new Set<SupportStatus>([
   "archived",
 ]);
 
+function cleanEnvironmentValue(
+  value: string | undefined,
+  variableName?: string,
+): string {
+  let cleaned = (value ?? "").trim();
+
+  cleaned = cleaned.replace(/^["']+|["']+$/g, "").trim();
+
+  if (variableName) {
+    const prefix = `${variableName}=`;
+
+    if (
+      cleaned
+        .toLowerCase()
+        .startsWith(prefix.toLowerCase())
+    ) {
+      cleaned = cleaned.slice(prefix.length).trim();
+      cleaned = cleaned.replace(/^["']+|["']+$/g, "").trim();
+    }
+  }
+
+  return cleaned;
+}
+
 function getSupabaseAdmin() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = cleanEnvironmentValue(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    "NEXT_PUBLIC_SUPABASE_URL",
+  );
+
+  const serviceRoleKey = cleanEnvironmentValue(
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    "SUPABASE_SERVICE_ROLE_KEY",
+  );
 
   if (!supabaseUrl) {
     throw new Error(
@@ -40,8 +71,37 @@ function getSupabaseAdmin() {
     );
   }
 
+  let parsedUrl: URL;
+
+  try {
+    parsedUrl = new URL(supabaseUrl);
+  } catch {
+    console.error(
+      "[Save Woolton Baths Admin] Invalid Supabase URL format.",
+      {
+        valueLength: supabaseUrl.length,
+        startsWithHttp:
+          supabaseUrl.startsWith("http://") ||
+          supabaseUrl.startsWith("https://"),
+      },
+    );
+
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_URL is not a valid HTTP or HTTPS URL.",
+    );
+  }
+
+  if (
+    parsedUrl.protocol !== "https:" &&
+    parsedUrl.protocol !== "http:"
+  ) {
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_URL must use HTTP or HTTPS.",
+    );
+  }
+
   return createClient(
-    supabaseUrl,
+    parsedUrl.toString(),
     serviceRoleKey,
     {
       auth: {
@@ -95,11 +155,7 @@ function readStatus(
     30,
   ) as SupportStatus;
 
-  if (
-    !ALLOWED_STATUSES.has(
-      candidate,
-    )
-  ) {
+  if (!ALLOWED_STATUSES.has(candidate)) {
     throw new Error(
       "Invalid support status.",
     );
@@ -131,21 +187,17 @@ export async function updateWooltonSupportStatus(
 ) {
   await requireAdministratorAccount();
 
-  const registrationId =
-    readUuid(
-      formData.get("registrationId"),
-    );
+  const registrationId = readUuid(
+    formData.get("registrationId"),
+  );
 
-  const status =
-    readStatus(
-      formData.get("status"),
-    );
+  const status = readStatus(
+    formData.get("status"),
+  );
 
-  const supabase =
-    getSupabaseAdmin();
+  const supabase = getSupabaseAdmin();
 
-  const now =
-    new Date().toISOString();
+  const now = new Date().toISOString();
 
   const updateValues: {
     status: SupportStatus;
@@ -155,34 +207,20 @@ export async function updateWooltonSupportStatus(
     status,
   };
 
-  if (
-    status === "contacted"
-  ) {
-    updateValues.contacted_at =
-      now;
+  if (status === "contacted") {
+    updateValues.contacted_at = now;
   }
 
-  if (
-    status === "confirmed"
-  ) {
-    updateValues.confirmed_at =
-      now;
+  if (status === "confirmed") {
+    updateValues.confirmed_at = now;
   }
 
-  const {
-    error,
-  } =
-    await supabase
-      .from(
-        "save_woolton_baths_support",
-      )
-      .update(
-        updateValues,
-      )
-      .eq(
-        "id",
-        registrationId,
-      );
+  const { data, error } = await supabase
+    .from("save_woolton_baths_support")
+    .update(updateValues)
+    .eq("id", registrationId)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     console.error(
@@ -195,6 +233,12 @@ export async function updateWooltonSupportStatus(
     );
   }
 
+  if (!data) {
+    throw new Error(
+      "The support registration could not be found.",
+    );
+  }
+
   revalidateAdminPages();
 }
 
@@ -203,41 +247,26 @@ export async function updateWooltonSupportNotes(
 ) {
   await requireAdministratorAccount();
 
-  const registrationId =
-    readUuid(
-      formData.get(
-        "registrationId",
-      ),
-    );
+  const registrationId = readUuid(
+    formData.get("registrationId"),
+  );
 
-  const internalNotes =
-    readString(
-      formData.get(
-        "internalNotes",
-      ),
-      5000,
-    );
+  const internalNotes = readString(
+    formData.get("internalNotes"),
+    5000,
+  );
 
-  const supabase =
-    getSupabaseAdmin();
+  const supabase = getSupabaseAdmin();
 
-  const {
-    error,
-  } =
-    await supabase
-      .from(
-        "save_woolton_baths_support",
-      )
-      .update({
-        internal_notes:
-          emptyToNull(
-            internalNotes,
-          ),
-      })
-      .eq(
-        "id",
-        registrationId,
-      );
+  const { data, error } = await supabase
+    .from("save_woolton_baths_support")
+    .update({
+      internal_notes:
+        emptyToNull(internalNotes),
+    })
+    .eq("id", registrationId)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     console.error(
@@ -250,6 +279,12 @@ export async function updateWooltonSupportNotes(
     );
   }
 
+  if (!data) {
+    throw new Error(
+      "The support registration could not be found.",
+    );
+  }
+
   revalidateAdminPages();
 }
 
@@ -258,36 +293,23 @@ export async function markWooltonSupportContacted(
 ) {
   await requireAdministratorAccount();
 
-  const registrationId =
-    readUuid(
-      formData.get(
-        "registrationId",
-      ),
-    );
+  const registrationId = readUuid(
+    formData.get("registrationId"),
+  );
 
-  const supabase =
-    getSupabaseAdmin();
+  const supabase = getSupabaseAdmin();
 
-  const now =
-    new Date().toISOString();
+  const now = new Date().toISOString();
 
-  const {
-    error,
-  } =
-    await supabase
-      .from(
-        "save_woolton_baths_support",
-      )
-      .update({
-        status:
-          "contacted",
-        contacted_at:
-          now,
-      })
-      .eq(
-        "id",
-        registrationId,
-      );
+  const { data, error } = await supabase
+    .from("save_woolton_baths_support")
+    .update({
+      status: "contacted",
+      contacted_at: now,
+    })
+    .eq("id", registrationId)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     console.error(
@@ -300,6 +322,12 @@ export async function markWooltonSupportContacted(
     );
   }
 
+  if (!data) {
+    throw new Error(
+      "The support registration could not be found.",
+    );
+  }
+
   revalidateAdminPages();
 }
 
@@ -308,36 +336,23 @@ export async function markWooltonSupportConfirmed(
 ) {
   await requireAdministratorAccount();
 
-  const registrationId =
-    readUuid(
-      formData.get(
-        "registrationId",
-      ),
-    );
+  const registrationId = readUuid(
+    formData.get("registrationId"),
+  );
 
-  const supabase =
-    getSupabaseAdmin();
+  const supabase = getSupabaseAdmin();
 
-  const now =
-    new Date().toISOString();
+  const now = new Date().toISOString();
 
-  const {
-    error,
-  } =
-    await supabase
-      .from(
-        "save_woolton_baths_support",
-      )
-      .update({
-        status:
-          "confirmed",
-        confirmed_at:
-          now,
-      })
-      .eq(
-        "id",
-        registrationId,
-      );
+  const { data, error } = await supabase
+    .from("save_woolton_baths_support")
+    .update({
+      status: "confirmed",
+      confirmed_at: now,
+    })
+    .eq("id", registrationId)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     console.error(
@@ -350,6 +365,12 @@ export async function markWooltonSupportConfirmed(
     );
   }
 
+  if (!data) {
+    throw new Error(
+      "The support registration could not be found.",
+    );
+  }
+
   revalidateAdminPages();
 }
 
@@ -358,31 +379,20 @@ export async function archiveWooltonSupportRegistration(
 ) {
   await requireAdministratorAccount();
 
-  const registrationId =
-    readUuid(
-      formData.get(
-        "registrationId",
-      ),
-    );
+  const registrationId = readUuid(
+    formData.get("registrationId"),
+  );
 
-  const supabase =
-    getSupabaseAdmin();
+  const supabase = getSupabaseAdmin();
 
-  const {
-    error,
-  } =
-    await supabase
-      .from(
-        "save_woolton_baths_support",
-      )
-      .update({
-        status:
-          "archived",
-      })
-      .eq(
-        "id",
-        registrationId,
-      );
+  const { data, error } = await supabase
+    .from("save_woolton_baths_support")
+    .update({
+      status: "archived",
+    })
+    .eq("id", registrationId)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     console.error(
@@ -392,6 +402,12 @@ export async function archiveWooltonSupportRegistration(
 
     throw new Error(
       "Unable to archive the registration.",
+    );
+  }
+
+  if (!data) {
+    throw new Error(
+      "The support registration could not be found.",
     );
   }
 

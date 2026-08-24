@@ -19,7 +19,6 @@ import {
   Phone,
   Search,
   ShieldCheck,
-  UserRound,
   Users,
   Wrench,
 } from "lucide-react";
@@ -74,6 +73,7 @@ type SupportRegistration = {
   phone: string | null;
   organisation: string | null;
   postcode: string | null;
+
   support_type: SupportType;
 
   trade_profession: string | null;
@@ -180,12 +180,40 @@ const STATUS_OPTIONS: Array<{
   },
 ];
 
-function getSupabaseAdmin() {
-  const supabaseUrl =
-    process.env.NEXT_PUBLIC_SUPABASE_URL;
+function cleanEnvironmentValue(
+  value: string | undefined,
+  variableName?: string,
+): string {
+  let cleaned = (value ?? "").trim();
 
-  const serviceRoleKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY;
+  cleaned = cleaned.replace(/^["']+|["']+$/g, "").trim();
+
+  if (variableName) {
+    const prefix = `${variableName}=`;
+
+    if (
+      cleaned
+        .toLowerCase()
+        .startsWith(prefix.toLowerCase())
+    ) {
+      cleaned = cleaned.slice(prefix.length).trim();
+      cleaned = cleaned.replace(/^["']+|["']+$/g, "").trim();
+    }
+  }
+
+  return cleaned;
+}
+
+function getSupabaseAdmin() {
+  const supabaseUrl = cleanEnvironmentValue(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    "NEXT_PUBLIC_SUPABASE_URL",
+  );
+
+  const serviceRoleKey = cleanEnvironmentValue(
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    "SUPABASE_SERVICE_ROLE_KEY",
+  );
 
   if (!supabaseUrl) {
     throw new Error(
@@ -199,8 +227,37 @@ function getSupabaseAdmin() {
     );
   }
 
+  let parsedUrl: URL;
+
+  try {
+    parsedUrl = new URL(supabaseUrl);
+  } catch {
+    console.error(
+      "[Save Woolton Baths Admin] Invalid Supabase URL format.",
+      {
+        valueLength: supabaseUrl.length,
+        startsWithHttp:
+          supabaseUrl.startsWith("http://") ||
+          supabaseUrl.startsWith("https://"),
+      },
+    );
+
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_URL is not a valid HTTP or HTTPS URL.",
+    );
+  }
+
+  if (
+    parsedUrl.protocol !== "https:" &&
+    parsedUrl.protocol !== "http:"
+  ) {
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_URL must use HTTP or HTTPS.",
+    );
+  }
+
   return createClient(
-    supabaseUrl,
+    parsedUrl.toString(),
     serviceRoleKey,
     {
       auth: {
@@ -215,18 +272,22 @@ function readSearchParameter(
   value: string | string[] | undefined,
   maxLength = 120,
 ): string {
-  if (
-    typeof value !== "string"
-  ) {
+  if (typeof value !== "string") {
     return "";
   }
 
   return value
     .trim()
-    .slice(
-      0,
-      maxLength,
-    );
+    .slice(0, maxLength);
+}
+
+function escapeSupabaseSearchTerm(
+  value: string,
+): string {
+  return value
+    .replace(/[%_,()]/g, "")
+    .trim()
+    .slice(0, 120);
 }
 
 function isSupportType(
@@ -247,29 +308,20 @@ function isSupportStatus(
   );
 }
 
-function formatDate(
+function formatDateTime(
   value: string | null,
 ): string {
   if (!value) {
     return "Not recorded";
   }
 
-  return new Intl.DateTimeFormat(
-    "en-GB",
-    {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    },
-  ).format(
-    new Date(value),
-  );
-}
+  const date = new Date(value);
 
-function formatDateTime(
-  value: string | null,
-): string {
-  if (!value) {
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
     return "Not recorded";
   }
 
@@ -282,9 +334,7 @@ function formatDateTime(
       hour: "2-digit",
       minute: "2-digit",
     },
-  ).format(
-    new Date(value),
-  );
+  ).format(date);
 }
 
 function formatNumber(
@@ -322,39 +372,27 @@ function getStatusLabel(
 function getStatusClasses(
   status: SupportStatus,
 ): string {
-  if (
-    status === "new"
-  ) {
+  if (status === "new") {
     return "bg-blue-100 text-blue-800";
   }
 
-  if (
-    status === "reviewing"
-  ) {
+  if (status === "reviewing") {
     return "bg-amber-100 text-amber-800";
   }
 
-  if (
-    status === "contacted"
-  ) {
+  if (status === "contacted") {
     return "bg-violet-100 text-violet-800";
   }
 
-  if (
-    status === "confirmed"
-  ) {
+  if (status === "confirmed") {
     return "bg-emerald-100 text-emerald-800";
   }
 
-  if (
-    status === "completed"
-  ) {
+  if (status === "completed") {
     return "bg-teal-100 text-teal-800";
   }
 
-  if (
-    status === "declined"
-  ) {
+  if (status === "declined") {
     return "bg-red-100 text-red-800";
   }
 
@@ -364,57 +402,39 @@ function getStatusClasses(
 function getSupportIcon(
   type: SupportType,
 ) {
-  if (
-    type === "general"
-  ) {
+  if (type === "general") {
     return HeartHandshake;
   }
 
-  if (
-    type === "volunteer"
-  ) {
+  if (type === "volunteer") {
     return Users;
   }
 
-  if (
-    type === "trade"
-  ) {
+  if (type === "trade") {
     return Hammer;
   }
 
-  if (
-    type === "materials"
-  ) {
+  if (type === "materials") {
     return PackageOpen;
   }
 
-  if (
-    type === "equipment"
-  ) {
+  if (type === "equipment") {
     return Wrench;
   }
 
-  if (
-    type === "sponsorship"
-  ) {
+  if (type === "sponsorship") {
     return Building2;
   }
 
-  if (
-    type === "funding"
-  ) {
+  if (type === "funding") {
     return BadgePoundSterling;
   }
 
-  if (
-    type === "education"
-  ) {
+  if (type === "education") {
     return GraduationCap;
   }
 
-  if (
-    type === "professional"
-  ) {
+  if (type === "professional") {
     return Landmark;
   }
 
@@ -432,22 +452,19 @@ export default async function SaveWooltonBathsAdminPage({
       ? await searchParams
       : undefined;
 
-  const query =
-    readSearchParameter(
-      resolvedSearchParams?.q,
-    );
+  const query = readSearchParameter(
+    resolvedSearchParams?.q,
+  );
 
-  const rawType =
-    readSearchParameter(
-      resolvedSearchParams?.type,
-      30,
-    );
+  const rawType = readSearchParameter(
+    resolvedSearchParams?.type,
+    30,
+  );
 
-  const rawStatus =
-    readSearchParameter(
-      resolvedSearchParams?.status,
-      30,
-    );
+  const rawStatus = readSearchParameter(
+    resolvedSearchParams?.status,
+    30,
+  );
 
   const supportType =
     isSupportType(rawType)
@@ -459,47 +476,41 @@ export default async function SaveWooltonBathsAdminPage({
       ? rawStatus
       : "";
 
-  const supabase =
-    getSupabaseAdmin();
+  const supabase = getSupabaseAdmin();
 
-  let registryQuery =
-    supabase
-      .from(
-        "save_woolton_baths_support",
-      )
-      .select(
-        `
-          id,
-          name,
-          email,
-          phone,
-          organisation,
-          postcode,
-          support_type,
-          trade_profession,
-          material_details,
-          equipment_details,
-          sponsorship_details,
-          funding_details,
-          education_details,
-          professional_details,
-          message,
-          permission_to_contact,
-          public_support,
-          status,
-          internal_notes,
-          contacted_at,
-          confirmed_at,
-          created_at,
-          updated_at
-        `,
-      )
-      .order(
-        "created_at",
-        {
-          ascending: false,
-        },
-      );
+  let registryQuery = supabase
+    .from("save_woolton_baths_support")
+    .select(`
+      id,
+      name,
+      email,
+      phone,
+      organisation,
+      postcode,
+      support_type,
+      trade_profession,
+      material_details,
+      equipment_details,
+      sponsorship_details,
+      funding_details,
+      education_details,
+      professional_details,
+      message,
+      permission_to_contact,
+      public_support,
+      status,
+      internal_notes,
+      contacted_at,
+      confirmed_at,
+      created_at,
+      updated_at
+    `)
+    .order(
+      "created_at",
+      {
+        ascending: false,
+      },
+    );
 
   if (supportType) {
     registryQuery =
@@ -517,14 +528,19 @@ export default async function SaveWooltonBathsAdminPage({
       );
   }
 
-  if (query) {
+  const safeSearchTerm =
+    escapeSupabaseSearchTerm(
+      query,
+    );
+
+  if (safeSearchTerm) {
     registryQuery =
       registryQuery.or(
         [
-          `name.ilike.%${query}%`,
-          `email.ilike.%${query}%`,
-          `organisation.ilike.%${query}%`,
-          `postcode.ilike.%${query}%`,
+          `name.ilike.%${safeSearchTerm}%`,
+          `email.ilike.%${safeSearchTerm}%`,
+          `organisation.ilike.%${safeSearchTerm}%`,
+          `postcode.ilike.%${safeSearchTerm}%`,
         ].join(","),
       );
   }
@@ -536,100 +552,87 @@ export default async function SaveWooltonBathsAdminPage({
     tradeResult,
     materialEquipmentResult,
     sponsorFundingResult,
-  ] =
-    await Promise.all([
-      registryQuery,
+  ] = await Promise.all([
+    registryQuery,
 
-      supabase
-        .from(
-          "save_woolton_baths_support",
-        )
-        .select(
-          "id",
-          {
-            count: "exact",
-            head: true,
-          },
-        ),
+    supabase
+      .from("save_woolton_baths_support")
+      .select(
+        "id",
+        {
+          count: "exact",
+          head: true,
+        },
+      ),
 
-      supabase
-        .from(
-          "save_woolton_baths_support",
-        )
-        .select(
-          "id",
-          {
-            count: "exact",
-            head: true,
-          },
-        )
-        .eq(
-          "status",
-          "new",
-        ),
+    supabase
+      .from("save_woolton_baths_support")
+      .select(
+        "id",
+        {
+          count: "exact",
+          head: true,
+        },
+      )
+      .eq(
+        "status",
+        "new",
+      ),
 
-      supabase
-        .from(
-          "save_woolton_baths_support",
-        )
-        .select(
-          "id",
-          {
-            count: "exact",
-            head: true,
-          },
-        )
-        .in(
-          "support_type",
-          [
-            "trade",
-            "volunteer",
-            "professional",
-          ],
-        ),
+    supabase
+      .from("save_woolton_baths_support")
+      .select(
+        "id",
+        {
+          count: "exact",
+          head: true,
+        },
+      )
+      .in(
+        "support_type",
+        [
+          "trade",
+          "volunteer",
+          "professional",
+        ],
+      ),
 
-      supabase
-        .from(
-          "save_woolton_baths_support",
-        )
-        .select(
-          "id",
-          {
-            count: "exact",
-            head: true,
-          },
-        )
-        .in(
-          "support_type",
-          [
-            "materials",
-            "equipment",
-          ],
-        ),
+    supabase
+      .from("save_woolton_baths_support")
+      .select(
+        "id",
+        {
+          count: "exact",
+          head: true,
+        },
+      )
+      .in(
+        "support_type",
+        [
+          "materials",
+          "equipment",
+        ],
+      ),
 
-      supabase
-        .from(
-          "save_woolton_baths_support",
-        )
-        .select(
-          "id",
-          {
-            count: "exact",
-            head: true,
-          },
-        )
-        .in(
-          "support_type",
-          [
-            "sponsorship",
-            "funding",
-          ],
-        ),
-    ]);
+    supabase
+      .from("save_woolton_baths_support")
+      .select(
+        "id",
+        {
+          count: "exact",
+          head: true,
+        },
+      )
+      .in(
+        "support_type",
+        [
+          "sponsorship",
+          "funding",
+        ],
+      ),
+  ]);
 
-  if (
-    registryResult.error
-  ) {
+  if (registryResult.error) {
     console.error(
       "[Save Woolton Baths Admin] Failed to load registry:",
       registryResult.error,
@@ -640,6 +643,41 @@ export default async function SaveWooltonBathsAdminPage({
     );
   }
 
+  if (totalResult.error) {
+    console.error(
+      "[Save Woolton Baths Admin] Failed to load total count:",
+      totalResult.error,
+    );
+  }
+
+  if (newResult.error) {
+    console.error(
+      "[Save Woolton Baths Admin] Failed to load new count:",
+      newResult.error,
+    );
+  }
+
+  if (tradeResult.error) {
+    console.error(
+      "[Save Woolton Baths Admin] Failed to load trade count:",
+      tradeResult.error,
+    );
+  }
+
+  if (materialEquipmentResult.error) {
+    console.error(
+      "[Save Woolton Baths Admin] Failed to load materials/equipment count:",
+      materialEquipmentResult.error,
+    );
+  }
+
+  if (sponsorFundingResult.error) {
+    console.error(
+      "[Save Woolton Baths Admin] Failed to load sponsor/funding count:",
+      sponsorFundingResult.error,
+    );
+  }
+
   const registrations =
     (
       registryResult.data ??
@@ -647,31 +685,22 @@ export default async function SaveWooltonBathsAdminPage({
     ) as SupportRegistration[];
 
   const totalRegistrations =
-    totalResult.count ??
-    0;
+    totalResult.count ?? 0;
 
   const newRegistrations =
-    newResult.count ??
-    0;
+    newResult.count ?? 0;
 
   const tradeSupport =
-    tradeResult.count ??
-    0;
+    tradeResult.count ?? 0;
 
   const materialEquipmentSupport =
-    materialEquipmentResult.count ??
-    0;
+    materialEquipmentResult.count ?? 0;
 
   const sponsorFundingSupport =
-    sponsorFundingResult.count ??
-    0;
+    sponsorFundingResult.count ?? 0;
 
   return (
     <main className="min-h-screen bg-slate-100 text-slate-950">
-      {/* ============================================================ */}
-      {/* HEADER */}
-      {/* ============================================================ */}
-
       <section className="relative overflow-hidden bg-[#071522] px-6 py-12 text-white sm:py-16">
         <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-[#D4AF37]/10 blur-3xl" />
         <div className="absolute -bottom-32 left-1/4 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
@@ -722,14 +751,8 @@ export default async function SaveWooltonBathsAdminPage({
         </div>
       </section>
 
-      {/* ============================================================ */}
-      {/* CONTENT */}
-      {/* ============================================================ */}
-
       <section className="px-6 py-10">
         <div className="mx-auto max-w-7xl">
-          {/* SUMMARY */}
-
           <section>
             <p className="text-xs font-black uppercase tracking-[0.22em] text-[#8D7425]">
               Campaign Overview
@@ -786,8 +809,6 @@ export default async function SaveWooltonBathsAdminPage({
               />
             </div>
           </section>
-
-          {/* FILTERS */}
 
           <section className="mt-8 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-200 px-6 py-6 sm:px-8">
@@ -917,8 +938,6 @@ export default async function SaveWooltonBathsAdminPage({
             </div>
           </section>
 
-          {/* REGISTRY */}
-
           <section className="mt-8">
             {registrations.length > 0 ? (
               <div className="space-y-6">
@@ -1009,57 +1028,54 @@ function RegistrationCard({
       registration.support_type,
     );
 
-  const detailBlocks =
-    [
-      {
-        label: "Trade / Profession",
-        value:
-          registration.trade_profession,
-      },
-      {
-        label: "Materials Offered",
-        value:
-          registration.material_details,
-      },
-      {
-        label: "Equipment Offered",
-        value:
-          registration.equipment_details,
-      },
-      {
-        label: "Sponsorship Details",
-        value:
-          registration.sponsorship_details,
-      },
-      {
-        label: "Funding Details",
-        value:
-          registration.funding_details,
-      },
-      {
-        label: "Educational Support",
-        value:
-          registration.education_details,
-      },
-      {
-        label: "Professional Advice",
-        value:
-          registration.professional_details,
-      },
-      {
-        label: "Additional Message",
-        value:
-          registration.message,
-      },
-    ].filter(
-      (item) =>
-        Boolean(item.value),
-    );
+  const detailBlocks = [
+    {
+      label: "Trade / Profession",
+      value:
+        registration.trade_profession,
+    },
+    {
+      label: "Materials Offered",
+      value:
+        registration.material_details,
+    },
+    {
+      label: "Equipment Offered",
+      value:
+        registration.equipment_details,
+    },
+    {
+      label: "Sponsorship Details",
+      value:
+        registration.sponsorship_details,
+    },
+    {
+      label: "Funding Details",
+      value:
+        registration.funding_details,
+    },
+    {
+      label: "Educational Support",
+      value:
+        registration.education_details,
+    },
+    {
+      label: "Professional Advice",
+      value:
+        registration.professional_details,
+    },
+    {
+      label: "Additional Message",
+      value:
+        registration.message,
+    },
+  ].filter(
+    (item) =>
+      Boolean(item.value),
+  );
 
   return (
     <article className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-      {/* CARD HEADER */}
-
       <div className="border-b border-slate-200 bg-[#102532] px-6 py-6 text-white sm:px-8">
         <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-start">
           <div className="flex min-w-0 items-start gap-4">
@@ -1106,11 +1122,7 @@ function RegistrationCard({
         </div>
       </div>
 
-      {/* BODY */}
-
       <div className="grid gap-8 p-6 sm:p-8 xl:grid-cols-[0.8fr_1.2fr]">
-        {/* CONTACT */}
-
         <div>
           <p className="text-xs font-black uppercase tracking-[0.2em] text-[#8D7425]">
             Contact Details
@@ -1206,8 +1218,6 @@ function RegistrationCard({
           </dl>
         </div>
 
-        {/* OFFER + MANAGEMENT */}
-
         <div className="min-w-0">
           <p className="text-xs font-black uppercase tracking-[0.2em] text-[#8D7425]">
             Offer & Management
@@ -1237,8 +1247,6 @@ function RegistrationCard({
               No additional details were provided.
             </div>
           )}
-
-          {/* STATUS */}
 
           <section className="mt-7 rounded-2xl border border-slate-200 bg-white p-5">
             <p className="font-black">
@@ -1352,8 +1360,6 @@ function RegistrationCard({
               </form>
             </div>
           </section>
-
-          {/* NOTES */}
 
           <section className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
             <p className="font-black">
