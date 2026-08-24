@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
   ArrowRight,
   HeartHandshake,
   Landmark,
-  Waves,
 } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -28,6 +28,12 @@ export const metadata: Metadata = {
       "Help bring Woolton Baths back to life through a community-led restoration campaign.",
     type: "website",
     siteName: "Save Woolton Baths",
+    images: [
+      {
+        url: "/savewooltonbaths/logo.png",
+        alt: "Save Woolton Baths",
+      },
+    ],
   },
 };
 
@@ -39,16 +45,18 @@ export default function SaveWooltonBathsLayout({
   return (
     <html lang="en">
       <body className="bg-[#06121D] text-white antialiased">
-        <div className="min-h-screen flex flex-col">
+        <div className="flex min-h-screen flex-col">
           {/* ------------------------------------------------------------ */}
           {/* Top Campaign Banner */}
           {/* ------------------------------------------------------------ */}
 
           <div className="bg-gradient-to-r from-[#D4AF37] via-[#F5D97B] to-[#D4AF37] text-black">
             <div className="mx-auto flex max-w-7xl items-center justify-center gap-3 px-4 py-2 text-center text-sm font-semibold">
-              <Landmark className="h-4 w-4" />
-              Community-led restoration campaign for the historic Grade II listed
-              Woolton Baths.
+              <Landmark className="h-4 w-4 shrink-0" />
+              <span>
+                Community-led restoration campaign for the historic Grade II
+                listed Woolton Baths.
+              </span>
             </div>
           </div>
 
@@ -57,31 +65,47 @@ export default function SaveWooltonBathsLayout({
           {/* ------------------------------------------------------------ */}
 
           <header className="sticky top-0 z-50 border-b border-white/10 bg-[#06121D]/90 backdrop-blur-xl">
-            <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
-              <Link href="/savewooltonbaths" className="group">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[#D4AF37]/60 bg-[#0C2235] transition group-hover:rotate-6">
-                    <Waves className="h-6 w-6 text-[#D4AF37]" />
-                  </div>
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-5 px-5 py-3">
+              <Link
+                href="/savewooltonbaths"
+                className="group flex min-w-0 items-center gap-4"
+                aria-label="Save Woolton Baths home"
+              >
+                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-[#D4AF37]/40 bg-[#0C2235] shadow-lg shadow-black/20 sm:h-20 sm:w-20">
+                  <Image
+                    src="/savewooltonbaths/logo.png"
+                    alt="Save Woolton Baths logo"
+                    fill
+                    priority
+                    sizes="80px"
+                    className="object-cover transition duration-300 group-hover:scale-105"
+                  />
+                </div>
 
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.35em] text-[#D4AF37]">
-                      Community Campaign
-                    </p>
+                <div className="hidden min-w-0 sm:block">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-[#D4AF37] lg:text-xs">
+                    Community Campaign
+                  </p>
 
-                    <h1 className="text-lg font-bold tracking-wide">
-                      Save Woolton Baths
-                    </h1>
-                  </div>
+                  <p className="mt-1 text-base font-bold tracking-wide text-white lg:text-lg">
+                    Save Woolton Baths
+                  </p>
                 </div>
               </Link>
 
-              <nav className="hidden items-center gap-8 text-sm font-medium md:flex">
+              <nav className="hidden items-center gap-7 text-sm font-medium md:flex">
                 <Link
                   href="/savewooltonbaths"
                   className="transition hover:text-[#D4AF37]"
                 >
                   Home
+                </Link>
+
+                <Link
+                  href="/savewooltonbaths/history"
+                  className="transition hover:text-[#D4AF37]"
+                >
+                  History
                 </Link>
 
                 <Link
@@ -101,22 +125,46 @@ export default function SaveWooltonBathsLayout({
 
               <Link
                 href="/savewooltonbaths/support"
-                className="hidden rounded-full bg-[#D4AF37] px-5 py-2 text-sm font-semibold text-black transition hover:bg-[#E5C24F] md:inline-flex"
+                className="hidden rounded-full bg-[#D4AF37] px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-[#E5C24F] md:inline-flex"
               >
                 Register Support
               </Link>
             </div>
 
+            {/* ------------------------------------------------------------ */}
             {/* Mobile Navigation */}
+            {/* ------------------------------------------------------------ */}
 
             <div className="border-t border-white/10 md:hidden">
-              <div className="mx-auto flex max-w-7xl items-center justify-around py-3 text-xs font-semibold">
-                <Link href="/savewooltonbaths">Home</Link>
+              <nav className="mx-auto grid max-w-7xl grid-cols-4 text-center text-xs font-semibold">
+                <Link
+                  href="/savewooltonbaths"
+                  className="px-2 py-3 transition hover:bg-white/5 hover:text-[#D4AF37]"
+                >
+                  Home
+                </Link>
 
-                <Link href="/savewooltonbaths/support">Support</Link>
+                <Link
+                  href="/savewooltonbaths/history"
+                  className="px-2 py-3 transition hover:bg-white/5 hover:text-[#D4AF37]"
+                >
+                  History
+                </Link>
 
-                <Link href="/savewooltonbaths/donate">Donate</Link>
-              </div>
+                <Link
+                  href="/savewooltonbaths/support"
+                  className="px-2 py-3 transition hover:bg-white/5 hover:text-[#D4AF37]"
+                >
+                  Support
+                </Link>
+
+                <Link
+                  href="/savewooltonbaths/donate"
+                  className="px-2 py-3 transition hover:bg-white/5 hover:text-[#D4AF37]"
+                >
+                  Donate
+                </Link>
+              </nav>
             </div>
           </header>
 
@@ -146,12 +194,13 @@ export default function SaveWooltonBathsLayout({
                     </h2>
 
                     <p className="text-base leading-8 text-slate-300">
-                      The Save Woolton Baths campaign would like to sincerely thank{" "}
+                      The Save Woolton Baths campaign would like to sincerely
+                      thank{" "}
                       <span className="font-semibold text-[#D4AF37]">
                         Beacon AI
                       </span>{" "}
-                      for donating the design, development and ongoing hosting of
-                      this website.
+                      for donating the design, development and ongoing hosting
+                      of this website.
                     </p>
 
                     <p className="mt-5 text-base leading-8 text-slate-300">
@@ -165,10 +214,11 @@ export default function SaveWooltonBathsLayout({
                     </p>
                   </div>
 
-                  <div className="flex-shrink-0">
+                  <div className="shrink-0">
                     <Link
                       href="https://beacon-ai.co.uk"
                       target="_blank"
+                      rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/50 px-6 py-3 text-sm font-semibold text-[#D4AF37] transition hover:bg-[#D4AF37] hover:text-black"
                     >
                       Visit Beacon AI
@@ -188,9 +238,27 @@ export default function SaveWooltonBathsLayout({
             <div className="mx-auto max-w-7xl px-6 py-12">
               <div className="grid gap-10 md:grid-cols-3">
                 <div>
-                  <p className="mb-2 text-xs uppercase tracking-[0.3em] text-[#D4AF37]">
-                    Save Woolton Baths
-                  </p>
+                  <div className="mb-5 flex items-center gap-4">
+                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-[#D4AF37]/30">
+                      <Image
+                        src="/savewooltonbaths/logo.png"
+                        alt="Save Woolton Baths"
+                        fill
+                        sizes="64px"
+                        className="object-cover"
+                      />
+                    </div>
+
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.3em] text-[#D4AF37]">
+                        Save Woolton Baths
+                      </p>
+
+                      <p className="mt-1 text-sm font-semibold text-slate-300">
+                        Woolton · Liverpool
+                      </p>
+                    </div>
+                  </div>
 
                   <h3 className="text-xl font-bold">
                     Bringing Woolton Baths back to life.
@@ -220,6 +288,15 @@ export default function SaveWooltonBathsLayout({
 
                     <li>
                       <Link
+                        href="/savewooltonbaths/history"
+                        className="hover:text-[#D4AF37]"
+                      >
+                        Our History
+                      </Link>
+                    </li>
+
+                    <li>
+                      <Link
                         href="/savewooltonbaths/support"
                         className="hover:text-[#D4AF37]"
                       >
@@ -244,15 +321,18 @@ export default function SaveWooltonBathsLayout({
                   </h4>
 
                   <p className="text-sm leading-7 text-slate-400">
-                    We believe Woolton Baths belongs at the heart of the community.
-                    Every volunteer, sponsor, supplier and supporter helps move
-                    this historic building one step closer to reopening.
+                    We believe Woolton Baths belongs at the heart of the
+                    community. Every volunteer, sponsor, supplier and supporter
+                    helps move this historic building one step closer to
+                    reopening.
                   </p>
                 </div>
               </div>
 
               <div className="mt-12 flex flex-col items-start justify-between gap-4 border-t border-white/10 pt-8 text-sm text-slate-500 md:flex-row md:items-center">
-                <p>© {new Date().getFullYear()} Save Woolton Baths Campaign.</p>
+                <p>
+                  © {new Date().getFullYear()} Save Woolton Baths Campaign.
+                </p>
 
                 <p className="text-[#D4AF37]">
                   Website designed, built & hosted free of charge by Beacon AI.
