@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: "Save Woolton Baths | Community Restoration Campaign",
   description:
     "A community-led campaign to secure and restore the historic Grade II listed Woolton Baths in Liverpool through a Community Asset Transfer.",
+
   keywords: [
     "Save Woolton Baths",
     "Woolton Baths",
@@ -22,6 +23,18 @@ export const metadata: Metadata = {
     "Woolton",
     "South Liverpool",
   ],
+
+  icons: {
+    icon: [
+      {
+        url: "/savewooltonbaths/logo.png",
+        type: "image/png",
+      },
+    ],
+    shortcut: "/savewooltonbaths/logo.png",
+    apple: "/savewooltonbaths/logo.png",
+  },
+
   openGraph: {
     title: "Save Woolton Baths",
     description:
@@ -36,7 +49,6 @@ export const metadata: Metadata = {
     ],
   },
 };
-
 export default function SaveWooltonBathsLayout({
   children,
 }: {
