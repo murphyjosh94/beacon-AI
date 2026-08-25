@@ -53,6 +53,7 @@ export default function SaveWooltonBathsLayout({
           <div className="bg-gradient-to-r from-[#D4AF37] via-[#F5D97B] to-[#D4AF37] text-black">
             <div className="mx-auto flex max-w-7xl items-center justify-center gap-3 px-4 py-2 text-center text-sm font-semibold">
               <Landmark className="h-4 w-4 shrink-0" />
+
               <span>
                 Community-led restoration campaign for the historic Grade II
                 listed Woolton Baths.
@@ -93,6 +94,8 @@ export default function SaveWooltonBathsLayout({
                 </div>
               </Link>
 
+              {/* Desktop Navigation */}
+
               <nav className="hidden items-center gap-7 text-sm font-medium md:flex">
                 <Link
                   href="/savewooltonbaths"
@@ -106,6 +109,13 @@ export default function SaveWooltonBathsLayout({
                   className="transition hover:text-[#D4AF37]"
                 >
                   History
+                </Link>
+
+                <Link
+                  href="/savewooltonbaths/updates"
+                  className="transition hover:text-[#D4AF37]"
+                >
+                  Updates
                 </Link>
 
                 <Link
@@ -136,31 +146,38 @@ export default function SaveWooltonBathsLayout({
             {/* ------------------------------------------------------------ */}
 
             <div className="border-t border-white/10 md:hidden">
-              <nav className="mx-auto grid max-w-7xl grid-cols-4 text-center text-xs font-semibold">
+              <nav className="mx-auto grid max-w-7xl grid-cols-5 text-center text-[11px] font-semibold sm:text-xs">
                 <Link
                   href="/savewooltonbaths"
-                  className="px-2 py-3 transition hover:bg-white/5 hover:text-[#D4AF37]"
+                  className="px-1 py-3 transition hover:bg-white/5 hover:text-[#D4AF37]"
                 >
                   Home
                 </Link>
 
                 <Link
                   href="/savewooltonbaths/history"
-                  className="px-2 py-3 transition hover:bg-white/5 hover:text-[#D4AF37]"
+                  className="px-1 py-3 transition hover:bg-white/5 hover:text-[#D4AF37]"
                 >
                   History
                 </Link>
 
                 <Link
+                  href="/savewooltonbaths/updates"
+                  className="px-1 py-3 transition hover:bg-white/5 hover:text-[#D4AF37]"
+                >
+                  Updates
+                </Link>
+
+                <Link
                   href="/savewooltonbaths/support"
-                  className="px-2 py-3 transition hover:bg-white/5 hover:text-[#D4AF37]"
+                  className="px-1 py-3 transition hover:bg-white/5 hover:text-[#D4AF37]"
                 >
                   Support
                 </Link>
 
                 <Link
                   href="/savewooltonbaths/donate"
-                  className="px-2 py-3 transition hover:bg-white/5 hover:text-[#D4AF37]"
+                  className="px-1 py-3 transition hover:bg-white/5 hover:text-[#D4AF37]"
                 >
                   Donate
                 </Link>
@@ -292,6 +309,15 @@ export default function SaveWooltonBathsLayout({
                         className="hover:text-[#D4AF37]"
                       >
                         Our History
+                      </Link>
+                    </li>
+
+                    <li>
+                      <Link
+                        href="/savewooltonbaths/updates"
+                        className="hover:text-[#D4AF37]"
+                      >
+                        Project Updates
                       </Link>
                     </li>
 
