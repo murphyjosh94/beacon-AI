@@ -291,38 +291,55 @@ export default function SaveWooltonBathsPartnersPage() {
           </div>
         ) : null}
 
-        {!loading && error ? (
-          <div className="rounded-[2rem] border border-red-200 bg-red-50 p-8">
-            <h2 className="text-xl font-black text-red-900">
-              Unable to load supporters and partners
-            </h2>
+        {!loading && (error || groupedPartners.length === 0) ? (
+          <section className="overflow-hidden rounded-[2rem] border border-[#D8D2C5] bg-white shadow-sm">
+            <div className="h-1.5 bg-[#D4AF37]" />
 
-            <p className="mt-3 text-sm leading-6 text-red-800">{error}</p>
-          </div>
-        ) : null}
+            <div className="px-7 py-10 text-center sm:px-12 sm:py-14">
+              <div className="mx-auto inline-flex rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#9A7917]">
+                Partners coming soon
+              </div>
 
-        {!loading && !error && groupedPartners.length === 0 ? (
-          <section className="rounded-[2rem] border border-[#D8D2C5] bg-white p-8 text-center shadow-sm sm:p-12">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#D4AF37]/15 text-2xl">
-              🤝
+              <h2 className="mx-auto mt-6 max-w-3xl text-3xl font-black tracking-tight text-[#0A2236] sm:text-4xl">
+                Our partnership network is growing
+              </h2>
+
+              <p className="mx-auto mt-5 max-w-3xl text-base leading-8 text-slate-600 sm:text-lg">
+                We&apos;re working with professionals, businesses and organisations
+                who share our ambition to bring Woolton Baths back into community
+                use.
+              </p>
+
+              <p className="mx-auto mt-4 max-w-3xl text-base leading-8 text-slate-600 sm:text-lg">
+                Confirmed supporters and partners will be recognised here once
+                permission to display their involvement has been received.
+              </p>
+
+              <div className="mx-auto mt-9 grid max-w-4xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {[
+                  "Professional Support",
+                  "Heritage & Construction",
+                  "Engineering & Energy",
+                  "Community Support",
+                  "Academic Support",
+                  "Media & Awareness",
+                ].map((label) => (
+                  <div
+                    key={label}
+                    className="rounded-2xl border border-[#E7E2D8] bg-[#FAF9F6] px-4 py-4 text-sm font-bold text-[#0A2236]"
+                  >
+                    {label}
+                  </div>
+                ))}
+              </div>
+
+              <Link
+                href="/savewooltonbaths/support"
+                className="mt-9 inline-flex rounded-xl bg-[#0A2236] px-6 py-3 text-sm font-black text-white transition hover:bg-[#103A56]"
+              >
+                Register Your Support
+              </Link>
             </div>
-
-            <h2 className="mt-6 text-2xl font-black text-[#0A2236]">
-              Public recognition coming soon
-            </h2>
-
-            <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600">
-              We are currently speaking with professionals, organisations and
-              community supporters. Names will only appear here after the
-              relevant permission has been received and recorded.
-            </p>
-
-            <Link
-              href="/savewooltonbaths/support"
-              className="mt-7 inline-flex rounded-xl bg-[#0A2236] px-6 py-3 text-sm font-black text-white transition hover:bg-[#103A56]"
-            >
-              Register Your Support
-            </Link>
           </section>
         ) : null}
 
