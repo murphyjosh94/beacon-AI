@@ -59,6 +59,158 @@ const RATE_LIMIT_MAX_REQUESTS = 8;
 
 const rateLimitStore = new Map<string, RateLimitRecord>();
 
+
+const RESEND_API_URL = "https://api.resend.com/emails";
+const SUPPORT_EMAIL_FROM =
+  "Save Woolton Baths <savewooltonbaths@beacon-ai.co.uk>";
+const SUPPORT_EMAIL_REPLY_TO = "savewooltonbaths@gmail.com";
+const CAMPAIGN_URL = "https://beacon-ai.co.uk/savewooltonbaths";
+const CAMPAIGN_LOGO_URL =
+  "https://beacon-ai.co.uk/savewooltonbaths/logo.png";
+
+const SUPPORT_TYPE_LABELS: Record<SupportType, string> = {
+  general: "General campaign support",
+  volunteer: "Volunteering",
+  trade: "Trade, profession or specialist skill",
+  materials: "Materials support",
+  equipment: "Equipment support",
+  sponsorship: "Sponsorship",
+  funding: "Funding opportunity",
+  education: "Education partnership",
+  professional: "Professional expertise",
+  other: "Other support",
+};
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function getFirstName(name: string): string {
+  return name.trim().split(/\s+/)[0] || name;
+}
+
+async function sendSupportAcknowledgement(input: {
+  name: string;
+  email: string;
+  supportType: SupportType;
+  registrationId: string;
+}): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+
+  if (!apiKey) {
+    console.error(
+      "[Save Woolton Baths Support] RESEND_API_KEY is not configured. Registration succeeded but acknowledgement email was not sent.",
+      { registrationId: input.registrationId },
+    );
+    return;
+  }
+
+  const firstName = escapeHtml(getFirstName(input.name));
+  const supportLabel = escapeHtml(SUPPORT_TYPE_LABELS[input.supportType]);
+
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Thank you for supporting Save Woolton Baths</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#172033;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f3f4f6;">
+<tr><td align="center" style="padding:28px 12px;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:640px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
+<tr><td align="center" style="background:#071b33;padding:30px 24px 24px;">
+<img src="${CAMPAIGN_LOGO_URL}" width="110" alt="Save Woolton Baths" style="display:block;width:110px;max-width:110px;height:auto;border:0;margin:0 auto 14px;" />
+<div style="font-size:13px;line-height:18px;letter-spacing:2px;text-transform:uppercase;color:#d5b15a;font-weight:700;">Save Woolton Baths</div>
+</td></tr>
+<tr><td style="padding:36px 34px 12px;">
+<h1 style="margin:0 0 18px;font-size:28px;line-height:36px;color:#071b33;">Thank you for standing with Woolton Baths</h1>
+<p style="margin:0 0 18px;font-size:16px;line-height:26px;">Hi ${firstName},</p>
+<p style="margin:0 0 18px;font-size:16px;line-height:26px;">Thank you for registering your support for the Save Woolton Baths campaign.</p>
+<p style="margin:0 0 24px;font-size:16px;line-height:26px;">Your support has been safely recorded and will help us demonstrate the community backing behind our work to secure, restore and reopen Woolton Baths for future generations.</p>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px;background:#f8f6ef;border-left:4px solid #d5b15a;border-radius:8px;">
+<tr><td style="padding:18px 20px;">
+<div style="font-size:12px;line-height:18px;text-transform:uppercase;letter-spacing:1.2px;color:#6b7280;font-weight:700;margin-bottom:5px;">Your registration</div>
+<div style="font-size:16px;line-height:24px;color:#071b33;font-weight:700;">${supportLabel}</div>
+</td></tr></table>
+<p style="margin:0 0 26px;font-size:16px;line-height:26px;">Where you have offered skills, professional expertise, materials, equipment or practical assistance, the campaign team may contact you as the project develops.</p>
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 auto 30px;"><tr><td align="center" bgcolor="#071b33" style="border-radius:8px;">
+<a href="${CAMPAIGN_URL}" style="display:inline-block;padding:14px 24px;font-size:15px;line-height:20px;font-weight:700;color:#ffffff;text-decoration:none;">View the campaign</a>
+</td></tr></table>
+<p style="margin:0 0 8px;font-size:16px;line-height:25px;color:#071b33;font-weight:700;">Thank you for supporting Save Woolton Baths.</p>
+<p style="margin:0;font-size:14px;line-height:22px;color:#6b7280;">Community-led restoration. Heritage protected. Built for the future.</p>
+</td></tr>
+<tr><td style="padding:24px 34px 30px;"><div style="border-top:1px solid #e5e7eb;padding-top:20px;font-size:12px;line-height:19px;color:#6b7280;text-align:center;">
+This email confirms the support registration you submitted to Save Woolton Baths. If you need to contact the campaign, simply reply to this email.
+</div></td></tr>
+</table></td></tr></table>
+</body></html>`;
+
+  const text = `Hi ${getFirstName(input.name)},
+
+Thank you for registering your support for the Save Woolton Baths campaign.
+
+Your support has been safely recorded and will help us demonstrate the community backing behind our work to secure, restore and reopen Woolton Baths for future generations.
+
+Your registration: ${SUPPORT_TYPE_LABELS[input.supportType]}
+
+Where you have offered skills, professional expertise, materials, equipment or practical assistance, the campaign team may contact you as the project develops.
+
+View the campaign: ${CAMPAIGN_URL}
+
+Thank you for supporting Save Woolton Baths.
+
+Community-led restoration. Heritage protected. Built for the future.
+
+This email confirms the support registration you submitted to Save Woolton Baths.`;
+
+  try {
+    const response = await fetch(RESEND_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: SUPPORT_EMAIL_FROM,
+        to: [input.email],
+        reply_to: SUPPORT_EMAIL_REPLY_TO,
+        subject: "Thank you for supporting Save Woolton Baths",
+        html,
+        text,
+      }),
+    });
+
+    if (!response.ok) {
+      const responseText = await response.text();
+      console.error("[Save Woolton Baths Support] Acknowledgement email failed:", {
+        registrationId: input.registrationId,
+        status: response.status,
+        response: responseText.slice(0, 1000),
+      });
+      return;
+    }
+
+    const result = (await response.json()) as { id?: string };
+
+    console.info("[Save Woolton Baths Support] Acknowledgement email sent", {
+      registrationId: input.registrationId,
+      resendEmailId: result.id ?? null,
+    });
+  } catch (error) {
+    console.error(
+      "[Save Woolton Baths Support] Acknowledgement email request failed:",
+      { registrationId: input.registrationId, error },
+    );
+  }
+}
+
+
 function getSupabaseAdmin() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -496,6 +648,13 @@ export async function POST(request: NextRequest) {
       id: data.id,
       supportType,
       createdAt: data.created_at,
+    });
+
+    await sendSupportAcknowledgement({
+      name,
+      email,
+      supportType,
+      registrationId: String(data.id),
     });
 
     return jsonResponse(
