@@ -15,20 +15,14 @@ type PublicPartnerCategory =
 
 type PublicPartner = {
   id: string;
-
   name: string;
   title: string | null;
   wording: string | null;
-
   category: PublicPartnerCategory;
-
   websiteUrl: string | null;
-
   logoUrl: string | null;
   photoUrl: string | null;
-
   displayOrder: number;
-
   confirmedPartnerSince: string | null;
 };
 
@@ -36,6 +30,19 @@ type PartnersResponse = {
   ok: boolean;
   partners?: PublicPartner[];
   count?: number;
+  error?: string;
+};
+
+type NetworkSummary = {
+  totalActive: number;
+  positiveResponses: number;
+  professionalSupportOffers: number;
+  confirmedPartners: number;
+};
+
+type NetworkResponse = {
+  ok: boolean;
+  summary?: NetworkSummary;
   error?: string;
 };
 
@@ -50,31 +57,31 @@ const CATEGORY_DEFINITIONS: CategoryDefinition[] = [
     key: "professional_partners",
     title: "Professional Support",
     description:
-      "Specialists providing professional knowledge, surveys, technical guidance and expert support to help build a robust evidence base for the future of Woolton Baths.",
+      "Surveyors, conservation engineers and other specialists helping us build a robust evidence base for the future of Woolton Baths.",
   },
   {
     key: "heritage_construction",
     title: "Heritage & Construction",
     description:
-      "Organisations supporting the careful repair, restoration and conservation of Woolton Baths and its historic fabric.",
+      "Restoration specialists, builders, roofing and access providers helping protect and repair this important historic building.",
   },
   {
     key: "engineering_energy",
     title: "Engineering & Energy",
     description:
-      "Engineering, building-services and energy organisations helping us explore efficient, resilient and sustainable solutions for the building.",
+      "Electrical, mechanical, pool-plant, energy and sustainability organisations helping us plan an efficient and resilient facility.",
   },
   {
     key: "community",
     title: "Community Support",
     description:
-      "People, groups and organisations helping strengthen the community campaign and demonstrate the importance of Woolton Baths to local residents.",
+      "Local people, groups and community organisations standing behind the campaign and helping demonstrate why Woolton Baths matters.",
   },
   {
     key: "academic",
     title: "Academic Support",
     description:
-      "Universities, colleges and academic partners contributing knowledge, research, student opportunities and specialist expertise.",
+      "Universities, colleges and academic contacts contributing knowledge, research opportunities and specialist expertise.",
   },
   {
     key: "media_awareness",
@@ -86,7 +93,7 @@ const CATEGORY_DEFINITIONS: CategoryDefinition[] = [
     key: "public_sector",
     title: "Public Sector",
     description:
-      "Public bodies and representatives engaging constructively with the campaign and the future of Woolton Baths.",
+      "Public bodies and elected representatives engaging constructively with the campaign and the future of Woolton Baths.",
   },
   {
     key: "other",
@@ -96,10 +103,19 @@ const CATEGORY_DEFINITIONS: CategoryDefinition[] = [
   },
 ];
 
+const PLACEHOLDER_CATEGORIES = CATEGORY_DEFINITIONS.filter((category) =>
+  [
+    "professional_partners",
+    "heritage_construction",
+    "engineering_energy",
+    "community",
+    "academic",
+    "media_awareness",
+  ].includes(category.key),
+);
+
 function safeExternalUrl(value: string | null): string | null {
-  if (!value) {
-    return null;
-  }
+  if (!value) return null;
 
   try {
     const url = new URL(value);
@@ -115,9 +131,7 @@ function safeExternalUrl(value: string | null): string | null {
 }
 
 function formatConfirmedDate(value: string | null): string | null {
-  if (!value) {
-    return null;
-  }
+  if (!value) return null;
 
   const date = new Date(value);
 
@@ -131,51 +145,80 @@ function formatConfirmedDate(value: string | null): string | null {
   }).format(date);
 }
 
+function formatMetric(value: number | undefined): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return "—";
+  }
+
+  return new Intl.NumberFormat("en-GB").format(value);
+}
+
 export default function SaveWooltonBathsPartnersPage() {
   const [partners, setPartners] = useState<PublicPartner[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [partnersError, setPartnersError] = useState("");
+  const [networkSummary, setNetworkSummary] = useState<NetworkSummary | null>(
+    null,
+  );
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadPartners() {
+    async function loadPageData() {
       setLoading(true);
-      setError("");
+      setPartnersError("");
 
-      try {
-        const response = await fetch("/api/savewooltonbaths/partners", {
-          method: "GET",
-          cache: "no-store",
-        });
+      const partnersRequest = fetch("/api/savewooltonbaths/partners", {
+        method: "GET",
+        cache: "no-store",
+      });
 
-        const data = (await response.json()) as PartnersResponse;
+      const networkRequest = fetch("/api/savewooltonbaths/partners/network", {
+        method: "GET",
+        cache: "no-store",
+      });
 
-        if (!response.ok || !data.ok) {
-          throw new Error(
-            data.error ?? "Unable to load campaign supporters and partners.",
-          );
+      const [partnersResult, networkResult] = await Promise.allSettled([
+        partnersRequest,
+        networkRequest,
+      ]);
+
+      if (!cancelled) {
+        if (partnersResult.status === "fulfilled") {
+          try {
+            const data = (await partnersResult.value.json()) as PartnersResponse;
+
+            if (partnersResult.value.ok && data.ok) {
+              setPartners(data.partners ?? []);
+            } else {
+              setPartnersError(
+                data.error ?? "Unable to load campaign supporters and partners.",
+              );
+            }
+          } catch {
+            setPartnersError("Unable to load campaign supporters and partners.");
+          }
+        } else {
+          setPartnersError("Unable to load campaign supporters and partners.");
         }
 
-        if (!cancelled) {
-          setPartners(data.partners ?? []);
+        if (networkResult.status === "fulfilled") {
+          try {
+            const data = (await networkResult.value.json()) as NetworkResponse;
+
+            if (networkResult.value.ok && data.ok && data.summary) {
+              setNetworkSummary(data.summary);
+            }
+          } catch {
+            setNetworkSummary(null);
+          }
         }
-      } catch (caughtError) {
-        if (!cancelled) {
-          setError(
-            caughtError instanceof Error
-              ? caughtError.message
-              : "Unable to load campaign supporters and partners.",
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+
+        setLoading(false);
       }
     }
 
-    void loadPartners();
+    void loadPageData();
 
     return () => {
       cancelled = true;
@@ -201,6 +244,8 @@ export default function SaveWooltonBathsPartnersPage() {
     }).filter((category) => category.partners.length > 0);
   }, [partners]);
 
+  const hasPublicPartners = groupedPartners.length > 0;
+
   return (
     <main className="min-h-screen bg-[#F5F3ED] text-slate-950">
       <section className="relative overflow-hidden bg-gradient-to-br from-[#07131F] via-[#0A2236] to-[#103A56] text-white">
@@ -213,9 +258,9 @@ export default function SaveWooltonBathsPartnersPage() {
           }}
         />
 
-        <div className="relative mx-auto max-w-7xl px-5 py-20 sm:px-8 sm:py-24 lg:px-10 lg:py-28">
+        <div className="relative mx-auto max-w-7xl px-5 py-14 sm:px-8 sm:py-16 lg:px-10 lg:py-20">
           <div className="max-w-4xl">
-            <div className="mb-6 inline-flex items-center rounded-full border border-[#D4AF37]/40 bg-[#D4AF37]/10 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[#F2D574]">
+            <div className="mb-5 inline-flex items-center rounded-full border border-[#D4AF37]/40 bg-[#D4AF37]/10 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[#F2D574]">
               Save Woolton Baths
             </div>
 
@@ -223,14 +268,13 @@ export default function SaveWooltonBathsPartnersPage() {
               Supporters & Partners
             </h1>
 
-            <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-200 sm:text-xl">
+            <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-200 sm:text-xl">
               Restoring Woolton Baths will require people, organisations and
-              specialists working together. We are proud to recognise those who
-              have given permission for their support to be publicly
-              acknowledged.
+              specialists working together. This page recognises those who have
+              given permission for their support to be publicly acknowledged.
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-7 flex flex-wrap gap-3">
               <Link
                 href="/savewooltonbaths"
                 className="rounded-xl bg-[#D4AF37] px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-[#E6C557]"
@@ -249,132 +293,222 @@ export default function SaveWooltonBathsPartnersPage() {
         </div>
       </section>
 
-      <section className="border-b border-[#D8D2C5] bg-white">
-        <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-10">
-          <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
-            <div>
-              <h2 className="text-xl font-black text-[#0A2236]">
-                Working together for Woolton Baths
-              </h2>
-
-              <p className="mt-2 max-w-4xl text-sm leading-7 text-slate-600">
-                Public recognition is only shown where permission has been
-                received. Being listed here reflects the approved support or
-                relationship shown on this page and should not be interpreted
-                as endorsement of every future campaign decision or proposal.
-              </p>
-            </div>
-
-            {!loading && !error && partners.length > 0 ? (
-              <div className="rounded-2xl border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-5 py-4 text-center">
-                <div className="text-3xl font-black text-[#0A2236]">
-                  {partners.length}
-                </div>
-
-                <div className="mt-1 text-xs font-black uppercase tracking-[0.14em] text-slate-600">
-                  Publicly Recognised
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </section>
-
-      <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8 lg:px-10 lg:py-16">
-        {loading ? (
-          <div className="rounded-[2rem] border border-[#D8D2C5] bg-white p-12 text-center shadow-sm">
-            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-[#D4AF37]" />
-
-            <p className="mt-5 font-black text-[#0A2236]">
-              Loading supporters and partners...
-            </p>
-          </div>
-        ) : null}
-
-        {!loading && (error || groupedPartners.length === 0) ? (
-          <section className="overflow-hidden rounded-[2rem] border border-[#D8D2C5] bg-white shadow-sm">
-            <div className="h-1.5 bg-[#D4AF37]" />
-
-            <div className="px-7 py-10 text-center sm:px-12 sm:py-14">
-              <div className="mx-auto inline-flex rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#9A7917]">
+      {!hasPublicPartners && !loading ? (
+        <section className="border-b border-[#D8D2C5] bg-[#F5F3ED]">
+          <div className="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-10 lg:py-12">
+            <div className="rounded-[2rem] border border-[#D8D2C5] bg-white px-6 py-10 text-center shadow-sm sm:px-10 sm:py-12">
+              <div className="inline-flex rounded-full border border-[#D4AF37]/40 bg-[#D4AF37]/10 px-5 py-2 text-xs font-black uppercase tracking-[0.2em] text-[#8B6B0B]">
                 Partners coming soon
               </div>
 
-              <h2 className="mx-auto mt-6 max-w-3xl text-3xl font-black tracking-tight text-[#0A2236] sm:text-4xl">
+              <h2 className="mx-auto mt-6 max-w-4xl text-3xl font-black tracking-tight text-[#0A2236] sm:text-4xl">
                 Our partnership network is growing
               </h2>
 
-              <p className="mx-auto mt-5 max-w-3xl text-base leading-8 text-slate-600 sm:text-lg">
-                We&apos;re working with professionals, businesses and organisations
-                who share our ambition to bring Woolton Baths back into community
-                use.
+              <p className="mx-auto mt-5 max-w-4xl text-base leading-8 text-slate-600 sm:text-lg">
+                We&apos;re working with professionals, businesses and
+                organisations who share our ambition to bring Woolton Baths back
+                into community use.
               </p>
 
-              <p className="mx-auto mt-4 max-w-3xl text-base leading-8 text-slate-600 sm:text-lg">
+              <p className="mx-auto mt-4 max-w-4xl text-base leading-8 text-slate-600 sm:text-lg">
                 Confirmed supporters and partners will be recognised here once
                 permission to display their involvement has been received.
               </p>
 
-              <div className="mx-auto mt-9 grid max-w-4xl gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {[
-                  "Professional Support",
-                  "Heritage & Construction",
-                  "Engineering & Energy",
-                  "Community Support",
-                  "Academic Support",
-                  "Media & Awareness",
-                ].map((label) => (
+              <div className="mx-auto mt-9 grid max-w-5xl gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {PLACEHOLDER_CATEGORIES.map((category) => (
                   <div
-                    key={label}
-                    className="rounded-2xl border border-[#E7E2D8] bg-[#FAF9F6] px-4 py-4 text-sm font-bold text-[#0A2236]"
+                    key={category.key}
+                    className="rounded-2xl border border-[#E4DED2] bg-[#FAF9F6] px-5 py-5 text-left"
                   >
-                    {label}
+                    <div className="text-sm font-black text-[#0A2236]">
+                      {category.title}
+                    </div>
+
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      {category.description}
+                    </p>
                   </div>
                 ))}
               </div>
 
               <Link
                 href="/savewooltonbaths/support"
-                className="mt-9 inline-flex rounded-xl bg-[#0A2236] px-6 py-3 text-sm font-black text-white transition hover:bg-[#103A56]"
+                className="mt-9 inline-flex rounded-xl bg-[#0A2236] px-7 py-3.5 text-sm font-black text-white transition hover:bg-[#103A56]"
               >
                 Register Your Support
               </Link>
+
+              {partnersError ? (
+                <p className="mx-auto mt-5 max-w-3xl text-xs leading-5 text-slate-400">
+                  Public partner listings are being updated. The campaign page
+                  remains available while this information refreshes.
+                </p>
+              ) : null}
             </div>
-          </section>
-        ) : null}
+          </div>
+        </section>
+      ) : null}
 
-        {!loading && !error && groupedPartners.length > 0 ? (
-          <div className="space-y-14">
-            {groupedPartners.map((category) => (
-              <section key={category.key}>
-                <div className="mb-6 max-w-4xl">
-                  <div className="flex items-center gap-3">
-                    <div className="h-px w-10 bg-[#D4AF37]" />
+      <section className="border-b border-[#D8D2C5] bg-white">
+        <div className="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-10">
+          <div className="mb-7 max-w-4xl">
+            <div className="flex items-center gap-3">
+              <div className="h-px w-10 bg-[#D4AF37]" />
+              <span className="text-xs font-black uppercase tracking-[0.18em] text-[#9A7917]">
+                Campaign network progress
+              </span>
+            </div>
 
-                    <span className="text-xs font-black uppercase tracking-[0.16em] text-[#9A7917]">
-                      Campaign Support
-                    </span>
+            <h2 className="mt-3 text-2xl font-black text-[#0A2236] sm:text-3xl">
+              Building the team around Woolton Baths
+            </h2>
+
+            <p className="mt-3 text-sm leading-7 text-slate-600 sm:text-base">
+              We are building a network of businesses, professionals, community
+              organisations and public representatives who can help move the
+              restoration from ambition to evidence-backed delivery.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              value={formatMetric(networkSummary?.totalActive)}
+              label="Organisations engaged"
+            />
+            <MetricCard
+              value={formatMetric(networkSummary?.positiveResponses)}
+              label="Positive responses"
+            />
+            <MetricCard
+              value={formatMetric(networkSummary?.professionalSupportOffers)}
+              label="Professional support offers"
+            />
+            <MetricCard
+              value={formatMetric(networkSummary?.confirmedPartners)}
+              label="Confirmed partners"
+            />
+          </div>
+        </div>
+      </section>
+
+      {hasPublicPartners ? (
+        <section className="bg-[#F5F3ED]">
+          <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8 lg:px-10 lg:py-16">
+            <div className="mb-10 max-w-4xl">
+              <div className="inline-flex rounded-full border border-[#D4AF37]/40 bg-[#D4AF37]/10 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[#8B6B0B]">
+                Proudly supporting the campaign
+              </div>
+
+              <h2 className="mt-5 text-3xl font-black tracking-tight text-[#0A2236] sm:text-4xl">
+                Founding Campaign Partners
+              </h2>
+
+              <p className="mt-4 max-w-3xl text-base leading-8 text-slate-600">
+                The organisations and professionals shown below gave their
+                support during the campaign to secure a sustainable community
+                future for Woolton Baths. Their contribution forms part of the
+                evidence, expertise and momentum behind the project.
+              </p>
+            </div>
+
+            <div className="space-y-14">
+              {groupedPartners.map((category) => (
+                <section key={category.key}>
+                  <div className="mb-6 max-w-4xl">
+                    <div className="flex items-center gap-3">
+                      <div className="h-px w-10 bg-[#D4AF37]" />
+
+                      <span className="text-xs font-black uppercase tracking-[0.16em] text-[#9A7917]">
+                        Campaign Support
+                      </span>
+                    </div>
+
+                    <h3 className="mt-3 text-2xl font-black text-[#0A2236] sm:text-3xl">
+                      {category.title}
+                    </h3>
+
+                    <p className="mt-3 text-sm leading-7 text-slate-600 sm:text-base">
+                      {category.description}
+                    </p>
                   </div>
 
-                  <h2 className="mt-3 text-2xl font-black text-[#0A2236] sm:text-3xl">
-                    {category.title}
-                  </h2>
-
-                  <p className="mt-3 text-sm leading-7 text-slate-600 sm:text-base">
-                    {category.description}
-                  </p>
-                </div>
-
-                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                  {category.partners.map((partner) => (
-                    <PartnerCard key={partner.id} partner={partner} />
-                  ))}
-                </div>
-              </section>
-            ))}
+                  <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                    {category.partners.map((partner) => (
+                      <PartnerCard key={partner.id} partner={partner} />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
           </div>
-        ) : null}
-      </div>
+        </section>
+      ) : null}
+
+      <section className="border-y border-[#D8D2C5] bg-[#EFEADF]">
+        <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8 lg:px-10">
+          <div className="grid gap-8 lg:grid-cols-[1fr_0.85fr] lg:items-center">
+            <div>
+              <div className="text-xs font-black uppercase tracking-[0.18em] text-[#9A7917]">
+                Founding Campaign Partners
+              </div>
+
+              <h2 className="mt-3 text-3xl font-black text-[#0A2236]">
+                Recognition that stays with the project
+              </h2>
+
+              <p className="mt-4 max-w-3xl leading-8 text-slate-600">
+                The first organisations and professionals who materially support
+                the campaign during its Community Asset Transfer and restoration
+                planning stages will be recognised as Founding Campaign Partners.
+                Their early support helped establish the evidence base,
+                professional network and community momentum behind the project.
+              </p>
+            </div>
+
+            <div className="rounded-[1.75rem] border border-[#D4AF37]/40 bg-white p-7 shadow-sm">
+              <div className="inline-flex rounded-full bg-[#D4AF37] px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-[#07131F]">
+                Founding Campaign Partner
+              </div>
+
+              <p className="mt-5 text-sm leading-7 text-slate-600">
+                Recognition is only applied where the relationship is confirmed
+                and permission for public acknowledgement has been received.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white">
+        <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8 lg:px-10">
+          <div className="rounded-[2rem] border border-[#D8D2C5] bg-[#FAF9F6] p-8 sm:p-10">
+            <div className="max-w-4xl">
+              <div className="text-xs font-black uppercase tracking-[0.18em] text-[#9A7917]">
+                Community campaign
+              </div>
+
+              <h2 className="mt-3 text-3xl font-black text-[#0A2236]">
+                The Wall of Support
+              </h2>
+
+              <p className="mt-4 text-base leading-8 text-slate-600">
+                Every organisation publicly recognised on this page has chosen
+                to stand alongside the community campaign in a practical or
+                professional way. More names will appear as support is confirmed
+                and permission for public recognition is received.
+              </p>
+
+              <p className="mt-4 text-sm leading-7 text-slate-500">
+                Public recognition reflects the specific approved relationship
+                shown here and should not be interpreted as endorsement of every
+                future campaign decision or proposal.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section className="bg-[#0A2236] text-white">
         <div className="mx-auto max-w-7xl px-5 py-14 sm:px-8 lg:px-10">
@@ -393,6 +527,10 @@ export default function SaveWooltonBathsPartnersPage() {
                 advice, materials, equipment, services and other practical
                 contributions that could help move the project forward.
               </p>
+
+              <p className="mt-7 text-sm font-black uppercase tracking-[0.16em] text-[#F2D574]">
+                Built with Trust. Guided by Purpose.
+              </p>
             </div>
 
             <Link
@@ -408,15 +546,31 @@ export default function SaveWooltonBathsPartnersPage() {
   );
 }
 
+function MetricCard({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="rounded-2xl border border-[#E2DCCF] bg-[#FAF9F6] px-6 py-6">
+      <div className="text-3xl font-black text-[#0A2236]">{value}</div>
+      <div className="mt-2 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+        {label}
+      </div>
+    </div>
+  );
+}
+
 function PartnerCard({ partner }: { partner: PublicPartner }) {
   const websiteUrl = safeExternalUrl(partner.websiteUrl);
   const logoUrl = safeExternalUrl(partner.logoUrl);
   const photoUrl = safeExternalUrl(partner.photoUrl);
-
   const confirmedDate = formatConfirmedDate(partner.confirmedPartnerSince);
 
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-[#D8D2C5] bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+      <div className="border-b border-[#E7E2D8] bg-[#07131F] px-5 py-3">
+        <span className="inline-flex rounded-full bg-[#D4AF37] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-[#07131F]">
+          Founding Campaign Partner
+        </span>
+      </div>
+
       {logoUrl || photoUrl ? (
         <div className="flex min-h-40 items-center justify-center border-b border-[#E7E2D8] bg-[#FAF9F6] p-7">
           {/* Intentionally using <img> because approved public media may
