@@ -8,6 +8,38 @@ import {
   Landmark,
 } from "lucide-react";
 
+function InstagramIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect width="18" height="18" x="3" y="3" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function FacebookIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className={className}
+      fill="currentColor"
+    >
+      <path d="M13.5 21v-8h2.8l.42-3.2H13.5V7.76c0-.93.26-1.56 1.61-1.56h1.72V3.34a23.2 23.2 0 0 0-2.5-.13c-2.48 0-4.18 1.51-4.18 4.29v2.3H7.35V13h2.8v8h3.35Z" />
+    </svg>
+  );
+}
+
 export const metadata: Metadata = {
   title: "Save Woolton Baths | Community Restoration Campaign",
   description:
@@ -388,6 +420,41 @@ export default function SaveWooltonBathsLayout({
                     helps move this historic building one step closer to
                     reopening.
                   </p>
+
+                  <div className="mt-6">
+                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#D4AF37]">
+                      Follow the campaign
+                    </p>
+
+                    <p className="mt-2 text-sm leading-6 text-slate-400">
+                      Follow Save Woolton Baths for campaign news, restoration
+                      updates and partnership announcements.
+                    </p>
+
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <a
+                        href="https://www.instagram.com/savewooltonbaths?igsi=dHptdzR2M3FnYTg2"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Follow Save Woolton Baths on Instagram"
+                        className="inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/40 bg-[#D4AF37]/10 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-[#D4AF37] hover:bg-[#D4AF37] hover:text-black"
+                      >
+                        <InstagramIcon className="h-5 w-5" />
+                        Instagram
+                      </a>
+
+                      <a
+                        href="https://www.facebook.com/share/17MCiQjrRa/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Follow Save Woolton Baths on Facebook"
+                        className="inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/40 bg-[#D4AF37]/10 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-[#D4AF37] hover:bg-[#D4AF37] hover:text-black"
+                      >
+                        <FacebookIcon className="h-5 w-5" />
+                        Facebook
+                      </a>
+                    </div>
+                  </div>
                 </div>
               </div>
 
