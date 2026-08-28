@@ -49,6 +49,7 @@ export const metadata: Metadata = {
     ],
   },
 };
+
 export default function SaveWooltonBathsLayout({
   children,
 }: {
@@ -108,7 +109,7 @@ export default function SaveWooltonBathsLayout({
 
               {/* Desktop Navigation */}
 
-              <nav className="hidden items-center gap-7 text-sm font-medium md:flex">
+              <nav className="hidden items-center gap-6 text-sm font-medium md:flex">
                 <Link
                   href="/savewooltonbaths"
                   className="transition hover:text-[#D4AF37]"
@@ -128,6 +129,13 @@ export default function SaveWooltonBathsLayout({
                   className="transition hover:text-[#D4AF37]"
                 >
                   Updates
+                </Link>
+
+                <Link
+                  href="/savewooltonbaths/partners"
+                  className="transition hover:text-[#D4AF37]"
+                >
+                  Partners
                 </Link>
 
                 <Link
@@ -158,7 +166,7 @@ export default function SaveWooltonBathsLayout({
             {/* ------------------------------------------------------------ */}
 
             <div className="border-t border-white/10 md:hidden">
-              <nav className="mx-auto grid max-w-7xl grid-cols-5 text-center text-[11px] font-semibold sm:text-xs">
+              <nav className="mx-auto grid max-w-7xl grid-cols-6 text-center text-[10px] font-semibold sm:text-xs">
                 <Link
                   href="/savewooltonbaths"
                   className="px-1 py-3 transition hover:bg-white/5 hover:text-[#D4AF37]"
@@ -178,6 +186,13 @@ export default function SaveWooltonBathsLayout({
                   className="px-1 py-3 transition hover:bg-white/5 hover:text-[#D4AF37]"
                 >
                   Updates
+                </Link>
+
+                <Link
+                  href="/savewooltonbaths/partners"
+                  className="px-1 py-3 transition hover:bg-white/5 hover:text-[#D4AF37]"
+                >
+                  Partners
                 </Link>
 
                 <Link
@@ -330,6 +345,15 @@ export default function SaveWooltonBathsLayout({
                         className="hover:text-[#D4AF37]"
                       >
                         Project Updates
+                      </Link>
+                    </li>
+
+                    <li>
+                      <Link
+                        href="/savewooltonbaths/partners"
+                        className="hover:text-[#D4AF37]"
+                      >
+                        Supporters & Partners
                       </Link>
                     </li>
 
