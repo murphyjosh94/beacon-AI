@@ -734,6 +734,14 @@ export default async function SaveWooltonBathsAdminPage({
 
           <div className="flex flex-wrap gap-3">
             <Link
+              href="/savewooltonbaths/admin/partnerships"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-[#D4AF37]/50 bg-[#D4AF37]/10 px-5 text-sm font-black text-[#E6C75A] transition hover:bg-[#D4AF37] hover:text-black"
+            >
+              <Building2 className="h-4 w-4" />
+              Partnerships &amp; Outreach
+            </Link>
+
+            <Link
               href="/admin"
               className="inline-flex min-h-12 items-center justify-center rounded-xl border border-white/15 bg-white/5 px-5 text-sm font-black text-white transition hover:bg-white/10"
             >
