@@ -125,7 +125,7 @@ async function sendSupportAcknowledgement(input: {
 <tr><td align="center" style="padding:28px 12px;">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:640px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb;">
 <tr><td align="center" style="background:#071b33;padding:30px 24px 24px;">
-<img src="${CAMPAIGN_LOGO_URL}" width="110" alt="Save Woolton Baths" style="display:block;width:110px;max-width:110px;height:auto;border:0;margin:0 auto 14px;" />
+<img src="cid:save-woolton-baths-logo" width="110" alt="Save Woolton Baths" style="display:block;width:110px;max-width:110px;height:auto;border:0;margin:0 auto 14px;" />
 <div style="font-size:13px;line-height:18px;letter-spacing:2px;text-transform:uppercase;color:#d5b15a;font-weight:700;">Save Woolton Baths</div>
 </td></tr>
 <tr><td style="padding:36px 34px 12px;">
@@ -183,6 +183,13 @@ This email confirms the support registration you submitted to Save Woolton Baths
         subject: "Thank you for supporting Save Woolton Baths",
         html,
         text,
+        attachments: [
+          {
+            path: CAMPAIGN_LOGO_URL,
+            filename: "save-woolton-baths-logo.png",
+            content_id: "save-woolton-baths-logo",
+          },
+        ],
       }),
     });
 
