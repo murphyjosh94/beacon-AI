@@ -1094,6 +1094,35 @@ function buildDatabasePayload(
       body.publicCategory,
     );
 
+  const status =
+    parseStatus(
+      body.status,
+    );
+
+  const publicPermissionReceivedAt =
+    parseNullableDateTime(
+      body.publicPermissionReceivedAt,
+      "Public permission date",
+    );
+
+  if (
+    displayPublicly &&
+    status !== "confirmed_partner"
+  ) {
+    throw new Error(
+      "Only a confirmed partner can be displayed publicly.",
+    );
+  }
+
+  if (
+    displayPublicly &&
+    !publicPermissionReceivedAt
+  ) {
+    throw new Error(
+      "Public recognition permission must be recorded before publishing this partner.",
+    );
+  }
+
   if (
     displayPublicly &&
     !publicNameApproved
@@ -1178,10 +1207,7 @@ function buildDatabasePayload(
         ),
       ),
 
-    status:
-      parseStatus(
-        body.status,
-      ),
+    status,
 
     priority:
       parsePriority(
@@ -1398,11 +1424,7 @@ function buildDatabasePayload(
       publicWordingApproved,
 
     public_permission_received_at:
-      parseNullableDateTime(
-        body
-          .publicPermissionReceivedAt,
-        "Public permission date",
-      ),
+      publicPermissionReceivedAt,
 
     approved_public_name:
       emptyToNull(
@@ -1700,7 +1722,7 @@ export async function PATCH(
           {
             ok: false,
             error:
-              "The record does not satisfy the partnership database rules. Check the status and public-recognition settings.",
+              "The record does not satisfy the partnership database rules. To publish, confirm the partner status, record public permission, approve the public name, enter the approved public name and select a public category.",
           },
           400,
         );
