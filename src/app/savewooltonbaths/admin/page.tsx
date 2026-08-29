@@ -5,6 +5,7 @@ import {
   BadgePoundSterling,
   Building2,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   CircleDollarSign,
   Filter,
@@ -1083,36 +1084,37 @@ function RegistrationCard({
   );
 
   return (
-    <article className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-200 bg-[#102532] px-6 py-6 text-white sm:px-8">
-        <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-start">
-          <div className="flex min-w-0 items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#D4AF37] text-black">
-              <SupportIcon className="h-6 w-6" />
-            </div>
+    <details className="group overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm open:shadow-md">
+      <summary className="cursor-pointer list-none bg-[#102532] px-4 py-4 text-white marker:hidden sm:px-6 [&::-webkit-details-marker]:hidden">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#D4AF37] text-black">
+            <SupportIcon className="h-5 w-5" />
+          </div>
 
-            <div className="min-w-0">
-              <h2 className="break-words text-2xl font-black">
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+              <h2 className="min-w-0 break-words text-base font-black sm:text-lg">
                 {registration.name}
               </h2>
 
-              <p className="mt-2 font-bold text-[#E6C75A]">
-                {getSupportTypeLabel(
-                  registration.support_type,
-                )}
-              </p>
-
-              {registration.organisation && (
-                <p className="mt-1 text-sm font-semibold text-slate-300">
-                  {registration.organisation}
-                </p>
-              )}
+              <span className="text-xs font-bold text-slate-300 sm:text-sm">
+                {registration.postcode ?? "No postcode"}
+              </span>
             </div>
+
+            <p className="mt-1 truncate text-xs font-semibold text-[#E6C75A] sm:text-sm">
+              {getSupportTypeLabel(
+                registration.support_type,
+              )}
+              {registration.organisation
+                ? ` · ${registration.organisation}`
+                : ""}
+            </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2">
             <span
-              className={`rounded-full px-4 py-2 text-xs font-black uppercase tracking-wider ${getStatusClasses(
+              className={`rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-wider sm:text-xs ${getStatusClasses(
                 registration.status,
               )}`}
             >
@@ -1121,16 +1123,14 @@ function RegistrationCard({
               )}
             </span>
 
-            <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-slate-300">
-              {formatDateTime(
-                registration.created_at,
-              )}
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-200 transition group-open:rotate-180">
+              <ChevronDown className="h-4 w-4" />
             </span>
           </div>
         </div>
-      </div>
+      </summary>
 
-      <div className="grid gap-8 p-6 sm:p-8 xl:grid-cols-[0.8fr_1.2fr]">
+      <div className="grid gap-8 border-t border-slate-200 p-5 sm:p-8 xl:grid-cols-[0.8fr_1.2fr]">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.2em] text-[#8D7425]">
             Contact Details
@@ -1415,7 +1415,7 @@ function RegistrationCard({
           </section>
         </div>
       </div>
-    </article>
+    </details>
   );
 }
 
