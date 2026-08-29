@@ -103,6 +103,23 @@ type SupportRegistration = {
   updated_at: string;
 };
 
+type SupportCorrespondence = {
+  id: string;
+  registration_id: string;
+  direction: "outbound" | "inbound";
+  channel: "email";
+  recipient_email: string;
+  sender_email: string;
+  subject: string;
+  message: string;
+  delivery_status: "sent" | "failed";
+  resend_email_id: string | null;
+  sent_by: string | null;
+  sent_by_name: string | null;
+  sent_at: string;
+  created_at: string;
+};
+
 const SUPPORT_TYPE_OPTIONS: Array<{
   value: SupportType;
   label: string;
@@ -687,6 +704,88 @@ export default async function SaveWooltonBathsAdminPage({
       []
     ) as SupportRegistration[];
 
+  const registrationIds =
+    registrations.map(
+      (registration) =>
+        registration.id,
+    );
+
+  let correspondenceRows:
+    SupportCorrespondence[] = [];
+
+  if (registrationIds.length > 0) {
+    const {
+      data: correspondenceData,
+      error: correspondenceError,
+    } =
+      await supabase
+        .from(
+          "save_woolton_baths_support_correspondence",
+        )
+        .select(`
+          id,
+          registration_id,
+          direction,
+          channel,
+          recipient_email,
+          sender_email,
+          subject,
+          message,
+          delivery_status,
+          resend_email_id,
+          sent_by,
+          sent_by_name,
+          sent_at,
+          created_at
+        `)
+        .in(
+          "registration_id",
+          registrationIds,
+        )
+        .order(
+          "sent_at",
+          {
+            ascending: false,
+          },
+        );
+
+    if (correspondenceError) {
+      console.error(
+        "[Save Woolton Baths Admin] Failed to load supporter correspondence:",
+        correspondenceError,
+      );
+    } else {
+      correspondenceRows =
+        (
+          correspondenceData ??
+          []
+        ) as SupportCorrespondence[];
+    }
+  }
+
+  const correspondenceByRegistration =
+    new Map<
+      string,
+      SupportCorrespondence[]
+    >();
+
+  for (
+    const item of
+    correspondenceRows
+  ) {
+    const existing =
+      correspondenceByRegistration.get(
+        item.registration_id,
+      ) ?? [];
+
+    existing.push(item);
+
+    correspondenceByRegistration.set(
+      item.registration_id,
+      existing,
+    );
+  }
+
   const totalRegistrations =
     totalResult.count ?? 0;
 
@@ -961,6 +1060,11 @@ export default async function SaveWooltonBathsAdminPage({
                       registration={
                         registration
                       }
+                      correspondence={
+                        correspondenceByRegistration.get(
+                          registration.id,
+                        ) ?? []
+                      }
                     />
                   ),
                 )}
@@ -1029,10 +1133,12 @@ function MetricCard({
 
 type RegistrationCardProps = {
   registration: SupportRegistration;
+  correspondence: SupportCorrespondence[];
 };
 
 function RegistrationCard({
   registration,
+  correspondence,
 }: RegistrationCardProps) {
   const SupportIcon =
     getSupportIcon(
@@ -1376,6 +1482,7 @@ function RegistrationCard({
             supporterName={registration.name}
             supporterEmail={registration.email}
             permissionToContact={registration.permission_to_contact}
+            initialCorrespondence={correspondence}
           />
 
           <section className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">

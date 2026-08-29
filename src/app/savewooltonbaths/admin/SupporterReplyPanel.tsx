@@ -10,13 +10,10 @@ import {
 } from "lucide-react";
 import {
   FormEvent,
-  useCallback,
-  useEffect,
-  useRef,
   useState,
 } from "react";
 
-type CorrespondenceItem = {
+export type SupporterCorrespondenceItem = {
   id: string;
   registration_id: string;
   direction: "outbound" | "inbound";
@@ -33,18 +30,12 @@ type CorrespondenceItem = {
   created_at: string;
 };
 
-type HistoryResponse = {
-  ok?: boolean;
-  correspondence?: CorrespondenceItem[];
-  error?: string;
-};
-
 type SendResponse = {
   ok?: boolean;
   message?: string;
   warning?: string;
   error?: string;
-  correspondence?: CorrespondenceItem;
+  correspondence?: SupporterCorrespondenceItem;
 };
 
 type SupporterReplyPanelProps = {
@@ -52,6 +43,7 @@ type SupporterReplyPanelProps = {
   supporterName: string;
   supporterEmail: string;
   permissionToContact: boolean;
+  initialCorrespondence?: SupporterCorrespondenceItem[];
 };
 
 const DEFAULT_SUBJECT =
@@ -97,20 +89,67 @@ function getFirstName(
   );
 }
 
+async function readApiResponse(
+  response: Response,
+): Promise<SendResponse> {
+  const contentType =
+    response.headers
+      .get("content-type")
+      ?.toLowerCase() ?? "";
+
+  if (
+    contentType.includes(
+      "application/json",
+    )
+  ) {
+    return (await response.json()) as SendResponse;
+  }
+
+  const body =
+    await response.text();
+
+  console.error(
+    "[Save Woolton Baths Supporter Reply] Non-JSON API response:",
+    {
+      status: response.status,
+      contentType,
+      preview: body.slice(0, 300),
+    },
+  );
+
+  if (
+    response.redirected ||
+    response.status === 401
+  ) {
+    return {
+      ok: false,
+      error:
+        "Your administrator session may have expired. Refresh the page and sign in again if required.",
+    };
+  }
+
+  if (response.status === 404) {
+    return {
+      ok: false,
+      error:
+        "The supporter reply API route was not found on this deployment.",
+    };
+  }
+
+  return {
+    ok: false,
+    error:
+      `The supporter reply service returned an unexpected response (HTTP ${response.status}).`,
+  };
+}
+
 export default function SupporterReplyPanel({
   registrationId,
   supporterName,
   supporterEmail,
   permissionToContact,
+  initialCorrespondence = [],
 }: SupporterReplyPanelProps) {
-  const rootRef =
-    useRef<HTMLDivElement | null>(
-      null,
-    );
-
-  const historyLoadedRef =
-    useRef(false);
-
   const [
     subject,
     setSubject,
@@ -130,14 +169,10 @@ export default function SupporterReplyPanel({
     setCorrespondence,
   ] =
     useState<
-      CorrespondenceItem[]
-    >([]);
-
-  const [
-    loadingHistory,
-    setLoadingHistory,
-  ] =
-    useState(false);
+      SupporterCorrespondenceItem[]
+    >(
+      initialCorrespondence,
+    );
 
   const [
     sending,
@@ -156,128 +191,6 @@ export default function SupporterReplyPanel({
         | "error";
       message: string;
     } | null>(null);
-
-  const loadHistory =
-    useCallback(
-      async (
-        force = false,
-      ) => {
-        if (
-          loadingHistory ||
-          (
-            historyLoadedRef.current &&
-            !force
-          )
-        ) {
-          return;
-        }
-
-        setLoadingHistory(true);
-
-        try {
-          const response =
-            await fetch(
-              `/api/savewooltonbaths/admin/support/reply?registrationId=${encodeURIComponent(
-                registrationId,
-              )}`,
-              {
-                method: "GET",
-                cache: "no-store",
-                credentials:
-                  "same-origin",
-              },
-            );
-
-          const data =
-            (await response.json()) as HistoryResponse;
-
-          if (
-            !response.ok ||
-            !data.ok
-          ) {
-            throw new Error(
-              data.error ||
-                "Correspondence history could not be loaded.",
-            );
-          }
-
-          setCorrespondence(
-            Array.isArray(
-              data.correspondence,
-            )
-              ? data.correspondence
-              : [],
-          );
-
-          historyLoadedRef.current =
-            true;
-        } catch (error) {
-          setFeedback({
-            type: "error",
-            message:
-              error instanceof Error
-                ? error.message
-                : "Correspondence history could not be loaded.",
-          });
-        } finally {
-          setLoadingHistory(
-            false,
-          );
-        }
-      },
-      [
-        loadingHistory,
-        registrationId,
-      ],
-    );
-
-  useEffect(
-    () => {
-      const root =
-        rootRef.current;
-
-      const details =
-        root?.closest(
-          "details",
-        ) as HTMLDetailsElement | null;
-
-      if (!details) {
-        return;
-      }
-
-      const handleToggle =
-        () => {
-          if (
-            details.open &&
-            !historyLoadedRef.current
-          ) {
-            void loadHistory();
-          }
-        };
-
-      details.addEventListener(
-        "toggle",
-        handleToggle,
-      );
-
-      if (
-        details.open &&
-        !historyLoadedRef.current
-      ) {
-        void loadHistory();
-      }
-
-      return () => {
-        details.removeEventListener(
-          "toggle",
-          handleToggle,
-        );
-      };
-    },
-    [
-      loadHistory,
-    ],
-  );
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
@@ -333,6 +246,8 @@ export default function SupporterReplyPanel({
             headers: {
               "Content-Type":
                 "application/json",
+              Accept:
+                "application/json",
             },
             body:
               JSON.stringify({
@@ -346,7 +261,9 @@ export default function SupporterReplyPanel({
         );
 
       const data =
-        (await response.json()) as SendResponse;
+        await readApiResponse(
+          response,
+        );
 
       if (
         !response.ok ||
@@ -365,20 +282,13 @@ export default function SupporterReplyPanel({
           (
             current,
           ) => [
-            data.correspondence as CorrespondenceItem,
+            data.correspondence as SupporterCorrespondenceItem,
             ...current.filter(
               (item) =>
                 item.id !==
                 data.correspondence?.id,
             ),
           ],
-        );
-
-        historyLoadedRef.current =
-          true;
-      } else {
-        await loadHistory(
-          true,
         );
       }
 
@@ -406,10 +316,6 @@ export default function SupporterReplyPanel({
             ? error.message
             : "The email could not be sent.",
       });
-
-      await loadHistory(
-        true,
-      );
     } finally {
       setSending(false);
     }
@@ -421,10 +327,7 @@ export default function SupporterReplyPanel({
     );
 
   return (
-    <div
-      ref={rootRef}
-      className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white"
-    >
+    <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
       <div className="border-b border-slate-200 bg-[#102532] px-5 py-5 text-white">
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#D4AF37] text-black">
@@ -599,48 +502,18 @@ export default function SupporterReplyPanel({
         )}
 
         <div className="mt-7 border-t border-slate-200 pt-6">
-          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#8D7425]">
-                Correspondence history
-              </p>
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#8D7425]">
+              Correspondence history
+            </p>
 
-              <p className="mt-1 text-sm leading-6 text-slate-500">
-                Personal emails sent from the supporter register.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={
-                () =>
-                  void loadHistory(
-                    true,
-                  )
-              }
-              disabled={
-                loadingHistory
-              }
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${
-                  loadingHistory
-                    ? "animate-spin"
-                    : ""
-                }`}
-              />
-              Refresh
-            </button>
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              Personal emails sent from the supporter register.
+            </p>
           </div>
 
-          {loadingHistory &&
-          !historyLoadedRef.current ? (
-            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-500">
-              Loading correspondence…
-            </div>
-          ) : correspondence.length ===
-            0 ? (
+          {correspondence.length ===
+          0 ? (
             <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-500">
               No personal emails have been recorded for this supporter yet.
             </div>
