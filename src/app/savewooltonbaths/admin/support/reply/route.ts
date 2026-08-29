@@ -314,6 +314,138 @@ async function readJsonBody(
   }
 }
 
+
+export async function GET(
+  request: NextRequest,
+) {
+  try {
+    await requireAdministratorAccount();
+
+    const registrationId =
+      cleanSingleLine(
+        request.nextUrl.searchParams.get(
+          "registrationId",
+        ),
+        80,
+      );
+
+    if (
+      !registrationId ||
+      !isUuid(registrationId)
+    ) {
+      return jsonResponse(
+        {
+          ok: false,
+          error:
+            "A valid supporter registration is required.",
+        },
+        400,
+      );
+    }
+
+    const supabase =
+      getSupabaseAdmin();
+
+    const {
+      data,
+      error,
+    } =
+      await supabase
+        .from(
+          "save_woolton_baths_support_correspondence",
+        )
+        .select(
+          `
+            id,
+            registration_id,
+            direction,
+            channel,
+            recipient_email,
+            sender_email,
+            subject,
+            message,
+            delivery_status,
+            resend_email_id,
+            sent_by,
+            sent_by_name,
+            sent_at,
+            created_at
+          `,
+        )
+        .eq(
+          "registration_id",
+          registrationId,
+        )
+        .order(
+          "sent_at",
+          {
+            ascending: false,
+          },
+        )
+        .limit(100);
+
+    if (error) {
+      console.error(
+        "[Save Woolton Baths Admin Reply] Failed to load correspondence:",
+        {
+          registrationId,
+          error,
+        },
+      );
+
+      return jsonResponse(
+        {
+          ok: false,
+          error:
+            "Correspondence history could not be loaded.",
+        },
+        500,
+      );
+    }
+
+    return jsonResponse(
+      {
+        ok: true,
+        correspondence:
+          data ?? [],
+      },
+      200,
+    );
+  } catch (error) {
+    const accessStatus =
+      getAccessErrorStatus(
+        error,
+      );
+
+    if (accessStatus) {
+      return jsonResponse(
+        {
+          ok: false,
+          error:
+            accessStatus === 401
+              ? "Please sign in to continue."
+              : "Administrator access is required.",
+        },
+        accessStatus,
+      );
+    }
+
+    console.error(
+      "[Save Woolton Baths Admin Reply] Unexpected history error:",
+      error,
+    );
+
+    return jsonResponse(
+      {
+        ok: false,
+        error:
+          "Correspondence history could not be loaded.",
+      },
+      500,
+    );
+  }
+}
+
 export async function POST(
   request: NextRequest,
 ) {
