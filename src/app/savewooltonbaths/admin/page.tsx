@@ -34,6 +34,8 @@ import {
   updateWooltonSupportStatus,
 } from "./actions";
 
+import SupporterReplyPanel from "./SupporterReplyPanel";
+
 export const dynamic = "force-dynamic";
 
 type SupportStatus =
@@ -1368,6 +1370,13 @@ function RegistrationCard({
               </form>
             </div>
           </section>
+
+          <SupporterReplyPanel
+            registrationId={registration.id}
+            supporterName={registration.name}
+            supporterEmail={registration.email}
+            permissionToContact={registration.permission_to_contact}
+          />
 
           <section className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
             <p className="font-black">
