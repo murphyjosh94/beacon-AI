@@ -345,6 +345,15 @@ export default function SaveWooltonBathsLayout({
                     through a Community Asset Transfer and restore it for future
                     generations.
                   </p>
+
+                  <div className="mt-5 border-l-2 border-[#D4AF37]/60 pl-4">
+                    <p className="text-sm font-semibold text-white">
+                      Save Woolton Baths CIC — In Formation
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-slate-400">
+                      Community Interest Company registration pending.
+                    </p>
+                  </div>
                 </div>
 
                 <div>
