@@ -238,7 +238,7 @@ export default function SupporterReplyPanel({
     try {
       const response =
         await fetch(
-          "/api/savewooltonbaths/admin/support/reply",
+          "/api/savewooltonbaths/support/reply",
           {
             method: "POST",
             credentials:
