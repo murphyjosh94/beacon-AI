@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 type PublicPartnerCategory =
   | "professional_partners"
@@ -65,7 +66,7 @@ function cleanEnvironmentValue(
     .replace(/^["']|["']$/g, "");
 }
 
-function getSupabaseClient() {
+function getSupabaseConfiguration() {
   const url = cleanEnvironmentValue(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
   );
@@ -85,6 +86,16 @@ function getSupabaseClient() {
       "NEXT_PUBLIC_SUPABASE_ANON_KEY is not configured.",
     );
   }
+
+  return {
+    url,
+    key,
+  };
+}
+
+function createPublicSupabaseClient() {
+  const { url, key } =
+    getSupabaseConfiguration();
 
   return createClient(url, key, {
     auth: {
@@ -129,31 +140,25 @@ function normalisePartner(
     name,
 
     title:
-      row.title?.trim() ||
-      null,
+      row.title?.trim() || null,
 
     wording:
-      row.description?.trim() ||
-      null,
+      row.description?.trim() || null,
 
     category:
       row.public_category,
 
     relationshipType:
-      row.relationship_type?.trim() ||
-      null,
+      row.relationship_type?.trim() || null,
 
     websiteUrl:
-      row.website_url?.trim() ||
-      null,
+      row.website_url?.trim() || null,
 
     logoUrl:
-      row.logo_url?.trim() ||
-      null,
+      row.logo_url?.trim() || null,
 
     photoUrl:
-      row.photo_url?.trim() ||
-      null,
+      row.photo_url?.trim() || null,
 
     displayOrder:
       Number.isFinite(
@@ -169,8 +174,12 @@ function normalisePartner(
 
 export async function GET() {
   try {
+    const {
+      url: configuredSupabaseUrl,
+    } = getSupabaseConfiguration();
+
     const supabase =
-      getSupabaseClient();
+      createPublicSupabaseClient();
 
     const {
       data,
@@ -202,33 +211,67 @@ export async function GET() {
     if (error) {
       console.error(
         "[Save Woolton Baths partners GET]",
-        error,
+        {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        },
       );
 
       return NextResponse.json(
         {
           ok: false,
+
           error:
             "Unable to load campaign partners.",
+
+          diagnostic: {
+            code:
+              error.code || null,
+
+            message:
+              error.message || null,
+
+            details:
+              error.details || null,
+
+            hint:
+              error.hint || null,
+
+            supabaseHost: (() => {
+              try {
+                return new URL(
+                  configuredSupabaseUrl,
+                ).hostname;
+              } catch {
+                return "invalid-url";
+              }
+            })(),
+          },
         },
         {
           status: 500,
+
+          headers: {
+            "Cache-Control":
+              "no-store, max-age=0",
+          },
         },
       );
     }
 
-    const partners =
-      (
-        (data ??
-          []) as unknown as PublicPartnerRow[]
-      )
-        .map(normalisePartner)
-        .filter(
-          (
-            partner,
-          ): partner is PublicPartner =>
-            partner !== null,
-        );
+    const rows =
+      (data ?? []) as unknown as PublicPartnerRow[];
+
+    const partners = rows
+      .map(normalisePartner)
+      .filter(
+        (
+          partner,
+        ): partner is PublicPartner =>
+          partner !== null,
+      );
 
     return NextResponse.json(
       {
@@ -254,11 +297,24 @@ export async function GET() {
     return NextResponse.json(
       {
         ok: false,
+
         error:
           "Unable to load campaign partners.",
+
+        diagnostic: {
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unknown server error.",
+        },
       },
       {
         status: 500,
+
+        headers: {
+          "Cache-Control":
+            "no-store, max-age=0",
+        },
       },
     );
   }
