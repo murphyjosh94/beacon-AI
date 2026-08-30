@@ -66,13 +66,13 @@ function cleanEnvironmentValue(
     .replace(/^["']|["']$/g, "");
 }
 
-function getSupabaseConfiguration() {
+function createServerSupabaseClient() {
   const url = cleanEnvironmentValue(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
   );
 
-  const key = cleanEnvironmentValue(
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  const serviceRoleKey = cleanEnvironmentValue(
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
   );
 
   if (!url) {
@@ -81,29 +81,23 @@ function getSupabaseConfiguration() {
     );
   }
 
-  if (!key) {
+  if (!serviceRoleKey) {
     throw new Error(
-      "NEXT_PUBLIC_SUPABASE_ANON_KEY is not configured.",
+      "SUPABASE_SERVICE_ROLE_KEY is not configured.",
     );
   }
 
-  return {
+  return createClient(
     url,
-    key,
-  };
-}
-
-function createPublicSupabaseClient() {
-  const { url, key } =
-    getSupabaseConfiguration();
-
-  return createClient(url, key, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
+    serviceRoleKey,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
     },
-  });
+  );
 }
 
 function isPublicCategory(
@@ -174,12 +168,8 @@ function normalisePartner(
 
 export async function GET() {
   try {
-    const {
-      url: configuredSupabaseUrl,
-    } = getSupabaseConfiguration();
-
     const supabase =
-      createPublicSupabaseClient();
+      createServerSupabaseClient();
 
     const {
       data,
@@ -201,12 +191,18 @@ export async function GET() {
           "display_order",
         ].join(","),
       )
-      .order("display_order", {
-        ascending: true,
-      })
-      .order("name", {
-        ascending: true,
-      });
+      .order(
+        "display_order",
+        {
+          ascending: true,
+        },
+      )
+      .order(
+        "name",
+        {
+          ascending: true,
+        },
+      );
 
     if (error) {
       console.error(
@@ -222,37 +218,11 @@ export async function GET() {
       return NextResponse.json(
         {
           ok: false,
-
           error:
             "Unable to load campaign partners.",
-
-          diagnostic: {
-            code:
-              error.code || null,
-
-            message:
-              error.message || null,
-
-            details:
-              error.details || null,
-
-            hint:
-              error.hint || null,
-
-            supabaseHost: (() => {
-              try {
-                return new URL(
-                  configuredSupabaseUrl,
-                ).hostname;
-              } catch {
-                return "invalid-url";
-              }
-            })(),
-          },
         },
         {
           status: 500,
-
           headers: {
             "Cache-Control":
               "no-store, max-age=0",
@@ -281,7 +251,6 @@ export async function GET() {
       },
       {
         status: 200,
-
         headers: {
           "Cache-Control":
             "no-store, max-age=0",
@@ -297,20 +266,11 @@ export async function GET() {
     return NextResponse.json(
       {
         ok: false,
-
         error:
           "Unable to load campaign partners.",
-
-        diagnostic: {
-          message:
-            error instanceof Error
-              ? error.message
-              : "Unknown server error.",
-        },
       },
       {
         status: 500,
-
         headers: {
           "Cache-Control":
             "no-store, max-age=0",
