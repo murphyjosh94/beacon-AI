@@ -16,43 +16,29 @@ type PublicPartnerCategory =
 
 type PublicPartnerRow = {
   id: string;
-
-  approved_public_name: string;
-  approved_public_title: string | null;
-  approved_public_wording: string | null;
-
+  name: string;
+  title: string | null;
+  description: string | null;
   public_category: PublicPartnerCategory;
-
-  public_website_url: string | null;
-
+  relationship_type: string | null;
   logo_url: string | null;
   photo_url: string | null;
-
-  public_logo_approved: boolean;
-  public_photo_approved: boolean;
-  public_wording_approved: boolean;
-
-  display_order: number | null;
-
+  website_url: string | null;
   confirmed_partner_since: string | null;
+  display_order: number | null;
 };
 
 type PublicPartner = {
   id: string;
-
   name: string;
   title: string | null;
   wording: string | null;
-
   category: PublicPartnerCategory;
-
+  relationshipType: string | null;
   websiteUrl: string | null;
-
   logoUrl: string | null;
   photoUrl: string | null;
-
   displayOrder: number;
-
   confirmedPartnerSince: string | null;
 };
 
@@ -125,14 +111,13 @@ function normalisePartner(
 ): PublicPartner | null {
   if (
     !row.id ||
-    !row.approved_public_name ||
+    !row.name ||
     !isPublicCategory(row.public_category)
   ) {
     return null;
   }
 
-  const name =
-    row.approved_public_name.trim();
+  const name = row.name.trim();
 
   if (!name) {
     return null;
@@ -144,30 +129,31 @@ function normalisePartner(
     name,
 
     title:
-      row.approved_public_title?.trim() ||
+      row.title?.trim() ||
       null,
 
     wording:
-      row.public_wording_approved
-        ? row.approved_public_wording?.trim() ||
-          null
-        : null,
+      row.description?.trim() ||
+      null,
 
-    category: row.public_category,
+    category:
+      row.public_category,
+
+    relationshipType:
+      row.relationship_type?.trim() ||
+      null,
 
     websiteUrl:
-      row.public_website_url?.trim() ||
+      row.website_url?.trim() ||
       null,
 
     logoUrl:
-      row.public_logo_approved
-        ? row.logo_url?.trim() || null
-        : null,
+      row.logo_url?.trim() ||
+      null,
 
     photoUrl:
-      row.public_photo_approved
-        ? row.photo_url?.trim() || null
-        : null,
+      row.photo_url?.trim() ||
+      null,
 
     displayOrder:
       Number.isFinite(
@@ -194,24 +180,22 @@ export async function GET() {
       .select(
         [
           "id",
-          "approved_public_name",
-          "approved_public_title",
-          "approved_public_wording",
+          "name",
+          "title",
+          "description",
           "public_category",
-          "public_website_url",
+          "relationship_type",
           "logo_url",
           "photo_url",
-          "public_logo_approved",
-          "public_photo_approved",
-          "public_wording_approved",
-          "display_order",
+          "website_url",
           "confirmed_partner_since",
+          "display_order",
         ].join(","),
       )
       .order("display_order", {
         ascending: true,
       })
-      .order("approved_public_name", {
+      .order("name", {
         ascending: true,
       });
 
@@ -257,7 +241,7 @@ export async function GET() {
 
         headers: {
           "Cache-Control":
-            "public, s-maxage=300, stale-while-revalidate=600",
+            "no-store, max-age=0",
         },
       },
     );
