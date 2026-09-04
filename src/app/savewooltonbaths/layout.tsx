@@ -89,7 +89,7 @@ export default function SaveWooltonBathsLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-[#06121D] text-white antialiased">
+      <body className="bg-[#06121D] text-white antialiased selection:bg-[#D4AF37] selection:text-black [&_input]:cursor-text [&_input]:caret-[#D4AF37] [&_textarea]:cursor-text [&_textarea]:caret-[#D4AF37]">
         <div className="flex min-h-screen flex-col">
           {/* ------------------------------------------------------------ */}
           {/* Top Campaign Banner */}
@@ -197,46 +197,46 @@ export default function SaveWooltonBathsLayout({
             {/* Mobile Navigation */}
             {/* ------------------------------------------------------------ */}
 
-            <div className="border-t border-white/10 md:hidden">
-              <nav className="mx-auto grid max-w-7xl grid-cols-6 text-center text-[10px] font-semibold sm:text-xs">
+            <div className="border-t border-white/10 bg-[#06121D] md:hidden">
+              <nav className="mx-auto grid max-w-7xl grid-cols-3 text-center text-xs font-bold text-white sm:grid-cols-6 sm:text-xs">
                 <Link
                   href="/savewooltonbaths"
-                  className="px-1 py-3 transition hover:bg-white/5 hover:text-[#D4AF37]"
+                  className="border-white/5 px-2 py-3.5 text-white transition hover:bg-white/5 hover:text-[#D4AF37] focus-visible:bg-white/5 focus-visible:text-[#D4AF37] focus-visible:outline-none"
                 >
                   Home
                 </Link>
 
                 <Link
                   href="/savewooltonbaths/history"
-                  className="px-1 py-3 transition hover:bg-white/5 hover:text-[#D4AF37]"
+                  className="border-white/5 px-2 py-3.5 text-white transition hover:bg-white/5 hover:text-[#D4AF37] focus-visible:bg-white/5 focus-visible:text-[#D4AF37] focus-visible:outline-none"
                 >
                   History
                 </Link>
 
                 <Link
                   href="/savewooltonbaths/updates"
-                  className="px-1 py-3 transition hover:bg-white/5 hover:text-[#D4AF37]"
+                  className="border-white/5 px-2 py-3.5 text-white transition hover:bg-white/5 hover:text-[#D4AF37] focus-visible:bg-white/5 focus-visible:text-[#D4AF37] focus-visible:outline-none"
                 >
                   Updates
                 </Link>
 
                 <Link
                   href="/savewooltonbaths/partners"
-                  className="px-1 py-3 transition hover:bg-white/5 hover:text-[#D4AF37]"
+                  className="border-white/5 px-2 py-3.5 text-white transition hover:bg-white/5 hover:text-[#D4AF37] focus-visible:bg-white/5 focus-visible:text-[#D4AF37] focus-visible:outline-none"
                 >
                   Partners
                 </Link>
 
                 <Link
                   href="/savewooltonbaths/support"
-                  className="px-1 py-3 transition hover:bg-white/5 hover:text-[#D4AF37]"
+                  className="border-white/5 px-2 py-3.5 text-white transition hover:bg-white/5 hover:text-[#D4AF37] focus-visible:bg-white/5 focus-visible:text-[#D4AF37] focus-visible:outline-none"
                 >
                   Support
                 </Link>
 
                 <Link
                   href="/savewooltonbaths/donate"
-                  className="px-1 py-3 transition hover:bg-white/5 hover:text-[#D4AF37]"
+                  className="border-white/5 px-2 py-3.5 text-white transition hover:bg-white/5 hover:text-[#D4AF37] focus-visible:bg-white/5 focus-visible:text-[#D4AF37] focus-visible:outline-none"
                 >
                   Donate
                 </Link>
