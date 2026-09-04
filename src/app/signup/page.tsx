@@ -24,14 +24,16 @@ function readAuthError(
   ) {
     if (
       "message" in error &&
-      typeof error.message === "string"
+      typeof error.message === "string" &&
+      error.message.trim()
     ) {
       return error.message;
     }
 
     if (
       "statusText" in error &&
-      typeof error.statusText === "string"
+      typeof error.statusText === "string" &&
+      error.statusText.trim()
     ) {
       return error.statusText;
     }
@@ -65,13 +67,49 @@ export default function SignUpPage() {
   ] =
     useState("");
 
-  const [acceptedTerms, setAcceptedTerms] =
+  const [
+    acceptedTerms,
+    setAcceptedTerms,
+  ] =
     useState(false);
 
-  const [submitting, setSubmitting] =
+  const [
+    submitting,
+    setSubmitting,
+  ] =
     useState(false);
 
   const [error, setError] =
+    useState("");
+
+  const [
+    accountCreated,
+    setAccountCreated,
+  ] =
+    useState(false);
+
+  const [
+    createdEmail,
+    setCreatedEmail,
+  ] =
+    useState("");
+
+  const [
+    resending,
+    setResending,
+  ] =
+    useState(false);
+
+  const [
+    resendMessage,
+    setResendMessage,
+  ] =
+    useState("");
+
+  const [
+    resendError,
+    setResendError,
+  ] =
     useState("");
 
   useEffect(() => {
@@ -102,7 +140,9 @@ export default function SignUpPage() {
       name.trim();
 
     const cleanedEmail =
-      email.trim().toLowerCase();
+      email
+        .trim()
+        .toLowerCase();
 
     setError("");
 
@@ -110,6 +150,7 @@ export default function SignUpPage() {
       setError(
         "Please enter your name."
       );
+
       return;
     }
 
@@ -117,6 +158,7 @@ export default function SignUpPage() {
       setError(
         "Please enter your email address."
       );
+
       return;
     }
 
@@ -126,6 +168,7 @@ export default function SignUpPage() {
       setError(
         "Your password must contain at least 8 characters."
       );
+
       return;
     }
 
@@ -136,6 +179,7 @@ export default function SignUpPage() {
       setError(
         "Your passwords do not match."
       );
+
       return;
     }
 
@@ -143,6 +187,7 @@ export default function SignUpPage() {
       setError(
         "Please accept the Terms and Privacy Policy."
       );
+
       return;
     }
 
@@ -169,19 +214,78 @@ export default function SignUpPage() {
         throw signUpError;
       }
 
-      router.push(
-        "/dashboard"
+      setCreatedEmail(
+        cleanedEmail
       );
 
-      router.refresh();
+      setAccountCreated(
+        true
+      );
+
+      setPassword("");
+      setConfirmPassword("");
     } catch (caughtError) {
+      console.error(
+        "Beacon sign-up failed:",
+        caughtError
+      );
+
       setError(
         readAuthError(
           caughtError
         )
       );
+    } finally {
+      setSubmitting(
+        false
+      );
+    }
+  }
 
-      setSubmitting(false);
+  async function handleResendVerification() {
+    if (
+      resending ||
+      !createdEmail
+    ) {
+      return;
+    }
+
+    setResending(true);
+    setResendMessage("");
+    setResendError("");
+
+    try {
+      const result =
+        await authClient.sendVerificationEmail({
+          email:
+            createdEmail,
+
+          callbackURL:
+            "/dashboard",
+        });
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      setResendMessage(
+        "A new verification email has been sent."
+      );
+    } catch (caughtError) {
+      console.error(
+        "Beacon verification email resend failed:",
+        caughtError
+      );
+
+      setResendError(
+        readAuthError(
+          caughtError
+        )
+      );
+    } finally {
+      setResending(
+        false
+      );
     }
   }
 
@@ -232,197 +336,291 @@ export default function SignUpPage() {
             </div>
           </div>
 
-          <div className="rounded-[2rem] border border-white/20 bg-white p-7 shadow-2xl sm:p-10">
-            <div>
-              <p className="text-sm font-extrabold uppercase tracking-[0.24em] text-blue-800">
-                Create account
-              </p>
-
-              <h2 className="mt-3 text-3xl font-black text-slate-950">
-                Welcome to Beacon
-              </h2>
-
-              <p className="mt-3 leading-7 text-slate-600">
-                Enter your details to create your
-                free account.
-              </p>
-            </div>
-
-            {error && (
-              <div
-                role="alert"
-                className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800"
-              >
-                {error}
+          {accountCreated ? (
+            <div className="rounded-[2rem] border border-white/20 bg-white p-7 shadow-2xl sm:p-10">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-3xl text-blue-900">
+                ✓
               </div>
-            )}
 
-            <form
-              onSubmit={handleSubmit}
-              className="mt-7 space-y-5"
-            >
-              <div>
-                <label
-                  htmlFor="name"
-                  className="block text-sm font-extrabold text-slate-800"
+              <div className="mt-6 text-center">
+                <p className="text-sm font-extrabold uppercase tracking-[0.24em] text-blue-800">
+                  Account created
+                </p>
+
+                <h2 className="mt-3 text-3xl font-black text-slate-950">
+                  Check your email
+                </h2>
+
+                <p className="mt-4 leading-7 text-slate-600">
+                  We&apos;ve sent a verification link
+                  to
+                </p>
+
+                <p className="mt-2 break-all font-extrabold text-slate-950">
+                  {createdEmail}
+                </p>
+
+                <p className="mt-5 leading-7 text-slate-600">
+                  Open the email and select{" "}
+                  <span className="font-bold text-slate-900">
+                    Verify Email
+                  </span>{" "}
+                  to activate your Beacon AI
+                  account.
+                </p>
+              </div>
+
+              <div className="mt-7 rounded-2xl border border-blue-100 bg-blue-50 p-5">
+                <p className="font-extrabold text-blue-950">
+                  Can&apos;t see the email?
+                </p>
+
+                <p className="mt-2 text-sm leading-6 text-blue-900">
+                  Check your spam or junk folder.
+                  Delivery can occasionally take a
+                  minute.
+                </p>
+              </div>
+
+              {resendMessage && (
+                <div
+                  role="status"
+                  className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800"
                 >
-                  Name
-                </label>
+                  {resendMessage}
+                </div>
+              )}
 
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  autoComplete="name"
-                  required
-                  value={name}
-                  onChange={(event) =>
-                    setName(
-                      event.target.value
-                    )
-                  }
-                  disabled={submitting}
-                  placeholder="Your name"
-                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3.5 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-700 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="email"
-                  className="block text-sm font-extrabold text-slate-800"
+              {resendError && (
+                <div
+                  role="alert"
+                  className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800"
                 >
-                  Email address
-                </label>
-
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(event) =>
-                    setEmail(
-                      event.target.value
-                    )
-                  }
-                  disabled={submitting}
-                  placeholder="you@example.com"
-                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3.5 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-700 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-extrabold text-slate-800"
-                >
-                  Password
-                </label>
-
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  minLength={8}
-                  value={password}
-                  onChange={(event) =>
-                    setPassword(
-                      event.target.value
-                    )
-                  }
-                  disabled={submitting}
-                  placeholder="At least 8 characters"
-                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3.5 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-700 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="confirm-password"
-                  className="block text-sm font-extrabold text-slate-800"
-                >
-                  Confirm password
-                </label>
-
-                <input
-                  id="confirm-password"
-                  name="confirmPassword"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  minLength={8}
-                  value={confirmPassword}
-                  onChange={(event) =>
-                    setConfirmPassword(
-                      event.target.value
-                    )
-                  }
-                  disabled={submitting}
-                  placeholder="Enter your password again"
-                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3.5 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-700 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
-                />
-              </div>
-
-              <label className="flex items-start gap-3 rounded-2xl bg-slate-50 p-4">
-                <input
-                  type="checkbox"
-                  checked={acceptedTerms}
-                  onChange={(event) =>
-                    setAcceptedTerms(
-                      event.target.checked
-                    )
-                  }
-                  disabled={submitting}
-                  className="mt-1 h-4 w-4 rounded border-slate-300"
-                />
-
-                <span className="text-sm leading-6 text-slate-600">
-                  I agree to Beacon AI&apos;s{" "}
-                  <Link
-                    href="/terms"
-                    className="font-bold text-blue-800 hover:underline"
-                  >
-                    Terms
-                  </Link>{" "}
-                  and{" "}
-                  <Link
-                    href="/privacy"
-                    className="font-bold text-blue-800 hover:underline"
-                  >
-                    Privacy Policy
-                  </Link>
-                  .
-                </span>
-              </label>
+                  {resendError}
+                </div>
+              )}
 
               <button
-                type="submit"
-                disabled={
-                  submitting ||
-                  sessionPending
+                type="button"
+                onClick={
+                  handleResendVerification
                 }
-                className="w-full rounded-2xl bg-blue-900 px-5 py-4 font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={resending}
+                className="mt-6 w-full rounded-2xl border border-blue-900 px-5 py-4 font-extrabold text-blue-900 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {submitting
-                  ? "Creating Account..."
-                  : "Create My Account"}
+                {resending
+                  ? "Sending..."
+                  : "Resend verification email"}
               </button>
-            </form>
 
-            <p className="mt-7 text-center text-sm text-slate-600">
-              Already have a Beacon account?{" "}
               <Link
                 href="/signin"
-                className="font-extrabold text-blue-800 hover:underline"
+                className="mt-4 flex w-full items-center justify-center rounded-2xl bg-blue-900 px-5 py-4 font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-800"
               >
-                Sign in
+                Go to sign in
               </Link>
-            </p>
-          </div>
+
+              <p className="mt-5 text-center text-xs leading-5 text-slate-500">
+                Verification links expire after
+                1 hour. If yours expires, use the
+                resend button above to receive a new
+                one.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-[2rem] border border-white/20 bg-white p-7 shadow-2xl sm:p-10">
+              <div>
+                <p className="text-sm font-extrabold uppercase tracking-[0.24em] text-blue-800">
+                  Create account
+                </p>
+
+                <h2 className="mt-3 text-3xl font-black text-slate-950">
+                  Welcome to Beacon
+                </h2>
+
+                <p className="mt-3 leading-7 text-slate-600">
+                  Enter your details to create your
+                  free account.
+                </p>
+              </div>
+
+              {error && (
+                <div
+                  role="alert"
+                  className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800"
+                >
+                  {error}
+                </div>
+              )}
+
+              <form
+                onSubmit={handleSubmit}
+                className="mt-7 space-y-5"
+              >
+                <div>
+                  <label
+                    htmlFor="name"
+                    className="block text-sm font-extrabold text-slate-800"
+                  >
+                    Name
+                  </label>
+
+                  <input
+                    id="name"
+                    name="name"
+                    type="text"
+                    autoComplete="name"
+                    required
+                    value={name}
+                    onChange={(event) =>
+                      setName(
+                        event.target.value
+                      )
+                    }
+                    disabled={submitting}
+                    placeholder="Your name"
+                    className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3.5 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-700 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-extrabold text-slate-800"
+                  >
+                    Email address
+                  </label>
+
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(event) =>
+                      setEmail(
+                        event.target.value
+                      )
+                    }
+                    disabled={submitting}
+                    placeholder="you@example.com"
+                    className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3.5 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-700 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-extrabold text-slate-800"
+                  >
+                    Password
+                  </label>
+
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete="new-password"
+                    required
+                    minLength={8}
+                    value={password}
+                    onChange={(event) =>
+                      setPassword(
+                        event.target.value
+                      )
+                    }
+                    disabled={submitting}
+                    placeholder="At least 8 characters"
+                    className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3.5 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-700 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="confirm-password"
+                    className="block text-sm font-extrabold text-slate-800"
+                  >
+                    Confirm password
+                  </label>
+
+                  <input
+                    id="confirm-password"
+                    name="confirmPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    required
+                    minLength={8}
+                    value={confirmPassword}
+                    onChange={(event) =>
+                      setConfirmPassword(
+                        event.target.value
+                      )
+                    }
+                    disabled={submitting}
+                    placeholder="Enter your password again"
+                    className="mt-2 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3.5 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-700 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  />
+                </div>
+
+                <label className="flex items-start gap-3 rounded-2xl bg-slate-50 p-4">
+                  <input
+                    type="checkbox"
+                    checked={acceptedTerms}
+                    onChange={(event) =>
+                      setAcceptedTerms(
+                        event.target.checked
+                      )
+                    }
+                    disabled={submitting}
+                    className="mt-1 h-4 w-4 rounded border-slate-300"
+                  />
+
+                  <span className="text-sm leading-6 text-slate-600">
+                    I agree to Beacon AI&apos;s{" "}
+                    <Link
+                      href="/terms"
+                      className="font-bold text-blue-800 hover:underline"
+                    >
+                      Terms
+                    </Link>{" "}
+                    and{" "}
+                    <Link
+                      href="/privacy"
+                      className="font-bold text-blue-800 hover:underline"
+                    >
+                      Privacy Policy
+                    </Link>
+                    .
+                  </span>
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={
+                    submitting ||
+                    sessionPending
+                  }
+                  className="w-full rounded-2xl bg-blue-900 px-5 py-4 font-extrabold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {submitting
+                    ? "Creating Account..."
+                    : "Create My Account"}
+                </button>
+              </form>
+
+              <p className="mt-7 text-center text-sm text-slate-600">
+                Already have a Beacon account?{" "}
+
+                <Link
+                  href="/signin"
+                  className="font-extrabold text-blue-800 hover:underline"
+                >
+                  Sign in
+                </Link>
+              </p>
+            </div>
+          )}
         </div>
       </section>
 
