@@ -18,7 +18,7 @@ function readRequiredEnvironmentVariable(
   name:
     | "BETTER_AUTH_SECRET"
     | "BETTER_AUTH_URL"
-    | "RESEND_API_KEY"
+    | "BEACON_RESEND_API_KEY"
 ): string {
   const value =
     process.env[name]?.trim();
@@ -44,7 +44,7 @@ const secret =
 
 const resendApiKey =
   readRequiredEnvironmentVariable(
-    "RESEND_API_KEY"
+    "BEACON_RESEND_API_KEY"
   );
 
 const resend =
