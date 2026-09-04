@@ -111,33 +111,34 @@ export default function SaveWooltonBathsDonatePage() {
               </h1>
 
               <p className="mt-7 max-w-3xl text-lg leading-9 text-slate-300 md:text-xl">
-                Our first crowdfunding round will target{" "}
-                <strong className="text-white">£125,000</strong> to begin the
-                essential work required to protect Woolton Baths and prepare the
-                building for its phased restoration.
+                Our current initial funding estimate is approximately{" "}
+                <strong className="text-white">£125,000</strong>. The final funding
+                requirement will be confirmed and announced once the necessary
+                building surveys, structural assessments and professional reports
+                have been completed.
               </p>
 
               <div className="mt-8 rounded-2xl border border-[#D4AF37]/30 bg-[#D4AF37]/10 p-5">
                 <p className="font-black text-[#E6C75A]">
-                  Important: £125,000 is the first round of funding.
+                  Important: approximately £125,000 is our current initial funding estimate.
                 </p>
 
                 <p className="mt-2 leading-7 text-slate-300">
-                  It is not intended to represent the total cost of restoring
-                  Woolton Baths. Further phases will require additional
-                  fundraising, partnerships, donated labour, materials,
-                  equipment and reinvested project income.
+                  It is not a confirmed final restoration cost. The final amount will be
+                  announced once the necessary surveys and professional reports
+                  are complete. Donated labour, materials, equipment and other
+                  in-kind support may reduce the amount of funding ultimately required.
                 </p>
               </div>
             </div>
 
             <div className="rounded-[2rem] border border-[#D4AF37]/25 bg-[#0B1D2B] p-8 md:p-10">
               <p className="text-xs font-black uppercase tracking-[0.25em] text-[#D4AF37]">
-                First Funding Round
+                Initial Funding Estimate
               </p>
 
               <p className="mt-4 text-6xl font-black text-white md:text-7xl">
-                £125,000
+                Approx. £125,000
               </p>
 
               <p className="mt-4 text-lg font-bold leading-8 text-slate-300">
@@ -199,7 +200,7 @@ export default function SaveWooltonBathsDonatePage() {
       </section>
 
       {/* ================================================================ */}
-      {/* WHAT £125K MEANS */}
+      {/* INITIAL FUNDING ESTIMATE */}
       {/* ================================================================ */}
 
       <section className="bg-[#F2EFE7] text-[#10202A]">
@@ -213,7 +214,7 @@ export default function SaveWooltonBathsDonatePage() {
               </p>
 
               <h2 className="mt-4 text-4xl font-black tracking-tight md:text-5xl">
-                £125,000 gets the restoration moving.
+                Why approximately £125,000?
               </h2>
 
               <p className="mt-6 text-lg leading-8 text-slate-700">
@@ -270,14 +271,15 @@ export default function SaveWooltonBathsDonatePage() {
             </p>
 
             <h2 className="mt-4 text-4xl font-black tracking-tight text-white md:text-5xl">
-              £125,000 is not the total restoration budget.
+              The final funding requirement is still to be confirmed.
             </h2>
 
             <p className="mt-7 text-lg leading-9 text-slate-300">
-              Restoring a historic swimming pool is a major long-term project.
-              We believe the most realistic way to deliver it is to fund and
-              complete the work in stages rather than attempting to raise the
-              entire eventual restoration cost in one campaign.
+              The current figure of approximately £125,000 is an initial estimate. The
+              final amount will be announced once the necessary building surveys,
+              structural assessments and professional reports have been completed.
+              Our partnership work may also reduce the amount ultimately required
+              through donated labour, materials, equipment and professional support.
             </p>
           </div>
 
@@ -421,7 +423,7 @@ export default function SaveWooltonBathsDonatePage() {
 
               <div className="mt-7 space-y-4">
                 {[
-                  "The £125,000 target will be identified publicly as Round One.",
+                  "Approximately £125,000 will be identified publicly as the current initial funding estimate, not a confirmed final requirement.",
                   "Later fundraising will be separated into future restoration phases where practical.",
                   "Major donated materials, equipment and professional support can be recorded alongside financial contributions.",
                   "Campaign funds will not be used to pay Beacon AI for development or hosting of this website.",
@@ -467,11 +469,11 @@ export default function SaveWooltonBathsDonatePage() {
                 <div className="flex items-end justify-between gap-4">
                   <div>
                     <p className="text-xs font-black uppercase tracking-[0.2em] text-[#D4AF37]">
-                      Round One Target
+                      Initial Funding Estimate
                     </p>
 
                     <p className="mt-2 text-4xl font-black text-white">
-                      £125,000
+                      Approx. £125,000
                     </p>
                   </div>
 

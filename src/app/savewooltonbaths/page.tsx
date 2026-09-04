@@ -535,7 +535,7 @@ export default function SaveWooltonBathsPage() {
       </section>
 
       {/* ================================================================ */}
-      {/* £125K */}
+      {/* INITIAL FUNDING ESTIMATE */}
       {/* ================================================================ */}
 
       <section className="relative overflow-hidden bg-[#07131D]">
@@ -548,16 +548,16 @@ export default function SaveWooltonBathsPage() {
                 <BadgePoundSterling className="h-12 w-12" />
 
                 <p className="mt-7 text-sm font-black uppercase tracking-[0.2em]">
-                  Initial Campaign Target
+                  Initial Funding Estimate
                 </p>
 
                 <p className="mt-3 text-6xl font-black md:text-7xl">
-                  £125,000
+                  Approx. £125,000
                 </p>
 
                 <p className="mt-4 text-lg font-bold leading-8">
-                  Seed funding for the first major stage of protecting and
-                  weatherproofing Woolton Baths.
+                  Our current working estimate for the first major stage of
+                  protecting and weatherproofing Woolton Baths.
                 </p>
               </div>
 
@@ -571,16 +571,19 @@ export default function SaveWooltonBathsPage() {
                 </h2>
 
                 <p className="mt-6 text-lg leading-8 text-slate-300">
-                  We are preparing a city-wide crowdfunding campaign with an
-                  initial target of £125,000. The purpose of this first funding
-                  round is not to pay for the entire restoration.
+                  We are preparing a city-wide crowdfunding campaign around an
+                  initial working estimate of approximately £125,000. This is not
+                  a confirmed final funding requirement, and this first funding
+                  round is not intended to pay for the entire restoration.
                 </p>
 
                 <p className="mt-5 text-lg leading-8 text-slate-300">
-                  It is intended to help cover immediate material and project
-                  costs associated with securing the building envelope,
-                  repairing vulnerable roof areas and creating a weatherproof
-                  shell from which the wider restoration can progress.
+                  The final amount will be confirmed and announced once the
+                  necessary building surveys, structural assessments and
+                  professional reports have been completed. In the meantime, we
+                  are actively working to reduce the amount of funding required
+                  through donated materials, equipment, professional services
+                  and other in-kind support.
                 </p>
 
                 <div className="mt-8 flex flex-wrap gap-3">
@@ -722,10 +725,10 @@ export default function SaveWooltonBathsPage() {
               </h3>
 
               <p className="mt-4 max-w-xl leading-8 text-slate-300">
-                Our £125,000 Phase 1 crowdfunding campaign is being prepared.
-                The donation page is already in place and will connect visitors
-                directly to our official Crowdfunder campaign when fundraising
-                opens.
+                Our Phase 1 crowdfunding campaign is being prepared around an
+                initial estimate of approximately £125,000. The final funding
+                requirement will be confirmed once the necessary surveys and
+                professional reports have been completed.
               </p>
 
               <span className="mt-8 inline-flex items-center gap-2 font-black text-[#D4AF37]">
