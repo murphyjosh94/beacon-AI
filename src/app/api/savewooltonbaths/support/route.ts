@@ -16,6 +16,15 @@ type SupportType =
   | "professional"
   | "other";
 
+type HeardAboutCampaign =
+  | "search_engine"
+  | "family_friend"
+  | "flyer"
+  | "poster"
+  | "social_media"
+  | "door_to_door"
+  | "other";
+
 type SupportSubmission = {
   name?: unknown;
   email?: unknown;
@@ -23,6 +32,7 @@ type SupportSubmission = {
   organisation?: unknown;
   postcode?: unknown;
   supportType?: unknown;
+  heardAboutCampaign?: unknown;
   tradeProfession?: unknown;
   materialDetails?: unknown;
   equipmentDetails?: unknown;
@@ -51,6 +61,16 @@ const SUPPORT_TYPES = new Set<SupportType>([
   "funding",
   "education",
   "professional",
+  "other",
+]);
+
+const HEARD_ABOUT_CAMPAIGN_VALUES = new Set<HeardAboutCampaign>([
+  "search_engine",
+  "family_friend",
+  "flyer",
+  "poster",
+  "social_media",
+  "door_to_door",
   "other",
 ]);
 
@@ -344,6 +364,16 @@ function getSupportType(value: unknown): SupportType | null {
   return SUPPORT_TYPES.has(candidate) ? candidate : null;
 }
 
+function getHeardAboutCampaign(value: unknown): HeardAboutCampaign | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const candidate = value.trim() as HeardAboutCampaign;
+
+  return HEARD_ABOUT_CAMPAIGN_VALUES.has(candidate) ? candidate : null;
+}
+
 function emptyToNull(value: string): string | null {
   return value.length > 0 ? value : null;
 }
@@ -430,6 +460,7 @@ export async function POST(request: NextRequest) {
     const organisation = cleanSingleLine(body.organisation, 180);
     const postcode = normalisePostcode(body.postcode);
     const supportType = getSupportType(body.supportType);
+    const heardAboutCampaign = getHeardAboutCampaign(body.heardAboutCampaign);
 
     const tradeProfession = cleanSingleLine(body.tradeProfession, 180);
     const materialDetails = cleanText(body.materialDetails, 4000);
@@ -488,6 +519,16 @@ export async function POST(request: NextRequest) {
         {
           ok: false,
           error: "Please select how you would like to support the campaign.",
+        },
+        400,
+      );
+    }
+
+    if (!heardAboutCampaign) {
+      return jsonResponse(
+        {
+          ok: false,
+          error: "Please tell us how you heard about the campaign.",
         },
         400,
       );
@@ -606,6 +647,7 @@ export async function POST(request: NextRequest) {
         postcode: emptyToNull(postcode),
 
         support_type: supportType,
+        heard_about_campaign: heardAboutCampaign,
 
         trade_profession: emptyToNull(tradeProfession),
         material_details: emptyToNull(materialDetails),
@@ -654,6 +696,7 @@ export async function POST(request: NextRequest) {
     console.info("[Save Woolton Baths Support] Registration created", {
       id: data.id,
       supportType,
+      heardAboutCampaign,
       createdAt: data.created_at,
     });
 

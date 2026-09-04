@@ -38,6 +38,16 @@ type SupportType =
   | "professional"
   | "other";
 
+type HeardAboutCampaign =
+  | ""
+  | "search_engine"
+  | "family_friend"
+  | "flyer"
+  | "poster"
+  | "social_media"
+  | "door_to_door"
+  | "other";
+
 type FormState = {
   name: string;
   email: string;
@@ -45,6 +55,7 @@ type FormState = {
   organisation: string;
   postcode: string;
   supportType: SupportType;
+  heardAboutCampaign: HeardAboutCampaign;
   tradeProfession: string;
   materialDetails: string;
   equipmentDetails: string;
@@ -72,6 +83,7 @@ const initialFormState: FormState = {
   organisation: "",
   postcode: "",
   supportType: "",
+  heardAboutCampaign: "",
   tradeProfession: "",
   materialDetails: "",
   equipmentDetails: "",
@@ -84,6 +96,16 @@ const initialFormState: FormState = {
   publicSupport: false,
   website: "",
 };
+
+const heardAboutOptions = [
+  { value: "search_engine", label: "Search Engine" },
+  { value: "family_friend", label: "Family / Friend" },
+  { value: "flyer", label: "Flyer" },
+  { value: "poster", label: "Poster" },
+  { value: "social_media", label: "Social Media" },
+  { value: "door_to_door", label: "Door to Door" },
+  { value: "other", label: "Other" },
+] as const;
 
 const supportOptions = [
   {
@@ -250,6 +272,11 @@ export default function SaveWooltonBathsSupportPage() {
       return;
     }
 
+    if (!form.heardAboutCampaign) {
+      setError("Please tell us how you heard about the campaign.");
+      return;
+    }
+
     if (!form.permissionToContact) {
       setError(
         "Please confirm that we may contact you regarding your offer of support.",
@@ -279,6 +306,7 @@ export default function SaveWooltonBathsSupportPage() {
           organisation: form.organisation,
           postcode: form.postcode,
           supportType: form.supportType,
+          heardAboutCampaign: form.heardAboutCampaign,
           tradeProfession: form.tradeProfession,
           materialDetails: form.materialDetails,
           equipmentDetails: form.equipmentDetails,
@@ -702,6 +730,37 @@ export default function SaveWooltonBathsSupportPage() {
                       <option value="">Select an option</option>
 
                       {supportOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                  </div>
+                </label>
+
+                <label className="mt-6 block">
+                  <span className="mb-2 block text-sm font-bold">
+                    How did you hear about the Save Woolton Baths campaign? *
+                  </span>
+
+                  <div className="relative">
+                    <select
+                      value={form.heardAboutCampaign}
+                      onChange={(event) =>
+                        updateField(
+                          "heardAboutCampaign",
+                          event.target.value as HeardAboutCampaign,
+                        )
+                      }
+                      disabled={isSubmitting}
+                      required
+                      className="min-h-14 w-full appearance-none rounded-xl border border-slate-300 bg-white px-4 pr-12 text-base font-semibold outline-none transition focus:border-[#8D7425] focus:ring-2 focus:ring-[#D4AF37]/20 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <option value="">Select an option</option>
+
+                      {heardAboutOptions.map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
                         </option>
