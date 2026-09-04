@@ -110,14 +110,14 @@ export default function SaveWooltonBathsLayout({
           {/* Navigation */}
           {/* ------------------------------------------------------------ */}
 
-          <header className="sticky top-0 z-50 border-b border-white/10 bg-[#06121D]/90 backdrop-blur-xl">
-            <div className="mx-auto flex max-w-7xl items-center justify-between gap-5 px-5 py-3">
+          <header className="sticky top-0 z-50 border-b border-white/10 bg-[#06121D]/95 backdrop-blur-xl">
+            <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 sm:px-5">
               <Link
                 href="/savewooltonbaths"
-                className="group flex min-w-0 items-center gap-4"
+                className="group flex shrink-0 items-center gap-4"
                 aria-label="Save Woolton Baths home"
               >
-                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-[#D4AF37]/40 bg-[#0C2235] shadow-lg shadow-black/20 sm:h-20 sm:w-20">
+                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-[#D4AF37]/40 bg-[#0C2235] shadow-lg shadow-black/20 sm:h-20 sm:w-20">
                   <Image
                     src="/savewooltonbaths/logo.png"
                     alt="Save Woolton Baths logo"
@@ -128,7 +128,7 @@ export default function SaveWooltonBathsLayout({
                   />
                 </div>
 
-                <div className="hidden min-w-0 sm:block">
+                <div className="hidden min-w-0 md:block">
                   <p className="text-[10px] uppercase tracking-[0.3em] text-[#D4AF37] lg:text-xs">
                     Community Campaign
                   </p>
@@ -139,47 +139,91 @@ export default function SaveWooltonBathsLayout({
                 </div>
               </Link>
 
-              {/* Desktop Navigation */}
-
-              <nav className="hidden items-center gap-6 text-sm font-medium md:flex">
+              {/* Mobile Navigation - single tier, always visible, no dropdown */}
+              <nav className="flex min-w-0 flex-1 items-center justify-between gap-2 overflow-x-auto whitespace-nowrap text-[10px] font-bold text-white md:hidden sm:text-xs">
                 <Link
                   href="/savewooltonbaths"
-                  className="transition hover:text-[#D4AF37]"
+                  className="shrink-0 px-1 py-3 text-white transition hover:text-[#D4AF37] focus-visible:text-[#D4AF37] focus-visible:outline-none"
                 >
                   Home
                 </Link>
 
                 <Link
                   href="/savewooltonbaths/history"
-                  className="transition hover:text-[#D4AF37]"
+                  className="shrink-0 px-1 py-3 text-white transition hover:text-[#D4AF37] focus-visible:text-[#D4AF37] focus-visible:outline-none"
                 >
                   History
                 </Link>
 
                 <Link
                   href="/savewooltonbaths/updates"
-                  className="transition hover:text-[#D4AF37]"
+                  className="shrink-0 px-1 py-3 text-white transition hover:text-[#D4AF37] focus-visible:text-[#D4AF37] focus-visible:outline-none"
                 >
                   Updates
                 </Link>
 
                 <Link
                   href="/savewooltonbaths/partners"
-                  className="transition hover:text-[#D4AF37]"
+                  className="shrink-0 px-1 py-3 text-white transition hover:text-[#D4AF37] focus-visible:text-[#D4AF37] focus-visible:outline-none"
                 >
                   Partners
                 </Link>
 
                 <Link
                   href="/savewooltonbaths/support"
-                  className="transition hover:text-[#D4AF37]"
+                  className="shrink-0 px-1 py-3 text-white transition hover:text-[#D4AF37] focus-visible:text-[#D4AF37] focus-visible:outline-none"
+                >
+                  Support
+                </Link>
+
+                <Link
+                  href="/savewooltonbaths/donate"
+                  className="shrink-0 px-1 py-3 text-white transition hover:text-[#D4AF37] focus-visible:text-[#D4AF37] focus-visible:outline-none"
+                >
+                  Donate
+                </Link>
+              </nav>
+
+              {/* Desktop Navigation */}
+              <nav className="ml-auto hidden items-center gap-6 text-sm font-medium text-white md:flex">
+                <Link
+                  href="/savewooltonbaths"
+                  className="text-white transition hover:text-[#D4AF37]"
+                >
+                  Home
+                </Link>
+
+                <Link
+                  href="/savewooltonbaths/history"
+                  className="text-white transition hover:text-[#D4AF37]"
+                >
+                  History
+                </Link>
+
+                <Link
+                  href="/savewooltonbaths/updates"
+                  className="text-white transition hover:text-[#D4AF37]"
+                >
+                  Updates
+                </Link>
+
+                <Link
+                  href="/savewooltonbaths/partners"
+                  className="text-white transition hover:text-[#D4AF37]"
+                >
+                  Partners
+                </Link>
+
+                <Link
+                  href="/savewooltonbaths/support"
+                  className="text-white transition hover:text-[#D4AF37]"
                 >
                   Support Us
                 </Link>
 
                 <Link
                   href="/savewooltonbaths/donate"
-                  className="transition hover:text-[#D4AF37]"
+                  className="text-white transition hover:text-[#D4AF37]"
                 >
                   Donate
                 </Link>
@@ -191,56 +235,6 @@ export default function SaveWooltonBathsLayout({
               >
                 Register Support
               </Link>
-            </div>
-
-            {/* ------------------------------------------------------------ */}
-            {/* Mobile Navigation */}
-            {/* ------------------------------------------------------------ */}
-
-            <div className="border-t border-white/10 bg-[#06121D] md:hidden">
-              <nav className="mx-auto grid max-w-7xl grid-cols-3 text-center text-xs font-bold text-white sm:grid-cols-6 sm:text-xs">
-                <Link
-                  href="/savewooltonbaths"
-                  className="border-white/5 px-2 py-3.5 text-white transition hover:bg-white/5 hover:text-[#D4AF37] focus-visible:bg-white/5 focus-visible:text-[#D4AF37] focus-visible:outline-none"
-                >
-                  Home
-                </Link>
-
-                <Link
-                  href="/savewooltonbaths/history"
-                  className="border-white/5 px-2 py-3.5 text-white transition hover:bg-white/5 hover:text-[#D4AF37] focus-visible:bg-white/5 focus-visible:text-[#D4AF37] focus-visible:outline-none"
-                >
-                  History
-                </Link>
-
-                <Link
-                  href="/savewooltonbaths/updates"
-                  className="border-white/5 px-2 py-3.5 text-white transition hover:bg-white/5 hover:text-[#D4AF37] focus-visible:bg-white/5 focus-visible:text-[#D4AF37] focus-visible:outline-none"
-                >
-                  Updates
-                </Link>
-
-                <Link
-                  href="/savewooltonbaths/partners"
-                  className="border-white/5 px-2 py-3.5 text-white transition hover:bg-white/5 hover:text-[#D4AF37] focus-visible:bg-white/5 focus-visible:text-[#D4AF37] focus-visible:outline-none"
-                >
-                  Partners
-                </Link>
-
-                <Link
-                  href="/savewooltonbaths/support"
-                  className="border-white/5 px-2 py-3.5 text-white transition hover:bg-white/5 hover:text-[#D4AF37] focus-visible:bg-white/5 focus-visible:text-[#D4AF37] focus-visible:outline-none"
-                >
-                  Support
-                </Link>
-
-                <Link
-                  href="/savewooltonbaths/donate"
-                  className="border-white/5 px-2 py-3.5 text-white transition hover:bg-white/5 hover:text-[#D4AF37] focus-visible:bg-white/5 focus-visible:text-[#D4AF37] focus-visible:outline-none"
-                >
-                  Donate
-                </Link>
-              </nav>
             </div>
           </header>
 
