@@ -151,14 +151,17 @@ export default function SaveWooltonBathsDonatePage() {
                   <Clock3 className="h-5 w-5 text-[#D4AF37]" />
 
                   <p className="font-black text-white">
-                    Crowdfunding launching soon
+                    Crowdfunding will open once our position with Liverpool City Council is established
                   </p>
                 </div>
 
                 <p className="mt-3 text-sm leading-7 text-slate-400">
-                  Donations are not yet open. This page will connect directly
-                  to the official Crowdfunder campaign once the first funding
-                  round launches.
+                  Donations are not yet open. We are awaiting clarity on the
+                  future of Woolton Baths and the appropriate route forward with
+                  Liverpool City Council before accepting public donations. Once
+                  that position is established and the necessary financial controls
+                  are in place, this page will connect directly to the official
+                  Crowdfunder campaign.
                 </p>
               </div>
             </div>
@@ -178,12 +181,13 @@ export default function SaveWooltonBathsDonatePage() {
 
               <div>
                 <p className="text-xl font-black">
-                  Official Crowdfunder campaign coming soon
+                  Crowdfunding will open when the Council route is established
                 </p>
 
                 <p className="mt-1 font-semibold">
-                  We are preparing the first funding round before public
-                  donations open.
+                  We are preparing everything required so that public fundraising
+                  can begin responsibly once our position with Liverpool City Council
+                  is clear.
                 </p>
               </div>
             </div>
