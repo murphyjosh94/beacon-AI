@@ -572,7 +572,7 @@ function PartnerCard({ partner }: { partner: PublicPartner }) {
       </div>
 
       {logoUrl || photoUrl ? (
-        <div className="flex min-h-40 items-center justify-center border-b border-[#E7E2D8] bg-[#FAF9F6] p-7">
+        <div className="flex min-h-48 items-center justify-center border-b border-[#E7E2D8] bg-[#FAF9F6] p-5 sm:min-h-56">
           {/* Intentionally using <img> because approved public media may
               originate from external organisation domains. */}
           <img
@@ -580,8 +580,8 @@ function PartnerCard({ partner }: { partner: PublicPartner }) {
             alt={logoUrl ? `${partner.name} logo` : partner.name}
             className={
               logoUrl
-                ? "max-h-24 max-w-[80%] object-contain"
-                : "h-28 w-28 rounded-full object-cover"
+                ? "max-h-40 max-w-[90%] object-contain sm:max-h-44"
+                : "h-36 w-36 rounded-full object-cover sm:h-40 sm:w-40"
             }
             loading="lazy"
           />
