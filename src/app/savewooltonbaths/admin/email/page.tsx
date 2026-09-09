@@ -6,6 +6,7 @@ import {
   Clock3,
   Mail,
   MailCheck,
+  Paperclip,
   Send,
   UserRound,
   XCircle,
@@ -154,12 +155,28 @@ function getErrorMessage(code: string): string {
     return "Enter a valid recipient email address.";
   }
 
+  if (code === "invalid-cc") {
+    return "Enter valid CC email addresses. You can add up to 10 recipients.";
+  }
+
   if (code === "missing-subject") {
     return "Enter an email subject.";
   }
 
   if (code === "missing-message") {
     return "Enter a message before sending.";
+  }
+
+  if (code === "too-many-attachments") {
+    return "You can attach up to 10 files to one email.";
+  }
+
+  if (code === "attachment-too-large") {
+    return "Each attachment must be 10 MB or smaller.";
+  }
+
+  if (code === "attachments-too-large") {
+    return "The combined attachment size must be 25 MB or smaller.";
   }
 
   if (code === "send-failed") {
@@ -380,6 +397,27 @@ export default async function SaveWooltonBathsCampaignEmailPage({
 
                 <label className="mt-5 block">
                   <span className="text-sm font-black text-slate-800">
+                    CC <span className="font-semibold text-slate-400">Optional</span>
+                  </span>
+
+                  <div className="relative mt-2">
+                    <Mail className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      name="cc"
+                      autoComplete="off"
+                      placeholder="name@example.co.uk, another@example.co.uk"
+                      className="min-h-12 w-full rounded-xl border border-slate-300 bg-white pl-12 pr-4 text-base font-semibold outline-none transition focus:border-[#8D7425] focus:ring-4 focus:ring-[#D4AF37]/15"
+                    />
+                  </div>
+
+                  <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                    Separate multiple addresses with commas, semicolons or new lines.
+                  </p>
+                </label>
+
+                <label className="mt-5 block">
+                  <span className="text-sm font-black text-slate-800">
                     Subject
                   </span>
 
@@ -406,6 +444,29 @@ export default async function SaveWooltonBathsCampaignEmailPage({
                     placeholder="Write your message..."
                     className="mt-2 w-full resize-y rounded-xl border border-slate-300 bg-white p-4 text-base leading-7 outline-none transition focus:border-[#8D7425] focus:ring-4 focus:ring-[#D4AF37]/15"
                   />
+                </label>
+
+                <label className="mt-5 block">
+                  <span className="text-sm font-black text-slate-800">
+                    Attachments <span className="font-semibold text-slate-400">Optional</span>
+                  </span>
+
+                  <div className="mt-2 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                    <div className="flex items-start gap-3">
+                      <Paperclip className="mt-0.5 h-5 w-5 shrink-0 text-[#8D7425]" />
+                      <div className="min-w-0 flex-1">
+                        <input
+                          type="file"
+                          name="attachments"
+                          multiple
+                          className="block w-full cursor-pointer text-sm font-semibold text-slate-700 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-[#102532] file:px-4 file:py-2.5 file:text-sm file:font-black file:text-white"
+                        />
+                        <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                          Up to 10 files. Maximum 10 MB per file and 25 MB combined.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </label>
 
                 <p className="mt-3 text-sm leading-6 text-slate-500">

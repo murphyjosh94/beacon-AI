@@ -18,6 +18,10 @@ const CAMPAIGN_ADMIN_PATH =
 const MAX_RECIPIENT_LENGTH = 320;
 const MAX_SUBJECT_LENGTH = 200;
 const MAX_MESSAGE_LENGTH = 10000;
+const MAX_CC_RECIPIENTS = 10;
+const MAX_ATTACHMENTS = 10;
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+const MAX_TOTAL_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 
 type AdministratorAccount = Awaited<
   ReturnType<typeof requireAdministratorAccount>
@@ -156,6 +160,67 @@ function isValidEmail(
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
     value,
   );
+}
+
+function readCcRecipients(formData: FormData): string[] {
+  const raw = readFormValue(
+    formData,
+    "cc",
+    MAX_RECIPIENT_LENGTH * MAX_CC_RECIPIENTS,
+  );
+
+  if (!raw) return [];
+
+  return [...new Set(
+    raw
+      .split(/[,\n;]/)
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean),
+  )];
+}
+
+type CampaignAttachment = {
+  filename: string;
+  content: Buffer;
+};
+
+async function readAttachments(
+  formData: FormData,
+): Promise<CampaignAttachment[]> {
+  const files = formData
+    .getAll("attachments")
+    .filter(
+      (value): value is File =>
+        typeof File !== "undefined" &&
+        value instanceof File &&
+        value.size > 0,
+    );
+
+  if (files.length > MAX_ATTACHMENTS) {
+    redirectWithError("too-many-attachments");
+  }
+
+  let totalBytes = 0;
+  const attachments: CampaignAttachment[] = [];
+
+  for (const file of files) {
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      redirectWithError("attachment-too-large");
+    }
+
+    totalBytes += file.size;
+
+    if (totalBytes > MAX_TOTAL_ATTACHMENT_BYTES) {
+      redirectWithError("attachments-too-large");
+    }
+
+    attachments.push({
+      filename: file.name.trim().slice(0, 240) || "attachment",
+      content: Buffer.from(await file.arrayBuffer()),
+    });
+  }
+
+  return attachments;
 }
 
 function escapeHtml(
@@ -437,10 +502,20 @@ export async function sendWooltonCampaignEmail(
     MAX_MESSAGE_LENGTH,
   );
 
+  const ccRecipients = readCcRecipients(formData);
+  const attachments = await readAttachments(formData);
+
   if (!isValidEmail(recipientEmail)) {
     redirectWithError(
       "invalid-recipient",
     );
+  }
+
+  if (
+    ccRecipients.length > MAX_CC_RECIPIENTS ||
+    ccRecipients.some((email) => !isValidEmail(email))
+  ) {
+    redirectWithError("invalid-cc");
   }
 
   if (!subject) {
@@ -483,6 +558,7 @@ export async function sendWooltonCampaignEmail(
     } = await resend.emails.send({
       from: CAMPAIGN_FROM,
       to: recipientEmail,
+      ...(ccRecipients.length > 0 ? { cc: ccRecipients } : {}),
       subject,
       html: buildCampaignEmailHtml(
         subject,
@@ -492,6 +568,7 @@ export async function sendWooltonCampaignEmail(
         message,
       ),
       replyTo: CAMPAIGN_EMAIL,
+      ...(attachments.length > 0 ? { attachments } : {}),
     });
 
     if (error) {
