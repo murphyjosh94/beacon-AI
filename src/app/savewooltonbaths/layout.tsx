@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import {
   ArrowRight,
+  ArrowUp,
   HeartHandshake,
   Landmark,
 } from "lucide-react";
@@ -37,6 +38,19 @@ function FacebookIcon({ className = "h-5 w-5" }: { className?: string }) {
     >
       <path d="M13.5 21v-8h2.8l.42-3.2H13.5V7.76c0-.93.26-1.56 1.61-1.56h1.72V3.34a23.2 23.2 0 0 0-2.5-.13c-2.48 0-4.18 1.51-4.18 4.29v2.3H7.35V13h2.8v8h3.35Z" />
     </svg>
+  );
+}
+
+function BackToTop() {
+  return (
+    <a
+      href="#top"
+      aria-label="Back to top"
+      title="Back to top"
+      className="fixed bottom-5 right-5 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-[#D4AF37]/50 bg-[#0C2235]/95 text-[#D4AF37] shadow-lg shadow-black/30 transition hover:bg-[#D4AF37] hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37] sm:bottom-6 sm:right-6"
+    >
+      <ArrowUp className="h-5 w-5" aria-hidden="true" />
+    </a>
   );
 }
 
@@ -89,7 +103,7 @@ export default function SaveWooltonBathsLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-[#06121D] text-white antialiased selection:bg-[#D4AF37] selection:text-black [&_input]:cursor-text [&_input]:caret-[#D4AF37] [&_textarea]:cursor-text [&_textarea]:caret-[#D4AF37]">
+      <body id="top" className="bg-[#06121D] text-white antialiased selection:bg-[#D4AF37] selection:text-black [&_input]:cursor-text [&_input]:caret-[#D4AF37] [&_textarea]:cursor-text [&_textarea]:caret-[#D4AF37]">
         <div className="flex min-h-screen flex-col">
           {/* ------------------------------------------------------------ */}
           {/* Top Campaign Banner */}
@@ -472,6 +486,7 @@ export default function SaveWooltonBathsLayout({
               </div>
             </div>
           </footer>
+          <BackToTop />
         </div>
       </body>
     </html>
