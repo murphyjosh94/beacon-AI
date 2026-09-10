@@ -7,7 +7,7 @@ import { Resend } from "resend";
 import { requireAdministratorAccount } from "@/lib/auth/AdminAccess";
 
 const CAMPAIGN_EMAIL =
-  "savewooltonbaths@beacon-ai.co.uk";
+  "savewooltonbaths@futureofwoolton.org.uk";
 
 const CAMPAIGN_FROM =
   `Save Woolton Baths <${CAMPAIGN_EMAIL}>`;
@@ -117,13 +117,13 @@ function getSupabaseAdmin() {
 
 function getResend() {
   const apiKey = cleanEnvironmentValue(
-    process.env.RESEND_API_KEY,
-    "RESEND_API_KEY",
+    process.env.FOW_RESEND_API_KEY,
+    "FOW_RESEND_API_KEY",
   );
 
   if (!apiKey) {
     throw new Error(
-      "RESEND_API_KEY is not configured.",
+      "FOW_RESEND_API_KEY is not configured.",
     );
   }
 
@@ -162,21 +162,30 @@ function isValidEmail(
   );
 }
 
-function readCcRecipients(formData: FormData): string[] {
+function readCcRecipients(
+  formData: FormData,
+): string[] {
   const raw = readFormValue(
     formData,
     "cc",
     MAX_RECIPIENT_LENGTH * MAX_CC_RECIPIENTS,
   );
 
-  if (!raw) return [];
+  if (!raw) {
+    return [];
+  }
 
-  return [...new Set(
-    raw
-      .split(/[,\n;]/)
-      .map((value) => value.trim().toLowerCase())
-      .filter(Boolean),
-  )];
+  return [
+    ...new Set(
+      raw
+        .split(/[,\n;]/)
+        .map(
+          (value) =>
+            value.trim().toLowerCase(),
+        )
+        .filter(Boolean),
+    ),
+  ];
 }
 
 type CampaignAttachment = {
@@ -197,26 +206,47 @@ async function readAttachments(
     );
 
   if (files.length > MAX_ATTACHMENTS) {
-    redirectWithError("too-many-attachments");
+    redirectWithError(
+      "too-many-attachments",
+    );
   }
 
   let totalBytes = 0;
+
   const attachments: CampaignAttachment[] = [];
 
   for (const file of files) {
-    if (file.size > MAX_ATTACHMENT_BYTES) {
-      redirectWithError("attachment-too-large");
+    if (
+      file.size >
+      MAX_ATTACHMENT_BYTES
+    ) {
+      redirectWithError(
+        "attachment-too-large",
+      );
     }
 
     totalBytes += file.size;
 
-    if (totalBytes > MAX_TOTAL_ATTACHMENT_BYTES) {
-      redirectWithError("attachments-too-large");
+    if (
+      totalBytes >
+      MAX_TOTAL_ATTACHMENT_BYTES
+    ) {
+      redirectWithError(
+        "attachments-too-large",
+      );
     }
 
     attachments.push({
-      filename: file.name.trim().slice(0, 240) || "attachment",
-      content: Buffer.from(await file.arrayBuffer()),
+      filename:
+        file.name
+          .trim()
+          .slice(0, 240) ||
+        "attachment",
+
+      content:
+        Buffer.from(
+          await file.arrayBuffer(),
+        ),
     });
   }
 
@@ -239,16 +269,21 @@ function messageToHtml(
 ): string {
   return escapeHtml(message)
     .split(/\n{2,}/)
-    .map((paragraph) => {
-      const content = paragraph
-        .replace(/\n/g, "<br />");
+    .map(
+      (paragraph) => {
+        const content =
+          paragraph.replace(
+            /\n/g,
+            "<br />",
+          );
 
-      return `
-        <p style="margin:0 0 18px 0;font-size:16px;line-height:1.75;color:#263746;">
-          ${content}
-        </p>
-      `;
-    })
+        return `
+          <p style="margin:0 0 18px 0;font-size:16px;line-height:1.75;color:#263746;">
+            ${content}
+          </p>
+        `;
+      },
+    )
     .join("");
 }
 
@@ -256,8 +291,11 @@ function buildCampaignEmailHtml(
   subject: string,
   message: string,
 ): string {
-  const safeSubject = escapeHtml(subject);
-  const messageHtml = messageToHtml(message);
+  const safeSubject =
+    escapeHtml(subject);
+
+  const messageHtml =
+    messageToHtml(message);
 
   return `<!doctype html>
 <html lang="en">
@@ -266,17 +304,40 @@ function buildCampaignEmailHtml(
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${safeSubject}</title>
 </head>
+
 <body style="margin:0;padding:0;background:#eef2f5;font-family:Arial,Helvetica,sans-serif;color:#102532;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;background:#eef2f5;margin:0;padding:0;">
+  <table
+    role="presentation"
+    width="100%"
+    cellspacing="0"
+    cellpadding="0"
+    border="0"
+    style="width:100%;background:#eef2f5;margin:0;padding:0;"
+  >
     <tr>
       <td align="center" style="padding:28px 12px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:680px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #dbe3e8;">
+        <table
+          role="presentation"
+          width="100%"
+          cellspacing="0"
+          cellpadding="0"
+          border="0"
+          style="width:100%;max-width:680px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #dbe3e8;"
+        >
           <tr>
-            <td align="center" style="background:#071522;padding:30px 24px 26px 24px;">
-              <div style="font-size:13px;line-height:1.4;font-weight:800;letter-spacing:2.4px;text-transform:uppercase;color:#d4af37;">
+            <td
+              align="center"
+              style="background:#071522;padding:30px 24px 26px 24px;"
+            >
+              <div
+                style="font-size:13px;line-height:1.4;font-weight:800;letter-spacing:2.4px;text-transform:uppercase;color:#d4af37;"
+              >
                 Save Woolton Baths
               </div>
-              <div style="margin-top:9px;font-size:25px;line-height:1.25;font-weight:800;color:#ffffff;">
+
+              <div
+                style="margin-top:9px;font-size:25px;line-height:1.25;font-weight:800;color:#ffffff;"
+              >
                 Protect. Preserve. Reopen.
               </div>
             </td>
@@ -290,26 +351,43 @@ function buildCampaignEmailHtml(
 
           <tr>
             <td style="padding:0 28px 34px 28px;">
-              <div style="height:1px;background:#e5e9ec;margin:4px 0 22px 0;"></div>
+              <div
+                style="height:1px;background:#e5e9ec;margin:4px 0 22px 0;"
+              ></div>
 
-              <p style="margin:0;font-size:15px;line-height:1.7;font-weight:700;color:#102532;">
+              <p
+                style="margin:0;font-size:15px;line-height:1.7;font-weight:700;color:#102532;"
+              >
                 Save Woolton Baths
               </p>
 
-              <p style="margin:4px 0 0 0;font-size:14px;line-height:1.7;color:#5d6b76;">
-                Community campaign to protect, preserve and reopen Woolton Baths.
+              <p
+                style="margin:4px 0 0 0;font-size:14px;line-height:1.7;color:#5d6b76;"
+              >
+                A Future of Woolton campaign to protect,
+                preserve and reopen Woolton Baths.
               </p>
             </td>
           </tr>
 
           <tr>
-            <td align="center" style="background:#102532;padding:22px 24px;">
-              <p style="margin:0;font-size:12px;line-height:1.7;color:#cbd5dc;">
-                Sent by Save Woolton Baths
+            <td
+              align="center"
+              style="background:#102532;padding:22px 24px;"
+            >
+              <p
+                style="margin:0;font-size:12px;line-height:1.7;color:#cbd5dc;"
+              >
+                Save Woolton Baths · Organised by Future of Woolton
               </p>
 
-              <p style="margin:4px 0 0 0;font-size:12px;line-height:1.7;">
-                <a href="mailto:${CAMPAIGN_EMAIL}" style="color:#e6c75a;text-decoration:none;">
+              <p
+                style="margin:4px 0 0 0;font-size:12px;line-height:1.7;"
+              >
+                <a
+                  href="mailto:${CAMPAIGN_EMAIL}"
+                  style="color:#e6c75a;text-decoration:none;"
+                >
                   ${CAMPAIGN_EMAIL}
                 </a>
               </p>
@@ -330,6 +408,8 @@ function buildCampaignEmailText(
 
 Save Woolton Baths
 Protect. Preserve. Reopen.
+
+A Future of Woolton campaign.
 
 ${CAMPAIGN_EMAIL}`;
 }
@@ -364,7 +444,8 @@ function getAdministratorName(
     "name" in adminAccount &&
     typeof adminAccount.name === "string"
   ) {
-    const name = adminAccount.name.trim();
+    const name =
+      adminAccount.name.trim();
 
     return name || null;
   }
@@ -375,17 +456,26 @@ function getAdministratorName(
 async function findSupportRegistration(
   recipientEmail: string,
 ): Promise<SupportMatch | null> {
-  const supabase = getSupabaseAdmin();
+  const supabase =
+    getSupabaseAdmin();
 
   const {
     data,
     error,
-  } = await supabase
-    .from("save_woolton_baths_support")
-    .select("id,email")
-    .ilike("email", recipientEmail)
-    .limit(1)
-    .maybeSingle();
+  } =
+    await supabase
+      .from(
+        "save_woolton_baths_support",
+      )
+      .select(
+        "id,email",
+      )
+      .ilike(
+        "email",
+        recipientEmail,
+      )
+      .limit(1)
+      .maybeSingle();
 
   if (error) {
     console.error(
@@ -402,15 +492,14 @@ async function findSupportRegistration(
 async function findPartnershipRegistrationId(
   recipientEmail: string,
 ): Promise<string | null> {
-  const supabase = getSupabaseAdmin();
+  const supabase =
+    getSupabaseAdmin();
 
   /*
-   * Partnerships are checked separately because they are not guaranteed to
-   * share the support-registry schema. If the current partnerships table
-   * contains an email column and a support registration link, this lookup
-   * can be expanded without changing the campaign-email UI.
+   * Partnerships are checked separately because they are not
+   * guaranteed to share the support-registry schema.
    *
-   * For now, standalone partnership/non-site contacts are deliberately
+   * Standalone partnership and non-site contacts are currently
    * recorded with registration_id = null.
    */
   void recipientEmail;
@@ -432,39 +521,67 @@ async function recordCorrespondence({
   recipientEmail: string;
   subject: string;
   message: string;
-  deliveryStatus: "sent" | "failed";
+  deliveryStatus:
+    | "sent"
+    | "failed";
   resendEmailId: string | null;
   adminAccount: AdministratorAccount;
 }) {
-  const supabase = getSupabaseAdmin();
+  const supabase =
+    getSupabaseAdmin();
 
-  const now = new Date().toISOString();
+  const now =
+    new Date().toISOString();
 
   const {
     error,
-  } = await supabase
-    .from(
-      "save_woolton_baths_support_correspondence",
-    )
-    .insert({
-      registration_id: registrationId,
-      direction: "outbound",
-      channel: "email",
-      recipient_email: recipientEmail,
-      sender_email: CAMPAIGN_EMAIL,
-      subject,
-      message,
-      delivery_status: deliveryStatus,
-      resend_email_id: resendEmailId,
-      sent_by: getAdministratorId(
-        adminAccount,
-      ),
-      sent_by_name: getAdministratorName(
-        adminAccount,
-      ),
-      sent_at: now,
-      created_at: now,
-    });
+  } =
+    await supabase
+      .from(
+        "save_woolton_baths_support_correspondence",
+      )
+      .insert({
+        registration_id:
+          registrationId,
+
+        direction:
+          "outbound",
+
+        channel:
+          "email",
+
+        recipient_email:
+          recipientEmail,
+
+        sender_email:
+          CAMPAIGN_EMAIL,
+
+        subject,
+
+        message,
+
+        delivery_status:
+          deliveryStatus,
+
+        resend_email_id:
+          resendEmailId,
+
+        sent_by:
+          getAdministratorId(
+            adminAccount,
+          ),
+
+        sent_by_name:
+          getAdministratorName(
+            adminAccount,
+          ),
+
+        sent_at:
+          now,
+
+        created_at:
+          now,
+      });
 
   if (error) {
     console.error(
@@ -484,38 +601,60 @@ export async function sendWooltonCampaignEmail(
   const adminAccount =
     await requireAdministratorAccount();
 
-  const recipientEmail = readFormValue(
-    formData,
-    "to",
-    MAX_RECIPIENT_LENGTH,
-  ).toLowerCase();
+  const recipientEmail =
+    readFormValue(
+      formData,
+      "to",
+      MAX_RECIPIENT_LENGTH,
+    ).toLowerCase();
 
-  const subject = readFormValue(
-    formData,
-    "subject",
-    MAX_SUBJECT_LENGTH,
-  );
+  const subject =
+    readFormValue(
+      formData,
+      "subject",
+      MAX_SUBJECT_LENGTH,
+    );
 
-  const message = readFormValue(
-    formData,
-    "message",
-    MAX_MESSAGE_LENGTH,
-  );
+  const message =
+    readFormValue(
+      formData,
+      "message",
+      MAX_MESSAGE_LENGTH,
+    );
 
-  const ccRecipients = readCcRecipients(formData);
-  const attachments = await readAttachments(formData);
+  const ccRecipients =
+    readCcRecipients(
+      formData,
+    );
 
-  if (!isValidEmail(recipientEmail)) {
+  const attachments =
+    await readAttachments(
+      formData,
+    );
+
+  if (
+    !isValidEmail(
+      recipientEmail,
+    )
+  ) {
     redirectWithError(
       "invalid-recipient",
     );
   }
 
   if (
-    ccRecipients.length > MAX_CC_RECIPIENTS ||
-    ccRecipients.some((email) => !isValidEmail(email))
+    ccRecipients.length >
+      MAX_CC_RECIPIENTS ||
+    ccRecipients.some(
+      (email) =>
+        !isValidEmail(
+          email,
+        ),
+    )
   ) {
-    redirectWithError("invalid-cc");
+    redirectWithError(
+      "invalid-cc",
+    );
   }
 
   if (!subject) {
@@ -547,29 +686,56 @@ export async function sendWooltonCampaignEmail(
     partnershipRegistrationId ??
     null;
 
-  const resend = getResend();
+  const resend =
+    getResend();
 
-  let resendEmailId: string | null = null;
+  let resendEmailId:
+    | string
+    | null = null;
 
   try {
     const {
       data,
       error,
-    } = await resend.emails.send({
-      from: CAMPAIGN_FROM,
-      to: recipientEmail,
-      ...(ccRecipients.length > 0 ? { cc: ccRecipients } : {}),
-      subject,
-      html: buildCampaignEmailHtml(
+    } =
+      await resend.emails.send({
+        from:
+          CAMPAIGN_FROM,
+
+        to:
+          recipientEmail,
+
+        ...(ccRecipients.length >
+        0
+          ? {
+              cc:
+                ccRecipients,
+            }
+          : {}),
+
         subject,
-        message,
-      ),
-      text: buildCampaignEmailText(
-        message,
-      ),
-      replyTo: CAMPAIGN_EMAIL,
-      ...(attachments.length > 0 ? { attachments } : {}),
-    });
+
+        html:
+          buildCampaignEmailHtml(
+            subject,
+            message,
+          ),
+
+        text:
+          buildCampaignEmailText(
+            message,
+          ),
+
+        replyTo:
+          CAMPAIGN_EMAIL,
+
+        ...(attachments.length >
+        0
+          ? {
+              attachments,
+            }
+          : {}),
+      });
 
     if (error) {
       console.error(
@@ -582,8 +748,13 @@ export async function sendWooltonCampaignEmail(
         recipientEmail,
         subject,
         message,
-        deliveryStatus: "failed",
-        resendEmailId: null,
+
+        deliveryStatus:
+          "failed",
+
+        resendEmailId:
+          null,
+
         adminAccount,
       });
 
@@ -606,8 +777,13 @@ export async function sendWooltonCampaignEmail(
       recipientEmail,
       subject,
       message,
-      deliveryStatus: "failed",
-      resendEmailId: null,
+
+      deliveryStatus:
+        "failed",
+
+      resendEmailId:
+        null,
+
       adminAccount,
     });
 
@@ -622,8 +798,12 @@ export async function sendWooltonCampaignEmail(
       recipientEmail,
       subject,
       message,
-      deliveryStatus: "sent",
+
+      deliveryStatus:
+        "sent",
+
       resendEmailId,
+
       adminAccount,
     });
 
