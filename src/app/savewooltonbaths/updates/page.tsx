@@ -98,6 +98,54 @@ export default function SaveWooltonBathsUpdatesPage() {
       </section>
 
       {/* ============================================================ */}
+      {/* FUTURE OF WOOLTON */}
+      {/* ============================================================ */}
+
+      <section className="bg-[#071522]">
+        <div className="mx-auto max-w-7xl px-6 py-20 md:py-24">
+          <div className="rounded-[2rem] border border-[#D4AF37]/25 bg-[#0A1B2B] p-8 md:p-10">
+            <div className="grid gap-8 lg:grid-cols-[0.7fr_1.3fr] lg:items-center">
+              <div>
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#D4AF37] text-black">
+                  <Landmark className="h-6 w-6" />
+                </div>
+
+                <p className="mt-6 text-sm font-black uppercase tracking-[0.24em] text-[#D4AF37]">
+                  Organisational Update
+                </p>
+
+                <h2 className="mt-4 text-3xl font-black tracking-tight md:text-4xl">
+                  Future Of Woolton CIO — In Formation
+                </h2>
+              </div>
+
+              <div>
+                <p className="text-lg leading-8 text-slate-300">
+                  Save Woolton Baths is being developed as the first flagship
+                  project of Future Of Woolton, a proposed Charitable Incorporated
+                  Organisation currently in formation.
+                </p>
+
+                <p className="mt-4 leading-8 text-slate-400">
+                  Future Of Woolton is being established to provide the long-term
+                  charitable and governance structure behind the campaign and
+                  future community projects.
+                </p>
+
+                <Link
+                  href="https://futureofwoolton.org.uk"
+                  className="mt-7 inline-flex items-center gap-2 rounded-full border border-[#D4AF37]/50 px-6 py-3 text-sm font-black text-[#D4AF37] transition hover:bg-[#D4AF37] hover:text-black"
+                >
+                  Visit futureofwoolton.org.uk
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================ */}
       {/* MEETING BREAKDOWNS */}
       {/* ============================================================ */}
 

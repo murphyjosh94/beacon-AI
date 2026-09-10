@@ -358,6 +358,14 @@ export default function SaveWooltonBathsLayout({
                     <p className="text-sm font-semibold text-white">
                       Future Of Woolton CIO — In Formation
                     </p>
+
+                    <Link
+                      href="https://futureofwoolton.org.uk"
+                      className="mt-1 block text-sm font-semibold text-[#D4AF37] transition hover:text-white"
+                    >
+                      futureofwoolton.org.uk
+                    </Link>
+
                     <p className="mt-1 text-xs leading-5 text-slate-400">
                       Charitable Incorporated Organisation registration pending.
                     </p>

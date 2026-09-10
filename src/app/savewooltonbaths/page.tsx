@@ -209,6 +209,40 @@ export default function SaveWooltonBathsPage() {
       </section>
 
       {/* ================================================================ */}
+      {/* FUTURE OF WOOLTON */}
+      {/* ================================================================ */}
+
+      <section className="border-y border-[#D4AF37]/20 bg-[#0A1B2B]">
+        <div className="mx-auto max-w-7xl px-6 py-10 md:py-12">
+          <div className="flex flex-col gap-6 rounded-3xl border border-[#D4AF37]/25 bg-[#071522] p-7 md:flex-row md:items-center md:justify-between md:p-8">
+            <div className="max-w-3xl">
+              <p className="text-xs font-black uppercase tracking-[0.25em] text-[#D4AF37]">
+                Future Of Woolton
+              </p>
+
+              <h2 className="mt-3 text-2xl font-black text-white md:text-3xl">
+                Future Of Woolton CIO — In Formation
+              </h2>
+
+              <p className="mt-3 leading-7 text-slate-300">
+                Save Woolton Baths is being developed as the first flagship
+                project of Future Of Woolton. Our new charitable organisation
+                website is now live while CIO registration is pending.
+              </p>
+            </div>
+
+            <Link
+              href="https://futureofwoolton.org.uk"
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-[#D4AF37]/50 px-6 py-3 text-sm font-black text-[#D4AF37] transition hover:bg-[#D4AF37] hover:text-black"
+            >
+              Visit futureofwoolton.org.uk
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ================================================================ */}
       {/* PURPOSE */}
       {/* ================================================================ */}
 
