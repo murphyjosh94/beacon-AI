@@ -31,6 +31,9 @@ type TimelineEntry = {
   icon: React.ComponentType<{
     className?: string;
   }>;
+  image?: string;
+  imageAlt?: string;
+  imageCaption?: string;
 };
 
 const timeline: TimelineEntry[] = [
@@ -41,6 +44,9 @@ const timeline: TimelineEntry[] = [
     description:
       "Local philanthropist Holbrook Gaskell JP offered to provide public baths for Woolton, on the condition that the local authority would maintain them. His vision was unusually progressive for its time: the baths were intended for both sexes and all classes, bringing bathing and sanitary facilities within reach of the local working population.",
     icon: Heart,
+    image: "/savewooltonbaths/bath-founder.jpg",
+    imageAlt: "Historic portrait of Holbrook Gaskell",
+    imageCaption: "Holbrook Gaskell — 5 March 1813 – 8 March 1909",
   },
   {
     year: "1891–1893",
@@ -81,6 +87,20 @@ const timeline: TimelineEntry[] = [
     description:
       "A decision was taken to floor over the swimming pool during winter so that the pool hall could host social and community activities. More than a century ago, Woolton Baths was already demonstrating that the building could serve Woolton both as a swimming facility and as a flexible community venue.",
     icon: Users,
+    image: "/savewooltonbaths/temp-floor.jpg",
+    imageAlt: "Historic gathering inside the Woolton Baths pool hall with the temporary winter floor in place",
+    imageCaption: "Winter pool hall temporary floor — from 1910",
+  },
+  {
+    year: "Early 1900s",
+    eyebrow: "The Fire Service",
+    title: "Firefighters based at the Baths stables",
+    description:
+      "The stables at Woolton Baths were also used by Woolton's fire service. Historic photographs record local firefighters and their equipment at the site, showing that the building played a wider role in community life beyond bathing and swimming.",
+    icon: ShieldCheck,
+    image: "/savewooltonbaths/firemen.jpg",
+    imageAlt: "Historic photograph of Woolton firefighters and firefighting equipment at Woolton Baths",
+    imageCaption: "Woolton fire service at the Baths stables — early 1900s",
   },
   {
     year: "1913",
@@ -269,6 +289,26 @@ export default function WooltonBathsHistoryPage() {
                         <p className="mt-4 leading-7 text-slate-400">
                           {entry.description}
                         </p>
+
+                        {entry.image ? (
+                          <figure className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-[#071522]">
+                            <div className="relative aspect-[4/3] w-full overflow-hidden">
+                              <Image
+                                src={entry.image}
+                                alt={entry.imageAlt ?? entry.title}
+                                fill
+                                sizes="(max-width: 768px) 100vw, 520px"
+                                className="object-cover"
+                              />
+                            </div>
+
+                            {entry.imageCaption ? (
+                              <figcaption className="border-t border-white/10 px-4 py-3 text-left text-xs font-bold leading-5 text-slate-400">
+                                {entry.imageCaption}
+                              </figcaption>
+                            ) : null}
+                          </figure>
+                        ) : null}
                       </div>
                     </div>
 
@@ -654,8 +694,9 @@ export default function WooltonBathsHistoryPage() {
             including the Historic England National Heritage List entry for
             Woolton Baths, historical material published by The Woolton
             Society, Liverpool John Moores University&apos;s record of Olympic
-            swimmer Steve Parry, and contemporary published recollections of
-            the McCartney family.
+            swimmer Steve Parry, contemporary published recollections of
+            the McCartney family, and archival photographs supplied to the
+            Save Woolton Baths campaign.
           </p>
 
           <p className="mt-3 text-sm leading-7 text-slate-500">
