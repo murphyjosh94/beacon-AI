@@ -44,7 +44,7 @@ const timeline: TimelineEntry[] = [
     description:
       "Local philanthropist Holbrook Gaskell JP offered to provide public baths for Woolton, on the condition that the local authority would maintain them. His vision was unusually progressive for its time: the baths were intended for both sexes and all classes, bringing bathing and sanitary facilities within reach of the local working population.",
     icon: Heart,
-    image: "/savewooltonbaths/bath-founder.jpg",
+    image: "/savewooltonbaths/baths-founder.jpg",
     imageAlt: "Historic portrait of Holbrook Gaskell",
     imageCaption: "Holbrook Gaskell — 5 March 1813 – 8 March 1909",
   },
