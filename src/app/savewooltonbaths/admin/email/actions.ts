@@ -23,41 +23,6 @@ const MAX_ATTACHMENTS = 10;
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 const MAX_TOTAL_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 
-const MASS_UPDATE_SUBJECT =
-  "Save Woolton Baths Update — Introducing Future of Woolton";
-
-const MASS_UPDATE_MESSAGE = `Hello,
-
-We wanted to share an important update about the future of the Save Woolton Baths campaign.
-
-Save Woolton Baths is now being organised through Future of Woolton, a new community-focused organisation being established to support the long-term future of Woolton Baths and wider community projects across Woolton and the surrounding area.
-
-Save Woolton Baths remains our flagship campaign.
-
-The purpose of the campaign has not changed. We remain focused on protecting, preserving and working towards the reopening of Woolton Baths for community benefit.
-
-Future of Woolton gives us a stronger structure for the next stage of the campaign, including governance, partnership working, fundraising, professional support and the long-term management of community projects.
-
-You may also notice that our campaign email address has changed.
-
-Our new Save Woolton Baths email is:
-
-savewooltonbaths@futureofwoolton.org.uk
-
-General Future of Woolton enquiries can be sent to:
-
-support@futureofwoolton.org.uk
-
-Thank you for continuing to support Save Woolton Baths and for being part of the campaign.
-
-We will continue to share updates as discussions, surveys, professional work and the next stages of the project progress.
-
-Save Woolton Baths
-Protect. Preserve. Reopen.
-
-Organised by Future of Woolton
-futureofwoolton.org.uk`;
-
 type AdministratorAccount = Awaited<
   ReturnType<typeof requireAdministratorAccount>
 >;
@@ -73,12 +38,6 @@ type CampaignSupporter = {
   email: string;
   permission_to_contact: boolean;
   status: string;
-};
-
-type ExistingCorrespondence = {
-  recipient_email: string;
-  subject: string;
-  delivery_status: string;
 };
 
 function cleanEnvironmentValue(
@@ -737,64 +696,6 @@ async function getEligibleCampaignSupporters(): Promise<
   );
 }
 
-async function getAlreadySentMassUpdateEmails(): Promise<
-  Set<string>
-> {
-  const supabase =
-    getSupabaseAdmin();
-
-  const {
-    data,
-    error,
-  } =
-    await supabase
-      .from(
-        "save_woolton_baths_support_correspondence",
-      )
-      .select(
-        "recipient_email,subject,delivery_status",
-      )
-      .eq(
-        "subject",
-        MASS_UPDATE_SUBJECT,
-      );
-
-  if (error) {
-    throw new Error(
-      `Unable to check previous campaign update emails: ${error.message}`,
-    );
-  }
-
-  const rows =
-    (
-      data ??
-      []
-    ) as unknown as ExistingCorrespondence[];
-
-  return new Set(
-    rows
-      .filter(
-        (record) => {
-          const status =
-            record.delivery_status
-              .trim()
-              .toLowerCase();
-
-          return (
-            status === "sent" ||
-            status === "delivered"
-          );
-        },
-      )
-      .map(
-        (record) =>
-          record.recipient_email
-            .trim()
-            .toLowerCase(),
-      ),
-  );
-}
-
 export async function sendWooltonCampaignEmail(
   formData: FormData,
 ): Promise<void> {
@@ -1018,9 +919,37 @@ export async function sendWooltonCampaignEmail(
   );
 }
 
-export async function sendFutureOfWooltonCampaignUpdate(): Promise<void> {
+export async function sendFutureOfWooltonCampaignUpdate(
+  formData: FormData,
+): Promise<void> {
   const adminAccount =
     await requireAdministratorAccount();
+
+  const subject =
+    readFormValue(
+      formData,
+      "subject",
+      MAX_SUBJECT_LENGTH,
+    );
+
+  const message =
+    readFormValue(
+      formData,
+      "message",
+      MAX_MESSAGE_LENGTH,
+    );
+
+  if (!subject) {
+    redirectWithError(
+      "missing-subject",
+    );
+  }
+
+  if (!message) {
+    redirectWithError(
+      "missing-message",
+    );
+  }
 
   const supporters =
     await getEligibleCampaignSupporters();
@@ -1033,25 +962,6 @@ export async function sendFutureOfWooltonCampaignUpdate(): Promise<void> {
     );
   }
 
-  const alreadySent =
-    await getAlreadySentMassUpdateEmails();
-
-  const recipients =
-    supporters.filter(
-      (supporter) =>
-        !alreadySent.has(
-          supporter.email,
-        ),
-    );
-
-  if (
-    recipients.length === 0
-  ) {
-    redirect(
-      `${CAMPAIGN_ADMIN_PATH}?mass-update=already-sent`,
-    );
-  }
-
   const resend =
     getResend();
 
@@ -1059,7 +969,7 @@ export async function sendFutureOfWooltonCampaignUpdate(): Promise<void> {
   let failedCount = 0;
 
   for (
-    const supporter of recipients
+    const supporter of supporters
   ) {
     let resendEmailId:
       | string
@@ -1077,18 +987,17 @@ export async function sendFutureOfWooltonCampaignUpdate(): Promise<void> {
           to:
             supporter.email,
 
-          subject:
-            MASS_UPDATE_SUBJECT,
+          subject,
 
           html:
             buildCampaignEmailHtml(
-              MASS_UPDATE_SUBJECT,
-              MASS_UPDATE_MESSAGE,
+              subject,
+              message,
             ),
 
           text:
             buildCampaignEmailText(
-              MASS_UPDATE_MESSAGE,
+              message,
             ),
 
           replyTo:
@@ -1097,7 +1006,7 @@ export async function sendFutureOfWooltonCampaignUpdate(): Promise<void> {
 
       if (error) {
         console.error(
-          `[Save Woolton Baths Mass Update] Resend rejected email for ${supporter.email}:`,
+          `[Save Woolton Baths Supporter Update] Resend rejected email for ${supporter.email}:`,
           error,
         );
 
@@ -1110,11 +1019,9 @@ export async function sendFutureOfWooltonCampaignUpdate(): Promise<void> {
           recipientEmail:
             supporter.email,
 
-          subject:
-            MASS_UPDATE_SUBJECT,
+          subject,
 
-          message:
-            MASS_UPDATE_MESSAGE,
+          message,
 
           deliveryStatus:
             "failed",
@@ -1140,11 +1047,9 @@ export async function sendFutureOfWooltonCampaignUpdate(): Promise<void> {
           recipientEmail:
             supporter.email,
 
-          subject:
-            MASS_UPDATE_SUBJECT,
+          subject,
 
-          message:
-            MASS_UPDATE_MESSAGE,
+          message,
 
           deliveryStatus:
             "sent",
@@ -1163,7 +1068,7 @@ export async function sendFutureOfWooltonCampaignUpdate(): Promise<void> {
       sentCount += 1;
     } catch (error) {
       console.error(
-        `[Save Woolton Baths Mass Update] Email send failed for ${supporter.email}:`,
+        `[Save Woolton Baths Supporter Update] Email send failed for ${supporter.email}:`,
         error,
       );
 
@@ -1176,11 +1081,9 @@ export async function sendFutureOfWooltonCampaignUpdate(): Promise<void> {
         recipientEmail:
           supporter.email,
 
-        subject:
-          MASS_UPDATE_SUBJECT,
+        subject,
 
-        message:
-          MASS_UPDATE_MESSAGE,
+        message,
 
         deliveryStatus:
           "failed",
@@ -1194,6 +1097,6 @@ export async function sendFutureOfWooltonCampaignUpdate(): Promise<void> {
   }
 
   redirect(
-    `${CAMPAIGN_ADMIN_PATH}?mass-update=complete&sent=${sentCount}&failed=${failedCount}&eligible=${recipients.length}`,
+    `${CAMPAIGN_ADMIN_PATH}?mass-update=complete&sent=${sentCount}&failed=${failedCount}&eligible=${supporters.length}`,
   );
 }

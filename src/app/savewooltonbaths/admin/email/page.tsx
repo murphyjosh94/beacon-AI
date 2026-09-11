@@ -90,41 +90,6 @@ type CampaignSupporterSummary = {
 const CAMPAIGN_EMAIL =
   "savewooltonbaths@futureofwoolton.org.uk";
 
-const MASS_UPDATE_SUBJECT =
-  "Save Woolton Baths Update — Introducing Future of Woolton";
-
-const MASS_UPDATE_PREVIEW = `Hello,
-
-We wanted to share an important update about the future of the Save Woolton Baths campaign.
-
-Save Woolton Baths is now being organised through Future of Woolton, a new community-focused organisation being established to support the long-term future of Woolton Baths and wider community projects across Woolton and the surrounding area.
-
-Save Woolton Baths remains our flagship campaign.
-
-The purpose of the campaign has not changed. We remain focused on protecting, preserving and working towards the reopening of Woolton Baths for community benefit.
-
-Future of Woolton gives us a stronger structure for the next stage of the campaign, including governance, partnership working, fundraising, professional support and the long-term management of community projects.
-
-You may also notice that our campaign email address has changed.
-
-Our new Save Woolton Baths email is:
-
-savewooltonbaths@futureofwoolton.org.uk
-
-General Future of Woolton enquiries can be sent to:
-
-support@futureofwoolton.org.uk
-
-Thank you for continuing to support Save Woolton Baths and for being part of the campaign.
-
-We will continue to share updates as discussions, surveys, professional work and the next stages of the project progress.
-
-Save Woolton Baths
-Protect. Preserve. Reopen.
-
-Organised by Future of Woolton
-futureofwoolton.org.uk`;
-
 function cleanEnvironmentValue(
   value: string | undefined,
   variableName?: string,
@@ -256,7 +221,7 @@ function readSearchParameter(
 ): string {
   if (
     typeof value !==
-    "string"
+      "string"
   ) {
     return "";
   }
@@ -349,63 +314,63 @@ function getErrorMessage(
 ): string {
   if (
     code ===
-    "invalid-recipient"
+      "invalid-recipient"
   ) {
     return "Enter a valid recipient email address.";
   }
 
   if (
     code ===
-    "invalid-cc"
+      "invalid-cc"
   ) {
     return "Enter valid CC email addresses. You can add up to 10 recipients.";
   }
 
   if (
     code ===
-    "missing-subject"
+      "missing-subject"
   ) {
     return "Enter an email subject.";
   }
 
   if (
     code ===
-    "missing-message"
+      "missing-message"
   ) {
     return "Enter a message before sending.";
   }
 
   if (
     code ===
-    "too-many-attachments"
+      "too-many-attachments"
   ) {
     return "You can attach up to 10 files to one email.";
   }
 
   if (
     code ===
-    "attachment-too-large"
+      "attachment-too-large"
   ) {
     return "Each attachment must be 10 MB or smaller.";
   }
 
   if (
     code ===
-    "attachments-too-large"
+      "attachments-too-large"
   ) {
     return "The combined attachment size must be 25 MB or smaller.";
   }
 
   if (
     code ===
-    "send-failed"
+      "send-failed"
   ) {
     return "The email could not be sent. Please try again.";
   }
 
   if (
     code ===
-    "record-failed"
+      "record-failed"
   ) {
     return "The email was sent, but its correspondence record could not be saved.";
   }
@@ -421,7 +386,7 @@ function isEligibleSupporter(
 ): boolean {
   if (
     supporter.permission_to_contact !==
-    true
+      true
   ) {
     return false;
   }
@@ -614,40 +579,6 @@ export default async function SaveWooltonBathsCampaignEmailPage({
   const eligibleCount =
     uniqueEligibleEmails.size;
 
-  const alreadySentUpdateEmails =
-    new Set(
-      sentEmails
-        .filter(
-          (
-            email,
-          ) =>
-            email.subject ===
-              MASS_UPDATE_SUBJECT &&
-            email.delivery_status ===
-              "sent",
-        )
-        .map(
-          (
-            email,
-          ) =>
-            email.recipient_email
-              .trim()
-              .toLowerCase(),
-        ),
-    );
-
-  const remainingEligibleCount =
-    Array.from(
-      uniqueEligibleEmails,
-    ).filter(
-      (
-        email,
-      ) =>
-        !alreadySentUpdateEmails.has(
-          email,
-        ),
-    ).length;
-
   return (
     <main className="min-h-screen bg-slate-100 text-slate-950">
       <section className="relative overflow-hidden bg-[#071522] px-5 py-10 text-white sm:px-6 sm:py-14">
@@ -668,8 +599,8 @@ export default async function SaveWooltonBathsCampaignEmailPage({
 
               <p className="mt-4 max-w-3xl text-base leading-7 text-slate-300 sm:text-lg sm:leading-8">
                 Send branded Save Woolton Baths correspondence,
-                maintain the campaign communication record and
-                issue controlled supporter updates.
+                publish supporter announcements from any device and
+                maintain the campaign communication record.
               </p>
 
               <div className="mt-5 flex flex-wrap gap-2">
@@ -748,7 +679,7 @@ export default async function SaveWooltonBathsCampaignEmailPage({
 
               <div>
                 <p className="font-black">
-                  Future of Woolton supporter update completed
+                  Supporter update completed
                 </p>
 
                 <p className="mt-2 text-sm leading-6 text-emerald-900">
@@ -760,7 +691,7 @@ export default async function SaveWooltonBathsCampaignEmailPage({
                   <strong>
                     {massFailedCount}
                   </strong>
-                  . Eligible for this run:{" "}
+                  . Eligible for this send:{" "}
                   <strong>
                     {massEligibleCount}
                   </strong>
@@ -768,28 +699,9 @@ export default async function SaveWooltonBathsCampaignEmailPage({
                 </p>
 
                 <p className="mt-2 text-sm leading-6 text-emerald-900">
-                  Each recipient was emailed individually and
-                  each send was recorded separately in the
-                  campaign correspondence history.
-                </p>
-              </div>
-            </div>
-          ) : null}
-
-          {massUpdate ===
-          "already-sent" ? (
-            <div className="mb-6 flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-blue-950">
-              <ShieldCheck className="mt-0.5 h-6 w-6 shrink-0 text-blue-700" />
-
-              <div>
-                <p className="font-black">
-                  Update already sent
-                </p>
-
-                <p className="mt-2 text-sm leading-6 text-blue-900">
-                  Every currently eligible supporter has already
-                  received this Future of Woolton campaign
-                  announcement. No duplicate emails were sent.
+                  Each recipient was emailed individually and every
+                  send was recorded separately in correspondence
+                  history.
                 </p>
               </div>
             </div>
@@ -824,58 +736,60 @@ export default async function SaveWooltonBathsCampaignEmailPage({
 
                   <div>
                     <p className="text-xs font-black uppercase tracking-[0.2em] text-[#E6C75A]">
-                      Campaign Announcement
+                      Supporter Updates & Announcements
                     </p>
 
                     <h2 className="mt-1 text-xl font-black sm:text-2xl">
-                      Introducing Future of Woolton
+                      Compose a supporter-wide update
                     </h2>
                   </div>
                 </div>
 
                 <div className="rounded-xl border border-white/15 bg-white/5 px-4 py-3">
                   <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">
-                    Ready to receive
+                    Eligible recipients
                   </p>
 
                   <p className="mt-1 text-2xl font-black text-white">
-                    {remainingEligibleCount}
+                    {eligibleCount}
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="p-5 sm:p-7">
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
-                    Contact-permitted supporters
-                  </p>
-
-                  <p className="mt-2 text-3xl font-black text-[#102532]">
-                    {eligibleCount}
-                  </p>
-                </div>
-
+            <form
+              action={
+                sendFutureOfWooltonCampaignUpdate
+              }
+              className="p-5 sm:p-7"
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                   <p className="text-xs font-black uppercase tracking-[0.14em] text-emerald-700">
-                    Already sent
+                    Contact-approved supporters
                   </p>
 
                   <p className="mt-2 text-3xl font-black text-emerald-950">
-                    {
-                      alreadySentUpdateEmails.size
-                    }
+                    {eligibleCount}
+                  </p>
+
+                  <p className="mt-2 text-xs font-semibold leading-5 text-emerald-800">
+                    Only supporters with permission to contact are
+                    included.
                   </p>
                 </div>
 
                 <div className="rounded-2xl border border-[#D4AF37]/35 bg-[#D4AF37]/10 p-4">
                   <p className="text-xs font-black uppercase tracking-[0.14em] text-[#8D7425]">
-                    Remaining
+                    Sending from
                   </p>
 
-                  <p className="mt-2 text-3xl font-black text-slate-950">
-                    {remainingEligibleCount}
+                  <p className="mt-2 break-words font-black text-slate-950">
+                    Save Woolton Baths
+                  </p>
+
+                  <p className="mt-1 break-all text-xs font-semibold text-slate-600">
+                    {CAMPAIGN_EMAIL}
                   </p>
                 </div>
               </div>
@@ -890,86 +804,142 @@ export default async function SaveWooltonBathsCampaignEmailPage({
                     </p>
 
                     <p className="mt-2 text-sm leading-6 text-blue-900">
-                      This update only sends to supporter records
-                      with permission to contact. Archived and
-                      declined records are excluded, duplicate
-                      email addresses are removed and every
-                      recipient receives an individual email.
+                      Archived and declined records are excluded,
+                      invalid or duplicate email addresses are
+                      removed, and each supporter receives an
+                      individual branded email.
                     </p>
 
                     <p className="mt-2 text-sm leading-6 text-blue-900">
-                      Anyone who has already successfully
-                      received this exact announcement is
-                      automatically skipped.
+                      You can write a completely new subject and
+                      message here whenever you need to issue an
+                      announcement. No code change is required.
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-6">
-                <p className="text-xs font-black uppercase tracking-[0.15em] text-[#8D7425]">
-                  Subject
-                </p>
+              {supporterResult.error ? (
+                <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
+                  <p className="font-black">
+                    Supporter count unavailable
+                  </p>
 
-                <p className="mt-2 text-lg font-black text-slate-950">
-                  {MASS_UPDATE_SUBJECT}
-                </p>
-              </div>
-
-              <details className="mt-6 overflow-hidden rounded-2xl border border-slate-200">
-                <summary className="cursor-pointer list-none bg-slate-50 px-5 py-4 font-black text-[#102532] marker:hidden [&::-webkit-details-marker]:hidden">
-                  Preview announcement
-                </summary>
-
-                <div className="border-t border-slate-200 p-5">
-                  <p className="whitespace-pre-wrap text-sm leading-7 text-slate-700">
-                    {MASS_UPDATE_PREVIEW}
+                  <p className="mt-2 text-sm leading-6">
+                    The supporter register could not be loaded
+                    correctly, so supporter-wide sending has been
+                    disabled on this page for safety.
                   </p>
                 </div>
-              </details>
+              ) : null}
+
+              <label className="mt-6 block">
+                <span className="text-sm font-black text-slate-800">
+                  Subject
+                </span>
+
+                <input
+                  type="text"
+                  name="subject"
+                  required
+                  maxLength={
+                    200
+                  }
+                  autoComplete="off"
+                  placeholder="For example: Save Woolton Baths — Campaign Update"
+                  className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-base font-semibold outline-none transition focus:border-[#8D7425] focus:ring-4 focus:ring-[#D4AF37]/15"
+                />
+
+                <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                  This is the subject every eligible supporter will
+                  receive.
+                </p>
+              </label>
+
+              <label className="mt-5 block">
+                <span className="text-sm font-black text-slate-800">
+                  Announcement / Update
+                </span>
+
+                <textarea
+                  name="message"
+                  required
+                  rows={
+                    12
+                  }
+                  maxLength={
+                    10000
+                  }
+                  placeholder="Write the supporter announcement, campaign update or news message here..."
+                  className="mt-2 w-full resize-y rounded-xl border border-slate-300 bg-white p-4 text-base leading-7 outline-none transition focus:border-[#8D7425] focus:ring-4 focus:ring-[#D4AF37]/15"
+                />
+
+                <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                  Your text will automatically be placed inside the
+                  Save Woolton Baths branded email layout.
+                </p>
+              </label>
 
               <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
                 <p className="font-black text-amber-950">
-                  This is a supporter-wide action
+                  Confirm supporter-wide send
                 </p>
 
                 <p className="mt-2 text-sm leading-6 text-amber-900">
-                  The button below will immediately send the
-                  announcement to all currently eligible
-                  supporters who have not already received it.
-                  It is deliberately separate from the normal
-                  email form.
+                  This action sends the subject and message above
+                  to all currently eligible supporters. Review both
+                  fields carefully before continuing.
                 </p>
+
+                <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-amber-300 bg-white p-4">
+                  <input
+                    type="checkbox"
+                    name="confirm"
+                    value="yes"
+                    required
+                    className="mt-1 h-5 w-5 shrink-0 rounded border-slate-300 accent-[#D4AF37]"
+                  />
+
+                  <span className="text-sm font-bold leading-6 text-slate-800">
+                    I have checked this update and confirm it is
+                    ready to send to{" "}
+                    <strong>
+                      {eligibleCount}
+                    </strong>{" "}
+                    eligible supporter
+                    {eligibleCount ===
+                    1
+                      ? ""
+                      : "s"}
+                    .
+                  </span>
+                </label>
               </div>
 
-              <form
-                action={
-                  sendFutureOfWooltonCampaignUpdate
+              <button
+                type="submit"
+                disabled={
+                  eligibleCount ===
+                    0 ||
+                  Boolean(
+                    supporterResult.error,
+                  )
                 }
-                className="mt-6"
+                className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-6 text-sm font-black text-black transition hover:bg-[#E6C75A] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 sm:w-auto"
               >
-                <button
-                  type="submit"
-                  disabled={
-                    remainingEligibleCount ===
-                    0
-                  }
-                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#D4AF37] px-6 text-sm font-black text-black transition hover:bg-[#E6C75A] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 sm:w-auto"
-                >
-                  <UsersRound className="h-4 w-4" />
+                <UsersRound className="h-4 w-4" />
 
-                  {remainingEligibleCount >
-                  0
-                    ? `Send Update to ${remainingEligibleCount} Eligible Supporter${
-                        remainingEligibleCount ===
-                        1
-                          ? ""
-                          : "s"
-                      }`
-                    : "No Supporters Awaiting Update"}
-                </button>
-              </form>
-            </div>
+                {eligibleCount >
+                0
+                  ? `Send to ${eligibleCount} Eligible Supporter${
+                      eligibleCount ===
+                      1
+                        ? ""
+                        : "s"
+                    }`
+                  : "No Eligible Supporters"}
+              </button>
+            </form>
           </section>
 
           <div className="grid gap-8 xl:grid-cols-[0.9fr_1.1fr]">
@@ -1167,9 +1137,9 @@ export default async function SaveWooltonBathsCampaignEmailPage({
                 </div>
 
                 <p className="mt-4 text-sm leading-6 text-slate-500">
-                  Outgoing campaign emails are kept here so
-                  contact made outside the website remains part
-                  of the campaign record.
+                  Individual emails and supporter-wide updates are
+                  kept here so campaign correspondence remains part
+                  of the same auditable record.
                 </p>
               </div>
 
@@ -1181,7 +1151,7 @@ export default async function SaveWooltonBathsCampaignEmailPage({
                     </p>
 
                     <p className="mt-2 text-sm leading-6">
-                      The email form is still available, but the
+                      The email forms are still available, but the
                       correspondence history could not be loaded
                       right now.
                     </p>
@@ -1346,8 +1316,8 @@ export default async function SaveWooltonBathsCampaignEmailPage({
                   </h3>
 
                   <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
-                    Emails started from this page will appear
-                    here after they have been sent.
+                    Emails and supporter updates sent from this page
+                    will appear here after they have been sent.
                   </p>
                 </div>
               )}
