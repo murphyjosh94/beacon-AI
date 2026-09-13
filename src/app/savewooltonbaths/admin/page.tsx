@@ -59,6 +59,15 @@ type SupportType =
   | "professional"
   | "other";
 
+type HeardAboutCampaign =
+  | "search_engine"
+  | "family_friend"
+  | "flyer"
+  | "poster"
+  | "social_media"
+  | "door_to_door"
+  | "other";
+
 type SearchParams = {
   q?: string | string[];
   type?: string | string[];
@@ -78,6 +87,7 @@ type SupportRegistration = {
   postcode: string | null;
 
   support_type: SupportType;
+  heard_about_campaign: HeardAboutCampaign | null;
 
   trade_profession: string | null;
   material_details: string | null;
@@ -165,6 +175,19 @@ const SUPPORT_TYPE_OPTIONS: Array<{
     label: "Other",
   },
 ];
+
+const HEARD_ABOUT_CAMPAIGN_LABELS: Record<
+  HeardAboutCampaign,
+  string
+> = {
+  search_engine: "Search engine",
+  family_friend: "Family / friend",
+  flyer: "Flyer",
+  poster: "Poster",
+  social_media: "Social media",
+  door_to_door: "Door-to-door",
+  other: "Other",
+};
 
 const STATUS_OPTIONS: Array<{
   value: SupportStatus;
@@ -377,6 +400,19 @@ function getSupportTypeLabel(
   );
 }
 
+function getHeardAboutCampaignLabel(
+  value: HeardAboutCampaign | null,
+): string {
+  if (!value) {
+    return "Not supplied";
+  }
+
+  return (
+    HEARD_ABOUT_CAMPAIGN_LABELS[value] ??
+    value
+  );
+}
+
 function getStatusLabel(
   value: SupportStatus,
 ): string {
@@ -508,6 +544,7 @@ export default async function SaveWooltonBathsAdminPage({
       organisation,
       postcode,
       support_type,
+      heard_about_campaign,
       trade_profession,
       material_details,
       equipment_details,
@@ -1292,6 +1329,14 @@ function RegistrationCard({
                 registration.organisation ??
                 "Not supplied"
               }
+            />
+
+            <ContactRow
+              icon={Search}
+              label="How they heard about us"
+              value={getHeardAboutCampaignLabel(
+                registration.heard_about_campaign,
+              )}
             />
           </div>
 
