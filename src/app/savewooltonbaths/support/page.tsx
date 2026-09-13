@@ -40,12 +40,12 @@ type SupportType =
 
 type HeardAboutCampaign =
   | ""
+  | "social_media"
+  | "guide_liverpool"
+  | "other_publication"
   | "search_engine"
   | "family_friend"
-  | "flyer"
-  | "poster"
-  | "social_media"
-  | "door_to_door"
+  | "flyer_poster"
   | "other";
 
 type FormState = {
@@ -98,12 +98,12 @@ const initialFormState: FormState = {
 };
 
 const heardAboutOptions = [
-  { value: "search_engine", label: "Search Engine" },
-  { value: "family_friend", label: "Family / Friend" },
-  { value: "flyer", label: "Flyer" },
-  { value: "poster", label: "Poster" },
-  { value: "social_media", label: "Social Media" },
-  { value: "door_to_door", label: "Door to Door" },
+  { value: "social_media", label: "Social media" },
+  { value: "guide_liverpool", label: "The Guide Liverpool" },
+  { value: "other_publication", label: "Other publication" },
+  { value: "search_engine", label: "Search engine" },
+  { value: "family_friend", label: "Family / friend" },
+  { value: "flyer_poster", label: "Flyer / poster" },
   { value: "other", label: "Other" },
 ] as const;
 

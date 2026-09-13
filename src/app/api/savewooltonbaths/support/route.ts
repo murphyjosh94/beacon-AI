@@ -17,13 +17,17 @@ type SupportType =
   | "other";
 
 type HeardAboutCampaign =
+  | "social_media"
+  | "guide_liverpool"
+  | "other_publication"
   | "search_engine"
   | "family_friend"
+  | "flyer_poster"
+  | "other"
+  // Legacy values retained so existing registrations remain readable/valid.
   | "flyer"
   | "poster"
-  | "social_media"
-  | "door_to_door"
-  | "other";
+  | "door_to_door";
 
 type SupportSubmission = {
   name?: unknown;
@@ -65,13 +69,19 @@ const SUPPORT_TYPES = new Set<SupportType>([
 ]);
 
 const HEARD_ABOUT_CAMPAIGN_VALUES = new Set<HeardAboutCampaign>([
+  // Current public form values.
+  "social_media",
+  "guide_liverpool",
+  "other_publication",
   "search_engine",
   "family_friend",
+  "flyer_poster",
+  "other",
+
+  // Legacy values retained for backwards compatibility.
   "flyer",
   "poster",
-  "social_media",
   "door_to_door",
-  "other",
 ]);
 
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;

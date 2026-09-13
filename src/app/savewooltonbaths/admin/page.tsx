@@ -60,13 +60,16 @@ type SupportType =
   | "other";
 
 type HeardAboutCampaign =
+  | "social_media"
+  | "guide_liverpool"
+  | "other_publication"
   | "search_engine"
   | "family_friend"
+  | "flyer_poster"
+  | "other"
   | "flyer"
   | "poster"
-  | "social_media"
-  | "door_to_door"
-  | "other";
+  | "door_to_door";
 
 type SearchParams = {
   q?: string | string[];
@@ -180,13 +183,18 @@ const HEARD_ABOUT_CAMPAIGN_LABELS: Record<
   HeardAboutCampaign,
   string
 > = {
+  social_media: "Social media",
+  guide_liverpool: "The Guide Liverpool",
+  other_publication: "Other publication",
   search_engine: "Search engine",
   family_friend: "Family / friend",
+  flyer_poster: "Flyer / poster",
+  other: "Other",
+
+  // Legacy values retained for existing supporter records.
   flyer: "Flyer",
   poster: "Poster",
-  social_media: "Social media",
   door_to_door: "Door-to-door",
-  other: "Other",
 };
 
 const STATUS_OPTIONS: Array<{
