@@ -272,8 +272,8 @@ export default function SaveWooltonBathsPage() {
                 <strong className="text-white">
                   Community Asset Transfer lease from Liverpool City Council
                 </strong>{" "}
-                and establish an appropriate non-charitable social-enterprise
-                structure with community benefit at its core.
+                and Establish an appropriate community-focused 
+                social-enterprise structure.
               </p>
 
               <p>
