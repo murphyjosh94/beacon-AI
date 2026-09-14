@@ -460,7 +460,7 @@ export default function SaveWooltonBathsPartnersPage() {
 
               <p className="mt-4 max-w-3xl leading-8 text-slate-600">
                 The first organisations and professionals who materially support
-                the campaign during its Community Asset Transfer and restoration
+                the campaign during its tenure and restoration
                 planning stages will be recognised as Founding Campaign Partners.
                 Their early support helped establish the evidence base,
                 professional network and community momentum behind the project.
