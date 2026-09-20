@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -479,6 +480,57 @@ export default function SaveWooltonBathsSupportPage() {
                 Your skills, equipment, materials, experience or simply your
                 support for the project could make a genuine difference.
               </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-white/10 bg-[#0A1B2B]">
+        <div className="mx-auto max-w-7xl px-6 py-16 md:py-20">
+          <div className="overflow-hidden rounded-[2rem] border border-[#438c32]/35 bg-[#071522]">
+            <div className="grid lg:grid-cols-[0.72fr_1.28fr] lg:items-center">
+              <div className="flex min-h-[280px] items-center justify-center bg-white p-8 md:p-12">
+                <Image
+                  src="/savewooltonbaths/fow-logo.webp"
+                  alt="Future of Woolton"
+                  width={720}
+                  height={720}
+                  className="h-auto max-h-60 w-auto max-w-full object-contain"
+                />
+              </div>
+
+              <div className="p-8 md:p-12">
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#8ccf74]/30 bg-[#438c32]/15 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-[#8ccf74]">
+                  <ShieldCheck className="h-4 w-4" />
+                  Future of Woolton
+                </div>
+
+                <h2 className="mt-6 text-3xl font-black tracking-tight text-white md:text-4xl">
+                  Could you help shape Future of Woolton as a trustee?
+                </h2>
+
+                <p className="mt-5 text-lg leading-8 text-slate-300">
+                  Future of Woolton CIO is currently in formation and is looking
+                  for people who would consider joining the charity as founding
+                  trustees.
+                </p>
+
+                <p className="mt-4 leading-8 text-slate-400">
+                  Trustee roles are separate from registering support for Save
+                  Woolton Baths. If you have governance, finance, legal,
+                  community, professional or other relevant experience and would
+                  like to help establish Future of Woolton, you can find out more
+                  and register your interest on the Future of Woolton website.
+                </p>
+
+                <Link
+                  href="https://futureofwoolton.org.uk/support#support-register"
+                  className="mt-7 inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#438c32] px-6 py-3 text-sm font-black text-white transition hover:bg-[#357527]"
+                >
+                  Find Out More About Becoming a Trustee
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
             </div>
           </div>
         </div>
