@@ -12,13 +12,13 @@ export const dynamic = "force-dynamic";
 const RESEND_API_URL = "https://api.resend.com/emails";
 
 const SUPPORT_EMAIL_FROM =
-  "Save Woolton Baths <savewooltonbaths@beacon-ai.co.uk>";
+  "Save Woolton Baths <savewooltonbaths@futureofwoolton.org.ukS>";
 
 const SUPPORT_EMAIL_REPLY_TO =
   "savewooltonbaths@gmail.com";
 
 const SUPPORT_EMAIL_ADDRESS =
-  "savewooltonbaths@beacon-ai.co.uk";
+  "savewooltonbaths@futureofwoolton.org.uk";
 
 const CAMPAIGN_URL =
   "https://beacon-ai.co.uk/savewooltonbaths";
