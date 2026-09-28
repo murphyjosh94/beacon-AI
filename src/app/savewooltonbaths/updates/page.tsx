@@ -269,7 +269,16 @@ export default function SaveWooltonBathsUpdatesPage() {
         title="Public Meetings & Events"
         description="Community meetings, fundraising events, open days, volunteer sessions and other public campaign activity will be listed here."
         icon={Users}
-        emptyTitle="No public events announced yet"
+        emptyTitle="Trying to trace members of the Save Woolton Pool Fund – 2016
+We're trying to get in touch with anyone who was involved with the Save Woolton Pool Fund around 2016, particularly anyone involved with the group's finances or bank account.
+We are especially trying to locate Joan Edwards, who we understand was the Treasurer at the time, or anyone else who may have been a signatory on the fund's bank account.
+If you were involved with the Save Woolton Pool Fund, served on the committee, were a signatory, or know how we might contact Joan or another member of the group, we'd really appreciate hearing from you.
+This is simply about helping us trace the people involved at the time and establish the correct route forward as work continues through Save Woolton Baths and Future of Woolton CIO (in formation).
+If you can help, please contact:
+savewooltonbaths@futureofwoolton.org.uk
+Even if you're unsure whether the information you have is still relevant, please get in touch — it may help us connect the dots.
+Save Woolton Baths
+A campaign run by Future of Woolton CIO (in formation)"
         emptyDescription="Dates, venues and event details will appear here when the first public meetings or campaign events are confirmed."
       />
 
