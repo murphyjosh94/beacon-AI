@@ -266,7 +266,7 @@ export default function SaveWooltonBathsUpdatesPage() {
 
       <UpdateSection
         eyebrow="Community Engagement"
-        title="Public Meetings & Events"
+        title="Public Meetings,Alerts & Events"
         description="Community meetings, fundraising events, open days, volunteer sessions and other public campaign activity will be listed here."
         icon={Users}
         emptyTitle="Trying to trace members of the Save Woolton Pool Fund – 2016"
