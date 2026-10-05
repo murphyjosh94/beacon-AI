@@ -92,7 +92,7 @@ const rateLimitStore = new Map<string, RateLimitRecord>();
 
 const RESEND_API_URL = "https://api.resend.com/emails";
 const SUPPORT_EMAIL_FROM =
-  "Save Woolton Baths <savewooltonbaths@futureofwoolton.org.ukS>";
+  "Save Woolton Baths <savewooltonbaths@futureofwoolton.org.uk>";
 const SUPPORT_EMAIL_REPLY_TO = "savewooltonbaths@gmail.com";
 const CAMPAIGN_URL = "https://beacon-ai.co.uk/savewooltonbaths";
 const CAMPAIGN_LOGO_URL =
