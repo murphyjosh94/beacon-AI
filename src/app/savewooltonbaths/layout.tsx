@@ -57,13 +57,13 @@ function BackToTop() {
 export const metadata: Metadata = {
   title: "Save Woolton Baths | Community Restoration Campaign",
   description:
-    "A community-led campaign to secure and restore the historic Grade II listed Woolton Baths in Liverpool through a Community Asset Transfer.",
+    "A community-led campaign to secure and restore the historic Grade II listed Woolton Baths in Liverpool through a Long Term Lease.",
 
   keywords: [
     "Save Woolton Baths",
     "Woolton Baths",
     "Liverpool",
-    "Community Asset Transfer",
+    "Long Term Lease",
     "Heritage Restoration",
     "Swimming Pool Restoration",
     "Woolton",
@@ -350,7 +350,7 @@ export default function SaveWooltonBathsLayout({
 
                   <p className="mt-4 text-sm leading-7 text-slate-400">
                     A community-led campaign working to secure Woolton Baths
-                    through a Community Asset Transfer and restore it for future
+                   and restore it for future
                     generations.
                   </p>
 

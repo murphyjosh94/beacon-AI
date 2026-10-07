@@ -648,8 +648,8 @@ export default function WooltonBathsHistoryPage() {
           </h2>
 
           <p className="mx-auto mt-8 max-w-3xl text-lg leading-8 text-slate-300">
-            Our ambition is to secure Woolton Baths through a Community Asset
-            Transfer, restore the building in achievable phases and ultimately
+            Our ambition is to secure Woolton Baths through a Long Term Lease,
+           restore the building in achievable phases and ultimately
             return swimming to this historic pool while once again creating a
             place the wider community can use and enjoy.
           </p>

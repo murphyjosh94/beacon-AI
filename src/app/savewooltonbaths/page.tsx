@@ -146,7 +146,7 @@ export default function SaveWooltonBathsPage() {
 
             <p className="mt-8 max-w-3xl text-lg leading-8 text-slate-300 md:text-xl md:leading-9">
               We are building a community-led plan to secure the historic Grade
-              II listed Woolton Baths through a Community Asset Transfer from
+              II listed Woolton Baths through a Long Term Lease from
               Liverpool City Council, restore it in achievable phases and
               return this important building to active community use.
             </p>
@@ -270,7 +270,7 @@ export default function SaveWooltonBathsPage() {
               <p>
                 We intend to seek a{" "}
                 <strong className="text-white">
-                  Community Asset Transfer lease from Liverpool City Council
+                  Long Term Lease from Liverpool City Council
                 </strong>{" "}
                 and Establish an appropriate community-focused 
                 social-enterprise structure.
@@ -647,7 +647,7 @@ export default function SaveWooltonBathsPage() {
       </section>
 
       {/* ================================================================ */}
-      {/* COMMUNITY ASSET TRANSFER */}
+      {/* LONG-TERM LEASE */}
       {/* ================================================================ */}
 
       <section className="bg-white text-[#10202A]">
@@ -657,7 +657,7 @@ export default function SaveWooltonBathsPage() {
               <Landmark className="h-10 w-10 text-[#96791F]" />
 
               <p className="mt-6 text-sm font-black uppercase tracking-[0.25em] text-[#8D7425]">
-                Community Asset Transfer
+                Long-Term Lease
               </p>
 
               <h2 className="mt-4 text-4xl font-black tracking-tight md:text-5xl">
@@ -665,7 +665,7 @@ export default function SaveWooltonBathsPage() {
               </h2>
 
               <p className="mt-7 text-lg leading-9 text-slate-700">
-                We intend to seek a Community Asset Transfer arrangement with
+                We intend to seek a Long Term Lease arrangement with
                 Liverpool City Council that enables an appropriate
                 community-focused organisation to take responsibility for the
                 building and its restoration.
@@ -674,7 +674,7 @@ export default function SaveWooltonBathsPage() {
 
             <div className="space-y-5">
               {[
-                "Secure a long-term Community Asset Transfer arrangement.",
+                "Secure a long-term Long Term Lease arrangement.",
                 "Establish an appropriate community-focused social-enterprise structure.",
                 "Protect the future use and community benefit of the building.",
                 "Reinvest operating revenue into restoration and long-term sustainability.",
@@ -690,11 +690,11 @@ export default function SaveWooltonBathsPage() {
               ))}
 
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm leading-7 text-amber-950">
-                <strong>Campaign status:</strong> The Community Asset Transfer,
-                detailed restoration proposals and associated arrangements are
-                being pursued and developed. They should not be interpreted as
-                having already received formal approval from Liverpool City
-                Council.
+                <strong>Campaign status:</strong> Discussions with Liverpool City Council are ongoing regarding the future of
+Woolton Baths and the most appropriate route for Future of Woolton to secure
+and operate the building. Detailed restoration and operational proposals
+continue to be developed, but no tenure arrangement or formal approval has
+yet been agreed.
               </div>
             </div>
           </div>
