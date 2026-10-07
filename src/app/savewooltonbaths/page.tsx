@@ -255,7 +255,7 @@ export default function SaveWooltonBathsPage() {
               </p>
 
               <h2 className="mt-4 text-4xl font-black tracking-tight text-white md:text-5xl">
-                Community ownership with a practical restoration plan.
+                Charity ownership Community led with a practical restoration plan.
               </h2>
             </div>
 
