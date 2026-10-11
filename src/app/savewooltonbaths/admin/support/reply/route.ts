@@ -15,7 +15,7 @@ const SUPPORT_EMAIL_FROM =
   "Save Woolton Baths <savewooltonbaths@futureofwoolton.org.uk>";
 
 const SUPPORT_EMAIL_REPLY_TO =
-  "savewooltonbaths@gmail.com";
+  "savewooltonbaths@futureofwoolton.org.uk";
 
 const SUPPORT_EMAIL_ADDRESS =
   "savewooltonbaths@futureofwoolton.org.uk";
